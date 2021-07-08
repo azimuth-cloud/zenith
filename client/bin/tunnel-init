@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+
+import asyncio
+import dataclasses
+import os
+import random
+import re
+import string
+import sys
+import typing
+
+
+@dataclasses.dataclass
+class Config:
+    """
+    Class representing the configuration of the tunnel client.
+    """
+    #: The SSH executable to use
+    ssh_executable: str
+    #: The tunnel server to connect to
+    tunnel_server: str
+    #: The tunnel server SSH port
+    tunnel_server_port: int
+    #: The host to forward tunnel traffic to
+    forward_to_host: str
+    #: The port to forward tunnel traffic to
+    forward_to_port: int
+    #: The subdomain to request
+    #: If not given, a random subdomain is used
+    subdomain: typing.Optional[str]
+
+
+def parse_host(input):
+    """
+    Attempts to parse the given input as a hostname or IP.
+    """
+    return input
+
+
+def parse_port(input):
+    """
+    Attempts to parse the given input as a port
+    """
+    return input
+
+
+def parse_subdomain(input):
+    """
+    Attempts to parse the given input as a subdomain.
+    """
+    return input
+
+
+def generate_subdomain():
+    """
+    Generates a random subdomain.
+    """
+    return "".join(random.choices(string.ascii_letters + string.digits, k = 32))
+
+
+def get_config_from_env():
+    """
+    Returns a config object built from the environment variables.
+    """
+    if 'SUBDOMAIN' in os.environ:
+        subdomain = parse_subdomain(os.environ['SUBDOMAIN'])
+    else:
+        subdomain = generate_subdomain()
+    return Config(
+        ssh_executable = os.environ.get('SSH_EXECUTABLE', 'ssh'),
+        tunnel_server = parse_host(os.environ['TUNNEL_SERVER']),
+        tunnel_server_port = parse_port(os.environ.get('TUNNEL_SERVER_PORT', '22')),
+        forward_to_host = parse_host(os.environ.get('FORWARD_TO_HOST', 'localhost')),
+        forward_to_port = parse_port(os.environ.get('FORWARD_TO_PORT', '8000')),
+        subdomain = subdomain
+    )
+
+
+async def get_allocated_port(ssh_proc):
+    """
+    Extract the allocated port from stderr.
+    """
+    while not ssh_proc.stderr.at_eof():
+        line = (await ssh_proc.stderr.readline()).decode()
+        match = re.match(r"Allocated port (?P<port>\d+) for remote forward", line)
+        if match is not None:
+            return int(match.group('port'))
+        else:
+            # If the line is not the one we need, send it to stderr
+            sys.stderr.write(line)
+            sys.stderr.flush()
+
+
+async def send_config_item(ssh_proc, item, value):
+    """
+    Waits until the server asks for the config item and sends the value.
+    """
+    # When the marker appears on stdout, send the value on stdin
+    marker = f"SET_{item}"
+    while not ssh_proc.stdout.at_eof():
+        line = (await ssh_proc.stdout.readline()).decode()
+        if line.strip() == marker:
+            ssh_proc.stdin.write(f"{value}\n".encode())
+            break
+        else:
+            # If the line is not the one we need, send it to stdout
+            sys.stdout.write(line)
+            sys.stdout.flush()    # Print stdout and stderr until they finish
+
+
+async def run_tunnel(config):
+    """
+    Run the tunnel using the given config.
+    """
+    # Derive the SSH command to use from the configuration
+    ssh_command = ' '.join([
+        config.ssh_executable,
+        # Force a TTY so that we can send data over stdin
+        "-tt",
+        # Exit immediately if the port forwarding fails
+        "-o ExitOnForwardFailure=yes",
+        # Ignore host keys (for now)
+        "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null",
+        # Use a dynamically allocated port
+        f"-R 0:{config.forward_to_host}:{config.forward_to_port}",
+        # Configure the tunnel server
+        f"-p {config.tunnel_server_port} tunnel@{config.tunnel_server}"
+    ])
+
+    # Open the SSH process
+    ssh_proc = await asyncio.create_subprocess_shell(
+        ssh_command,
+        stdin = asyncio.subprocess.PIPE,
+        stdout = asyncio.subprocess.PIPE,
+        stderr = asyncio.subprocess.PIPE
+    )
+
+    # Get the dynamically allocated port
+    allocated_port = await get_allocated_port(ssh_proc)
+
+    # The server will ask for the port and then the subdomain
+    await send_config_item(ssh_proc, "PORT", allocated_port)
+    await send_config_item(ssh_proc, "SUBDOMAIN", config.subdomain)
+
+    # Print stdout and stderr until the process finishes
+    async def forward(input, output):
+        while not input.at_eof():
+            line = (await input.readline()).decode()
+            output.write(line)
+            output.flush()
+    await asyncio.wait([
+        asyncio.create_task(forward(ssh_proc.stdout, sys.stdout)),
+        asyncio.create_task(forward(ssh_proc.stderr, sys.stderr)),
+        asyncio.create_task(ssh_proc.wait())
+    ])
+
+    # Exit with the returncode from the SSH command
+    sys.exit(ssh_proc.returncode)
+
+
+async def main():
+    """
+    Entry point for the script.
+    """
+    config = get_config_from_env()
+    await run_tunnel(config)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

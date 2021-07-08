@@ -1,0 +1,41 @@
+#####
+## SSHD config for the tunnel server
+##
+## It is designed to shut out SSH access for all users except the tunnel user
+## and restrict the tunnel user to a particular sandbox
+#####
+
+# Allow the tunnel user only
+AllowUsers tunnel
+
+# The tunnel user can authenticate with an empty password
+PasswordAuthentication yes
+PermitEmptyPasswords yes
+
+# Force the tunnel-init command to run
+ForceCommand tunnel-init
+
+# Allow the user to create reverse SSH tunnels bound to localhost only
+AllowTcpForwarding remote
+GatewayPorts no
+
+# We want to detect and detach dead clients quickly
+# This will ensure dead clients are detached within 30s
+ClientAliveCountMax 3
+ClientAliveInterval 10
+
+# All other authentication methods are disabled
+ChallengeResponseAuthentication no
+GSSAPIAuthentication no
+HostbasedAuthentication no
+KerberosAuthentication no
+PermitRootLogin no
+PubkeyAuthentication no
+UsePAM no
+
+# Restrict the available features to only those that are required for tunnels
+AllowAgentForwarding no
+AllowStreamLocalForwarding no
+PermitTunnel no
+PermitUserEnvironment no
+X11Forwarding no

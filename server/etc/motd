@@ -1,0 +1,15 @@
+################################################################################
+##                        StackHPC tunnel proxy server                        ##
+##                                                                            ##
+## This tunnel server and the corresponding client allow HTTP services that   ##
+## are behind a NAT to be exposed to the internet.                            ##
+##                                                                            ##
+## This is accomplished using a combination of SSH reverse tunneling and a    ##
+## dynamically-configured proxy.                                              ##
+##                                                                            ##
+## Clients connect using SSH and start a reverse tunnel with a dynamically    ##
+## allocated port. Once the port has been allocated, the client can ask for   ##
+## that port to be associated with a particular domain in the proxy.          ##
+## The proxy will then forward HTTP traffic for that domain to the allocated  ##
+## port, allowing the service at the other end of the tunnel to respond.      ##
+################################################################################
