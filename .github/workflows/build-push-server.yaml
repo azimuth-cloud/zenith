@@ -1,6 +1,8 @@
 name: Build and push server image
-# Run the tasks on every push that changes the image or this file
 on:
+  # Allow the workflow to be run manually
+  workflow_dispatch: {}
+  # Run the tasks on every push that changes the image or this file
   push:
     paths:
       - server/**
