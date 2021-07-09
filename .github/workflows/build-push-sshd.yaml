@@ -1,12 +1,12 @@
-name: Build and push server image
+name: Build and push SSHD image
 on:
   # Allow the workflow to be run manually
   workflow_dispatch: {}
   # Run the tasks on every push that changes the image or this file
   push:
     paths:
-      - server/**
-      - .github/workflows/build-push-server.yaml
+      - sshd/**
+      - .github/workflows/build-push-sshd.yaml
 jobs:
   build_and_push_image:
     name: Build and push image
@@ -37,7 +37,7 @@ jobs:
         id: image-meta
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/stackhpc/tunnel-server
+          images: ghcr.io/stackhpc/tunnel-sshd
           # Produce the branch name or tag and the SHA as tags
           tags: |
             type=ref,event=branch
@@ -47,7 +47,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v2
         with:
-          context: ./server
+          context: ./sshd
           push: true
           tags: ${{ steps.image-meta.outputs.tags }}
           labels: ${{ steps.image-meta.outputs.labels }}
