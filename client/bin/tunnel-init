@@ -17,6 +17,8 @@ class Config:
     """
     #: The SSH executable to use
     ssh_executable: str
+    #: Configure timeout
+    tunnel_configure_timeout: int
     #: The tunnel server to connect to
     tunnel_server: str
     #: The tunnel server SSH port
@@ -68,6 +70,8 @@ def get_config_from_env():
         subdomain = generate_subdomain()
     return Config(
         ssh_executable = os.environ.get('SSH_EXECUTABLE', 'ssh'),
+        # Default to a 5s timeout
+        tunnel_configure_timeout = int(os.environ.get('TUNNEL_CONFIGURE_TIMEOUT', '5')),
         tunnel_server = parse_host(os.environ['TUNNEL_SERVER']),
         tunnel_server_port = parse_port(os.environ.get('TUNNEL_SERVER_PORT', '22')),
         forward_to_host = parse_host(os.environ.get('FORWARD_TO_HOST', 'localhost')),
@@ -91,27 +95,43 @@ async def get_allocated_port(ssh_proc):
             sys.stderr.flush()
 
 
-async def send_config_item(ssh_proc, item, value):
+async def wait_for_marker(stream, marker):
     """
-    Waits until the server asks for the config item and sends the value.
+    Waits for the given marker to appear on the given stream before returning.
     """
-    # When the marker appears on stdout, send the value on stdin
-    marker = f"SET_{item}"
-    while not ssh_proc.stdout.at_eof():
-        line = (await ssh_proc.stdout.readline()).decode()
+    while not stream.at_eof():
+        line = (await stream.readline()).decode()
         if line.strip() == marker:
-            ssh_proc.stdin.write(f"{value}\n".encode())
             break
         else:
             # If the line is not the one we need, send it to stdout
             sys.stdout.write(line)
-            sys.stdout.flush()    # Print stdout and stderr until they finish
+            sys.stdout.flush()
 
 
-async def run_tunnel(config):
+async def configure_tunnel(ssh_proc, config):
     """
-    Run the tunnel using the given config.
+    Configures the tunnel.
     """
+    # Get the dynamically allocated port from the SSH process
+    allocated_port = await get_allocated_port(ssh_proc)
+    # The server will ask for the port and then the subdomain
+    await wait_for_marker(ssh_proc.stdout, "SET_PORT")
+    ssh_proc.stdin.write(f"{allocated_port}\n".encode())
+    await ssh_proc.stdin.drain()
+    await wait_for_marker(ssh_proc.stdout, "SET_SUBDOMAIN")
+    ssh_proc.stdin.write(f"{config.subdomain}\n".encode())
+    await ssh_proc.stdin.drain()
+    await wait_for_marker(ssh_proc.stdout, "CONFIGURATION_COMPLETE")
+
+
+async def main():
+    """
+    Entry point for the script.
+    """
+    # Build the config object from the environment
+    config = get_config_from_env()
+
     # Derive the SSH command to use from the configuration
     ssh_command = ' '.join([
         config.ssh_executable,
@@ -127,6 +147,8 @@ async def run_tunnel(config):
         f"-p {config.tunnel_server_port} tunnel@{config.tunnel_server}"
     ])
 
+    print(f"[CLIENT] [INFO] Spawning SSH - {ssh_command}")
+
     # Open the SSH process
     ssh_proc = await asyncio.create_subprocess_shell(
         ssh_command,
@@ -135,12 +157,28 @@ async def run_tunnel(config):
         stderr = asyncio.subprocess.PIPE
     )
 
-    # Get the dynamically allocated port
-    allocated_port = await get_allocated_port(ssh_proc)
+    print("[CLIENT] [INFO] Preparing to negotiate tunnel configuration...")
 
-    # The server will ask for the port and then the subdomain
-    await send_config_item(ssh_proc, "PORT", allocated_port)
-    await send_config_item(ssh_proc, "SUBDOMAIN", config.subdomain)
+    try:
+        # The tunnel configuration should be quick if all is well, so timeout
+        # if it takes more than a handful of seconds
+        await asyncio.wait_for(
+            configure_tunnel(ssh_proc, config),
+            config.tunnel_configure_timeout
+        )
+    except asyncio.TimeoutError:
+        print("[CLIENT] [ERROR] Timed out negotiating tunnel configuration")
+        # Terminate the SSH process before exiting
+        # Start by sending SIGTERM
+        ssh_proc.terminate()
+        # If the process is still running 30s later, send SIGKILL
+        try:
+            await asyncio.wait_for(ssh_proc.wait(), 30)
+        except asyncio.TimeoutError:
+            ssh_proc.kill()
+        sys.exit(1)
+
+    print("[CLIENT] [INFO] Tunnel configured successfully")
 
     # Print stdout and stderr until the process finishes
     async def forward(input, output):
@@ -153,17 +191,14 @@ async def run_tunnel(config):
         asyncio.create_task(forward(ssh_proc.stderr, sys.stderr)),
         asyncio.create_task(ssh_proc.wait())
     ])
+    
+    if ssh_proc.returncode == 0:
+        print("[CLIENT] [INFO] SSH process exited without an error")
+    else:
+        print(f"[CLIENT] [WARNING] SSH process exited with non-zero exit code ({ssh_proc.returncode})")
 
     # Exit with the returncode from the SSH command
     sys.exit(ssh_proc.returncode)
-
-
-async def main():
-    """
-    Entry point for the script.
-    """
-    config = get_config_from_env()
-    await run_tunnel(config)
 
 
 if __name__ == "__main__":

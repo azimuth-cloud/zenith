@@ -15,9 +15,12 @@ PermitEmptyPasswords yes
 # Force the tunnel-init command to run
 ForceCommand tunnel-init
 
-# Allow the user to create reverse SSH tunnels bound to localhost only
+# Allow the user to create reverse SSH tunnels only
 AllowTcpForwarding remote
-GatewayPorts no
+
+# Force reverse tunnels to bind to the wildcard address so they can be accessed
+# from outside the container
+GatewayPorts yes
 
 # We want to detect and detach dead clients quickly
 # This will ensure dead clients are detached within 30s

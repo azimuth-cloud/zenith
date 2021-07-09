@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -e
+
+# Decide what address to use for Consul
+# If not explicitly given, we use HOST_IP:8500
+# This will work in Kubernetes with Consul deployed using the official Helm chart
+# and HOST_IP configured via the downward API
+if [ -z "$CONSUL_HTTP_ADDR" ]; then
+    if [ -n "$HOST_IP" ]; then
+        CONSUL_HTTP_ADDR="${HOST_IP}:8500"
+    else
+        echo "CONSUL_HTTP_ADDR or HOST_IP must be set" 1>&2
+        exit 1
+    fi
+fi
+
+# The service host can be explicitly specified, but the default of "hostname -i"
+# will be sufficient in almost all cases
+if [ -z "$SERVICE_HOST" ]; then
+    SERVICE_HOST="$(hostname -i)"
+fi
+
+# Forward the required environment variables to SSH sessions so that the tunnel-init
+# script can access them
+exec /usr/sbin/sshd \
+  -D \
+  -e \
+  -o "SetEnv=CONSUL_HTTP_ADDR=\"${CONSUL_HTTP_ADDR}\" SERVICE_HOST=\"${SERVICE_HOST}\""

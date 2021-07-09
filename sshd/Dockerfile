@@ -5,7 +5,8 @@
 FROM debian:buster-slim
 
 # Add an unprivileged user to accept tunnel requests
-# This user has an empty password to allow anonymous SSH
+# The user has a home directory, a restricted shell to allow the tunnel-init
+# script to run and an empty password to allow anonymous SSH
 ENV TUNNEL_UID 1001
 ENV TUNNEL_USER tunnel
 RUN useradd \
@@ -18,13 +19,15 @@ RUN useradd \
     passwd -d $TUNNEL_USER
 
 RUN apt-get update && \
-    apt-get install -y openssh-server python3 tini && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y openssh-server python3 python3-pip tini && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /run/sshd
 
-RUN mkdir -p /run/sshd
+# The tunnel-init script requires requests
+RUN pip3 install --no-cache-dir requests
 
 COPY ./etc /etc/
 COPY ./bin /usr/bin/
 
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
-CMD ["/usr/sbin/sshd", "-D", "-e"]
+CMD ["/usr/bin/sshd-start"]
