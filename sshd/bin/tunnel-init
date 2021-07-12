@@ -80,6 +80,7 @@ import os
 import signal
 import sys
 import time
+import typing
 import uuid
 
 import requests
@@ -123,6 +124,8 @@ class TunnelConfig:
     service_port: int
     #: The subdomain to use
     subdomain: str
+    #: Metadata for the tunnel
+    metadata: typing.Dict[str, str]
 
 
 def get_server_config():
@@ -219,9 +222,10 @@ def get_tunnel_config(timeout_secs):
     return TunnelConfig(
         # Generate a UUID for the service that is unique to this tunnel
         service_id = str(uuid.uuid4()),
-        # Extract the port and subdomain from the config
+        # Extract the port, subdomain and metadata from the config
         service_port = parse_port(client_config['allocated_port']),
-        subdomain = parse_subdomain(client_config['subdomain'])
+        subdomain = parse_subdomain(client_config['subdomain']),
+        metadata = dict(client_config.get('metadata', {}))
     )
 
 
@@ -270,6 +274,8 @@ def consul_register_service(server_config, tunnel_config):
         "Port": tunnel_config.service_port,
         # Tag the service as a tunnel proxy subdomain
         "Tags": [TUNNEL_PROXY_SERVICE_TAG],
+        # Associate any specified metadata
+        "Meta": tunnel_config.metadata,
         # Specify a TTL check
         "Check": {
             # Use the unique ID for the tunnel as the check id
