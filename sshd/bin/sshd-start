@@ -14,16 +14,33 @@ if [ -z "$CONSUL_HTTP_ADDR" ]; then
         exit 1
     fi
 fi
+SET_ENV="CONSUL_HTTP_ADDR=\"${CONSUL_HTTP_ADDR}\""
 
 # The service host can be explicitly specified, but the default of "hostname -i"
 # will be sufficient in almost all cases
 if [ -z "$SERVICE_HOST" ]; then
     SERVICE_HOST="$(hostname -i)"
 fi
+SET_ENV="$SET_ENV SERVICE_HOST=\"${SERVICE_HOST}\""
+
+# The following variables are optional with defaults defined in the tunnel-init script
+# Negotiaiting configuration with a well-behaved client should be fast
+if [ -n "$CONFIGURE_TIMEOUT" ]; then
+    SET_ENV="$SET_ENV CONFIGURE_TIMEOUT=\"${CONFIGURE_TIMEOUT}\""
+fi
+if [ -n "$CONSUL_TTL" ]; then
+    SET_ENV="$SET_ENV CONSUL_TTL=\"${CONSUL_TTL}\""
+fi
+if [ -n "$CONSUL_HEARTBEAT_INTERVAL" ]; then
+    SET_ENV="$SET_ENV CONSUL_HEARTBEAT_INTERVAL=\"${CONSUL_HEARTBEAT_INTERVAL}\""
+fi
+if [ -n "$CONSUL_DEREGISTER_INTERVAL" ]; then
+    SET_ENV="$SET_ENV CONSUL_DEREGISTER_INTERVAL=\"${CONSUL_DEREGISTER_INTERVAL}\""
+fi
+if [ -n "$CONSUL_HEARTBEAT_FAILURES" ]; then
+    SET_ENV="$SET_ENV CONFIGURE_TIMEOUT=\"${CONSUL_HEARTBEAT_FAILURES}\""
+fi
 
 # Forward the required environment variables to SSH sessions so that the tunnel-init
 # script can access them
-exec /usr/sbin/sshd \
-  -D \
-  -e \
-  -o "SetEnv=CONSUL_HTTP_ADDR=\"${CONSUL_HTTP_ADDR}\" SERVICE_HOST=\"${SERVICE_HOST}\""
+exec /usr/sbin/sshd -D -e -o "SetEnv=$SET_ENV"

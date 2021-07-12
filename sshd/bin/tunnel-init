@@ -73,7 +73,9 @@
 #   ...
 ####
 
+import contextlib
 import dataclasses
+import json
 import os
 import signal
 import sys
@@ -83,23 +85,88 @@ import uuid
 import requests
 
 
+TUNNEL_PROXY_SERVICE_TAG = "tunnel-proxy-subdomain"
+
+
 @dataclasses.dataclass
-class Config:
+class ServerConfig:
     """
-    Object representing the configuration for the tunnel.
+    Object representing the configuration for this server.
     """
+    #: The timeout for negotiating configuration with the client in seconds
+    configure_timeout: int
     #: The URL of the consul server to register services with
     consul_url: str
-    #: The time between heartbeats
+    #: The TTL to use with the Consul health check
+    #: This uses a string format for intervals, e.g. 30s, 2m
+    consul_ttl: str
+    #: The time between heartbeats in seconds
     consul_heartbeat_interval: int
-    #: The ID of the service, unique to this tunnel
-    service_id: str
+    #: The time the service can be in a critical state before it is forgotten by Consul
+    #: This uses a string format for intervals, e.g. 5m, 1h
+    consul_deregister_interval: str
+    #: The number of times that we can fail to post our status to Consul before exiting
+    #: This is in the case that Consul becomes unavailable, which should be rare
+    consul_heartbeat_failures: int
     #: The host for the service (the external IP or hostname of the host running the script)
     service_host: str
+
+
+@dataclasses.dataclass
+class TunnelConfig:
+    """
+    Object representing the configuration for this tunnel.
+    """
+    #: The ID of the service, unique to this tunnel
+    service_id: str
     #: The port for the service (the tunnel port)
     service_port: int
     #: The subdomain to use
     subdomain: str
+
+
+def get_server_config():
+    """
+    Returns a server config object from environment variables.
+    """
+    return ServerConfig(
+        # Negotiaiting configuration with a well-behaved client should be fast
+        configure_timeout = int(os.environ.get('CONFIGURE_TIMEOUT', '5')),
+        # Populate config items from environment variables
+        consul_url = f"http://{os.environ['CONSUL_HTTP_ADDR']}",
+        # By default, use a TTL of 30s and a heartbeat of 10s
+        # This means that if we fail to post a status update three times, the service
+        # is moved into a critical state and removed from the proxy
+        # It also means that once a tunnel is disconnected for 30s, it is removed from
+        # the proxy
+        consul_ttl = os.environ.get('CONSUL_TTL', '30s'),
+        consul_heartbeat_interval = int(os.environ.get('CONSUL_HEARTBEAT_INTERVAL', '10')),
+        consul_deregister_interval = os.environ.get('CONSUL_DEREGISTER_INTERVAL', '5m'),
+        consul_heartbeat_failures = int(os.environ.get('CONSUL_HEARTBEAT_FAILURES', '3')),
+        # The service host cannot be set by the client - it should point to this host
+        service_host = os.environ['SERVICE_HOST']
+    )
+
+
+def raise_timeout_error(signum, frame):
+    """
+    Utility function to raise a timeout error, used as a signal handler for the alarm signal.
+    """
+    raise TimeoutError
+
+
+@contextlib.contextmanager
+def timeout(seconds):
+    """
+    Context manager / decorator that imposes a timeout on the wrapped code.
+    """
+    previous = signal.signal(signal.SIGALRM, raise_timeout_error)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 def parse_port(input):
@@ -116,61 +183,105 @@ def parse_subdomain(input):
     return input
 
 
-def get_config():
+def get_tunnel_config(timeout_secs):
     """
     Returns a config object for the tunnel.
     """
     print("[SERVER] [INFO] Waiting for configuration...")
-    # The port and subdomain will be fed via stdin in response to markers printed on stdout
-    print("SET_PORT")
-    service_port = parse_port(input())
-    print(f"[SERVER] [INFO] Recieved port - {service_port}")
-    print("SET_SUBDOMAIN")
-    subdomain = parse_subdomain(input())
-    print(f"[SERVER] [INFO] Recieved subdomain - {subdomain}")
-    print("CONFIGURATION_COMPLETE")
-    return Config(
-        # The consul address and service host should be available as environment variables
-        consul_url = f"http://{os.environ['CONSUL_HTTP_ADDR']}",
-        service_host = os.environ['SERVICE_HOST'],
-        # Use a default heartbeat interval, but allow it to be overridden
-        consul_heartbeat_interval = int(os.environ.get('CONSUL_HEARTBEAT_INTERVAL', '10')),
+    # A well behaved client should take very little time to negotiate the tunnel config
+    # So we timeout if it takes too long
+    try:
+        with timeout(timeout_secs):
+            # The configuration should be sent as JSON to stdin in response to the
+            # marker "SEND_CONFIGURATION"
+            # It could be one or multiple lines, but the line "END_CONFIGURATION" should
+            # signify the end of the configuration
+            print("SEND_CONFIGURATION")
+            input_lines = []
+            for line in sys.stdin:
+                line = line.rstrip()
+                if line == "END_CONFIGURATION":
+                    break
+                else:
+                    input_lines.append(line)
+    except TimeoutError:
+        print(
+            "[SERVER] [ERROR] Timed out negotiating tunnel configuration",
+            file = sys.stderr
+        )
+        sys.exit(1)
+    # We confirm that we received the configuration by sending another marker
+    print("RECEIVED_CONFIGURATION")
+    print(f"[SERVER] [INFO] Received configuration: {''.join(input_lines)}")
+    sys.stdout.flush()
+    # Try to parse the received configuration as JSON
+    client_config = json.loads(''.join(input_lines))
+    return TunnelConfig(
         # Generate a UUID for the service that is unique to this tunnel
         service_id = str(uuid.uuid4()),
-        service_port = service_port,
-        subdomain = subdomain
+        # Extract the port and subdomain from the config
+        service_port = parse_port(client_config['allocated_port']),
+        subdomain = parse_subdomain(client_config['subdomain'])
     )
 
 
-def consul_register_service(config):
+def consul_check_service_host_and_port(server_config, tunnel_config):
+    """
+    Checks that there is not already an existing service with the same host and port.
+
+    This protects against the case where a badly behaved client reports a different port
+    to the one that was assigned to them.
+    """
+    print("[SERVER] [INFO] Checking if Consul service already exists for allocated port...")
+    url = f"{server_config.consul_url}/v1/agent/services"
+    params = dict(
+        filter = (
+            f"Address == \"{server_config.service_host}\" and "
+            f"Port == \"{tunnel_config.service_port}\" and "
+            f"\"{TUNNEL_PROXY_SERVICE_TAG}\" in Tags"
+        )
+    )
+    response = requests.get(url, params = params)
+    if 300 <= response.status_code < 200:
+        print("[SERVER] [ERROR] Failed to list existing services", file = sys.stderr)
+        sys.exit(1)
+    # The response should be empty, otherwise the tunnel is not allowed
+    if response.json():
+        print("[SERVER] [ERROR] Service already exists for specified port", file = sys.stderr)
+        sys.exit(1)
+    else:
+        print("[SERVER] [INFO] No existing service found")
+
+
+def consul_register_service(server_config, tunnel_config):
     """
     Registers the service with Consul.
     """
     print("[SERVER] [INFO] Registering service with Consul...")
     # Post the service information to consul
-    url = f"{config.consul_url}/v1/agent/service/register"
+    url = f"{server_config.consul_url}/v1/agent/service/register"
     response = requests.put(url, json = {
         # Use the tunnel ID as the unique id
-        "ID": config.service_id,
+        "ID": tunnel_config.service_id,
         # Use the specified subdomain as the service name
-        "Name": config.subdomain,
+        "Name": tunnel_config.subdomain,
         # Use the service host and port as the address and port in Consul
-        "Address": config.service_host,
-        "Port": config.service_port,
+        "Address": server_config.service_host,
+        "Port": tunnel_config.service_port,
+        # Tag the service as a tunnel proxy subdomain
+        "Tags": [TUNNEL_PROXY_SERVICE_TAG],
         # Specify a TTL check
         "Check": {
             # Use the unique ID for the tunnel as the check id
-            "CheckId": config.service_id,
+            "CheckId": tunnel_config.service_id,
             "Name": "tunnel-active",
-            # We will post an update every 10s
-            # This means that we can afford three failed updates before
-            # we move into the critical state
-            # Note that we can move back to the pass state if connectivity
-            # is restored
-            "TTL": "30s",
+            # Use a TTL health check
+            # This will move into the critical state, removing the service from
+            # the proxy, if we do not post a status update within the TTL
+            "TTL": server_config.consul_ttl,
             # This deregisters the service once it has been critical for 5 minutes
             # We can probably assume the service will not come back up
-            "DeregisterCriticalServiceAfter": "5m",
+            "DeregisterCriticalServiceAfter": server_config.consul_deregister_interval,
         },
     })
     # If we failed to register the service then bail
@@ -181,39 +292,48 @@ def consul_register_service(config):
         sys.exit(1)
 
 
-def consul_deregister_service(config):
+def consul_deregister_service(server_config, tunnel_config):
     """
     Deregisters the service in Consul.
 
     We don't really care if this fails because the service will be marked critical
-    after 30s and removed after 5m anyway, but this speeds up the process.
+    after the TTL and removed after the deregister interval anyway, but this speeds
+    up the process in the case where the client disconnects or we are given a
+    chance to exit gracefully.
     """
-    url = f"{config.consul_url}/v1/agent/service/deregister/{config.service_id}"
-    response = requests.put(url)
+    url = f"{server_config.consul_url}/v1/agent/service/deregister/{tunnel_config.service_id}"
+    requests.put(url)
 
 
-def consul_heartbeat(config):
+def consul_heartbeat(server_config, tunnel_config, failures):
     """
     Updates the health check for the service to the pass state.
     """
     print("[SERVER] [INFO] Updating service health status in Consul...")
     # Post the service information to consul
-    url = f"{config.consul_url}/v1/agent/check/pass/{config.service_id}"
+    url = f"{server_config.consul_url}/v1/agent/check/pass/{tunnel_config.service_id}"
     response = requests.put(url, params = { "note": "Tunnel active" })
-    # If we failed to update the health status, emit a warning
     if 200 <= response.status_code < 300:
         print("[SERVER] [INFO] Service health updated successfully")
+        # Reset the failures on success
+        return 0
     else:
-        print("[SERVER] [ERROR] Failed to update service health", file = sys.stderr)
-        sys.exit(1)
+        # If we failed to update the health status, emit a warning
+        print("[SERVER] [WARNING] Failed to update service health", file = sys.stderr)
+    # Increment the failures if less than the limit
+    if failures < server_config.consul_heartbeat_failures:
+        return failures + 1
+    # Otherwise, exit the process with an error status
+    print("[SERVER] [ERROR] Maximum permitted number of failures reached", file = sys.stderr)
+    sys.exit(1)
 
 
-def register_signal_handlers(config):
+def register_signal_handlers(server_config, tunnel_config):
     """
     Registers signal handlers for each of the exit signals we care about.
     """
     def signal_handler(signum, frame):
-        consul_deregister_service(config)
+        consul_deregister_service(server_config, tunnel_config)
         sys.exit()
 
     signal.signal(signal.SIGALRM, signal_handler)
@@ -230,13 +350,16 @@ def main():
     """
     The entrypoint for this script.
     """
-    config = get_config()
-    consul_register_service(config)
-    register_signal_handlers(config)
+    server_config = get_server_config()
+    tunnel_config = get_tunnel_config(server_config.configure_timeout)   
+    consul_check_service_host_and_port(server_config, tunnel_config)
+    consul_register_service(server_config, tunnel_config)
+    register_signal_handlers(server_config, tunnel_config)
     # We need to send a regular heartbeat to Consul
+    failures = 0
     while True:
-        consul_heartbeat(config)
-        time.sleep(config.consul_heartbeat_interval)
+        failures = consul_heartbeat(server_config, tunnel_config, failures)
+        time.sleep(server_config.consul_heartbeat_interval)
 
 
 if __name__ == "__main__":
