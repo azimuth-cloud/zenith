@@ -41,6 +41,20 @@ if [ -n "$CONSUL_HEARTBEAT_FAILURES" ]; then
     SET_ENV="$SET_ENV CONFIGURE_TIMEOUT=\"${CONSUL_HEARTBEAT_FAILURES}\""
 fi
 
+# Generate unique hostkeys in /var/run/sshd if not present
+if [ ! -r /var/run/sshd/ssh_host_dsa_key ]; then
+    ssh-keygen -q -N "" -t dsa -f /var/run/sshd/ssh_host_dsa_key
+fi
+if [ ! -r /var/run/sshd/ssh_host_rsa_key ]; then
+    ssh-keygen -q -N "" -t rsa -b 4096 -f /var/run/sshd/ssh_host_rsa_key
+fi
+if [ ! -r /var/run/sshd/ssh_host_ecdsa_key ]; then
+    ssh-keygen -q -N "" -t ecdsa -b 521 -f /var/run/sshd/ssh_host_ecdsa_key
+fi
+if [ ! -r /var/run/sshd/ssh_host_ed25519_key ]; then
+    ssh-keygen -q -N "" -t ed25519 -f /var/run/sshd/ssh_host_ed25519_key
+fi
+
 # Forward the required environment variables to SSH sessions so that the tunnel-init
 # script can access them
 exec /usr/sbin/sshd -D -e -o "SetEnv=$SET_ENV"

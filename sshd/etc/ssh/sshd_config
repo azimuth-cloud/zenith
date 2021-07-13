@@ -9,6 +9,12 @@
 # We will mount a writable directory there
 PidFile /var/run/sshd/sshd.pid
 
+# Also use hostkeys in /var/run/sshd
+HostKey /var/run/sshd/ssh_host_dsa_key
+HostKey /var/run/sshd/ssh_host_rsa_key
+HostKey /var/run/sshd/ssh_host_ecdsa_key
+HostKey /var/run/sshd/ssh_host_ed25519_key
+
 # Allow the tunnel user only
 AllowUsers tunnel
 
