@@ -78,6 +78,7 @@ import dataclasses
 import json
 import os
 import signal
+import socket
 import sys
 import time
 import typing
@@ -172,16 +173,37 @@ def timeout(seconds):
         signal.signal(signal.SIGALRM, previous)
 
 
-def parse_port(input):
+def validate_port(input):
     """
-    Attempts to parse the given input as a port
+    Attempts to validate the given input as a port.
     """
-    return int(input)
+    # The port must be an integer
+    try:
+        port = int(input)
+    except ValueError:
+        print("[SERVER] [ERROR] Port must be an integer")
+        sys.exit(1)
+    # The port must be in the registered port range
+    if port < 1024 or port >= 49152:
+        print("[SERVER] [ERROR] Port must be in the registered port range")
+        sys.exit(1)
+    # The port must be in use for something
+    # We validate this by trying to bind to it and catching the error
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            # This is the condition we want
+            return port
+        else:
+            # This is the error condition
+            print("[SERVER] [ERROR] Given port is not in use")
+            sys.exit(1)
 
 
-def parse_subdomain(input):
+def validate_subdomain(input):
     """
-    Attempts to parse the given input as a subdomain.
+    Attempts to validate the given input as a subdomain.
     """
     return input
 
@@ -223,8 +245,8 @@ def get_tunnel_config(timeout_secs):
         # Generate a UUID for the service that is unique to this tunnel
         service_id = str(uuid.uuid4()),
         # Extract the port, subdomain and metadata from the config
-        service_port = parse_port(client_config['allocated_port']),
-        subdomain = parse_subdomain(client_config['subdomain']),
+        service_port = validate_port(client_config['allocated_port']),
+        subdomain = validate_subdomain(client_config['subdomain']),
         metadata = dict(client_config.get('metadata', {}))
     )
 
