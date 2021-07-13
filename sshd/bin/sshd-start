@@ -41,7 +41,8 @@ if [ -n "$CONSUL_HEARTBEAT_FAILURES" ]; then
     SET_ENV="$SET_ENV CONFIGURE_TIMEOUT=\"${CONSUL_HEARTBEAT_FAILURES}\""
 fi
 
-# Make sure /var/run/sshd is not group or world writable
+# Make sure /var/run/sshd exists and is not group or world-writable
+mkdir -p /var/run/sshd
 chmod g-w,o-w /var/run/sshd
 
 # Generate unique hostkeys in /var/run/sshd if not present
