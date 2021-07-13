@@ -21,7 +21,7 @@ RUN useradd \
 RUN apt-get update && \
     apt-get install -y openssh-server python3 python3-pip tini && \
     rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /run/sshd
+    mkdir -p /var/run/sshd
 
 # The tunnel-init script requires requests
 RUN pip3 install --no-cache-dir requests

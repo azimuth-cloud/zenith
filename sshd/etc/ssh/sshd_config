@@ -5,6 +5,10 @@
 ## and restrict the tunnel user to a particular sandbox
 #####
 
+# Use a subdirectory of /var/run for the pidfile
+# We will mount a writable directory there
+PidFile /var/run/sshd/sshd.pid
+
 # Allow the tunnel user only
 AllowUsers tunnel
 
