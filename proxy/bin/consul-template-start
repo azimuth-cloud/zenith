@@ -7,6 +7,19 @@ set -e
 # starting consul-template
 #####
 
+# Decide what address to use for Consul
+# If not explicitly given, we use HOST_IP:8500
+# This will work in Kubernetes with Consul deployed using the official Helm chart
+# and HOST_IP configured via the downward API
+if [ -z "$CONSUL_HTTP_ADDR" ]; then
+    if [ -n "$HOST_IP" ]; then
+        CONSUL_HTTP_ADDR="${HOST_IP}:8500"
+    else
+        echo "CONSUL_HTTP_ADDR or HOST_IP must be set" 1>&2
+        exit 1
+    fi
+fi
+
 if [ -z "$PROXY_BASE_DOMAIN" ]; then
     echo "[ERROR] Please specify a PROXY_BASE_DOMAIN" 1>&2
     exit 1
