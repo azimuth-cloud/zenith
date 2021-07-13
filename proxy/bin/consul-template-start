@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -e
+
+#####
+# Wrapper script that ensures required environment variables exist before
+# starting consul-template
+#####
+
+if [ -z "$PROXY_BASE_DOMAIN" ]; then
+    echo "[ERROR] Please specify a PROXY_BASE_DOMAIN" 1>&2
+    exit 1
+fi
+
+exec /usr/bin/consul-template -config /etc/consul-template/config.hcl
