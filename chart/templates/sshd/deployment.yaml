@@ -1,0 +1,61 @@
+{{- $component := "sshd" -}}
+{{- $values := get .Values $component -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tunnel-proxy.componentname" (list . $component) }}
+  labels: {{ include "tunnel-proxy.componentLabels" (list . $component) | nindent 4 }}
+spec:
+  replicas: {{ $values.replicaCount }}
+  selector:
+    matchLabels: {{ include "tunnel-proxy.componentSelectorLabels" (list . $component) | nindent 6 }}
+  template:
+    metadata:
+      labels: {{ include "tunnel-proxy.componentSelectorLabels" (list . $component) | nindent 8 }}
+      {{- with $values.podAnnotations }}
+      annotations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with $values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{ toYaml $values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $component }}
+          securityContext: {{ toYaml $values.securityContext | nindent 12 }}
+          image: {{ printf "%s:%s" $values.image.repository $values.image.tag }}
+          imagePullPolicy: {{ $values.image.pullPolicy }}
+          env:
+            # For SSHD, we register services using the Consul agent running on each node
+            # This allows Consul to know on which node the services are running
+            # This isn't used for anything specifically, but is interesting to know
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            # The pod IP should be used as the service host in Consul so that requests are
+            # routed directly to the required pod by the proxy
+            - name: SERVICE_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - name: sshd
+              containerPort: 2222
+              protocol: TCP
+          resources: {{ toYaml $values.resources | nindent 12 }}
+          volumeMounts:
+            - name: var-run-sshd
+              mountPath: /var/run/sshd
+      {{- with $values.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: var-run-sshd
+          emptyDir: {}

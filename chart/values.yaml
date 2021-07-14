@@ -1,0 +1,102 @@
+nameOverride: ""
+fullnameOverride: ""
+
+consul:
+  # By default, start consul in a non-replicated mode
+  server:
+    replicas: 1
+
+proxy:
+  # The image to use for the proxy
+  image:
+    repository: ghcr.io/stackhpc/tunnel-proxy
+    pullPolicy: IfNotPresent
+    tag: latest
+  imagePullSecrets: []
+  # The number of proxy replicas to use
+  replicaCount: 1
+  # Customise annotations for proxy pods
+  podAnnotations: {}
+  # Customise pod-level security context for proxy pods
+  podSecurityContext: {}
+  # Customise container-level security context for proxy pods
+  securityContext:
+    # By default, require that the container runs as a non-root user with
+    # a read-only root filesystem
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+  # The service definition for the proxy
+  service:
+    type: ClusterIP
+    port: 8080
+  # Resources for proxy containers
+  resources: {}
+  # Customise node selector for proxy pods
+  nodeSelector: {}
+  # Customise tolerations for proxy pods
+  tolerations: []
+  # Customise affinity rules for proxy pods
+  affinity: {}
+  # The base domain to use for the proxy
+  # Proxied services will be made available at <subdomain>.<base domain>
+  baseDomain:
+  # Ingress settings
+  ingress:
+    enabled: true
+    # The TLS configuration has to cover <baseDomain> and *.<baseDomain>
+    tls:
+      # If you have one certificate with a SAN for each, you can use a single secret
+      # - hosts:
+      #     - "<baseDomain>"
+      #     - "*.<baseDomain>"
+      #   secretName: <secret-name-for-san-cert>
+      # Otherwise you can use separate certificates for the base and wildcard domains
+      # - hosts: ["<baseDomain>"]
+      #   secretName: <secret-name-for-base-domain-cert>
+      # - hosts: ["*.<baseDomain>"]
+      #   secretName: <secret-name-for-wildcard-cert>
+
+
+sshd:
+  # The image to use for the SSHD server
+  image:
+    repository: ghcr.io/stackhpc/tunnel-sshd
+    pullPolicy: IfNotPresent
+    tag: latest
+  imagePullSecrets: []
+  # The number of SSHD replicas to use
+  replicaCount: 1
+  # Customise annotations for SSHD pods
+  podAnnotations: {}
+  # Customise pod-level security context for SSHD pods
+  podSecurityContext: {}
+  # Customise container-level security context for SSHD pods
+  securityContext:
+    # By default, require that the container runs as a non-root user with
+    # a read-only root filesystem
+    capabilities:
+      drop: [ALL]
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    # By default, require that the container runs as a non-root user with
+    # a read-only root filesystem and only the required capabilities
+    # capabilities:
+    #   drop: [ALL]
+    #   add: [AUDIT_WRITE, CHOWN, SYS_CHROOT, SETGID, SETUID]
+    # readOnlyRootFilesystem: true
+  # The service definition for SSHD
+  # Because SSH is a TCP service, it cannot be exposed with an Ingress
+  # Instead, it must be exposed with a NodePort or LoadBalancer service
+  service:
+    type: NodePort
+    port: 22
+  # Resources for SSHD containers
+  resources: {}
+  # Customise node selector for SSHD pods
+  nodeSelector: {}
+  # Customise tolerations for SSHD pods
+  tolerations: []
+  # Customise affinity rules for SSHD pods
+  affinity: {}

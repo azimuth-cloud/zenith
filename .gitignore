@@ -1,1 +1,3 @@
 .python-version
+chart/charts
+chart/Chart.lock

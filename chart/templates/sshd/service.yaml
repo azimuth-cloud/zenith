@@ -1,0 +1,15 @@
+{{- $component := "sshd" -}}
+{{- $values := get .Values $component -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tunnel-proxy.componentname" (list . $component) }}
+  labels: {{ include "tunnel-proxy.componentLabels" (list . $component) | nindent 4 }}
+spec:
+  type: {{ $values.service.type }}
+  ports:
+    - port: {{ $values.service.port }}
+      targetPort: sshd
+      protocol: TCP
+      name: sshd
+  selector: {{ include "tunnel-proxy.componentSelectorLabels" (list . $component) | nindent 4 }}
