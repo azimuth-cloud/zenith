@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+#####
+# This script just echoes the given key on stdout
+#
+# It is used as the AuthorizedKeysCommand for SSHD and permits any SSH key to log in
+#####
+
+echo "$1 $2"

@@ -5,6 +5,9 @@
 ## and restrict the tunnel user to a particular sandbox
 #####
 
+# Use a different port to the standard SSH
+Port 2222
+
 # Use a subdirectory of /var/run for the pidfile
 # We will mount a writable directory there
 PidFile /var/run/sshd/sshd.pid
@@ -18,9 +21,10 @@ HostKey /var/run/sshd/ssh_host_ed25519_key
 # Allow the tunnel user only
 AllowUsers tunnel
 
-# The tunnel user can authenticate with an empty password
-PasswordAuthentication yes
-PermitEmptyPasswords yes
+# The tunnel user can authenticate with any public key
+PubkeyAuthentication yes
+AuthorizedKeysCommand /usr/bin/accept-key "%t" "%k"
+AuthorizedKeysCommandUser tunnel
 
 # Force the tunnel-init command to run
 ForceCommand tunnel-init
@@ -41,9 +45,11 @@ ClientAliveInterval 10
 ChallengeResponseAuthentication no
 GSSAPIAuthentication no
 HostbasedAuthentication no
+KbdInteractiveAuthentication no
 KerberosAuthentication no
+PasswordAuthentication no
+PermitEmptyPasswords no
 PermitRootLogin no
-PubkeyAuthentication no
 UsePAM no
 
 # Restrict the available features to only those that are required for tunnels

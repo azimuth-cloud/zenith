@@ -6,10 +6,12 @@ import json
 import os
 import random
 import re
+import shutil
 import signal
 import string
 import subprocess
 import sys
+import tempfile
 import typing
 
 
@@ -35,6 +37,40 @@ class Config:
     subdomain: typing.Optional[str]
     #: The metadata associated with the tunnel
     metadata: typing.Dict[str, str]
+
+
+@contextlib.contextmanager
+def make_ssh_key():
+    """
+    Makes a temporary SSH key for the connection and returns the path to use
+    as the identity file.
+
+    The context manager ensures that the key is disposed off at the end.
+    """
+    key_directory = tempfile.mkdtemp()
+    try:
+        key_file = os.path.join(key_directory, "id_rsa")
+        # Use a 2048-bit RSA key as it represents an acceptable compromise between speed
+        # of generation and security, especially for a disposible key
+        subprocess.check_call([
+            "ssh-keygen",
+            "-t",
+            "rsa",
+            "-b",
+            "2048",
+            "-N",
+            "",
+            "-C",
+            "tunnel-key",
+            "-f",
+            key_file
+        ])
+        yield key_file
+    except subprocess.CalledProcessError:
+        print("[CLIENT] [ERROR] Failed to generate SSH key for connection", file = sys.stderr)
+        sys.exit(1)
+    finally:
+        shutil.rmtree(key_directory)
 
 
 def get_config_from_env():
@@ -171,64 +207,70 @@ def main():
     """
     Entry point for the script.
     """
-    # Build the config object from the environment
-    config = get_config_from_env()
+    with make_ssh_key() as ssh_identity_path:
+        # Build the config object from the environment
+        config = get_config_from_env()
 
-    # Derive the SSH command to use from the configuration
-    ssh_command = [
-        config.ssh_executable,
-        # Force a TTY so that we can send data over stdin
-        "-tt",
-        # Exit immediately if the port forwarding fails
-        "-o",
-        "ExitOnForwardFailure=yes",
-        # Ignore host keys (for now)
-        "-o",
-        "StrictHostKeyChecking=no",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        # Use a dynamically allocated port
-        "-R",
-        f"0:{config.forward_to_host}:{config.forward_to_port}",
-        # Configure the tunnel server
-        "-p",
-        config.tunnel_server_port,
-        f"tunnel@{config.tunnel_server}",
-    ]
+        # Derive the SSH command to use from the configuration
+        ssh_command = [
+            config.ssh_executable,
+            # Force a TTY so that we can send data over stdin
+            "-tt",
+            # Exit immediately if the port forwarding fails
+            "-o",
+            "ExitOnForwardFailure=yes",
+            # Ignore host keys (for now)
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            # Use the generated authorized key to authenticate
+            "-o",
+            "IdentitiesOnly=yes",
+            "-i",
+            ssh_identity_path,
+            # Use a dynamically allocated port
+            "-R",
+            f"0:{config.forward_to_host}:{config.forward_to_port}",
+            # Configure the tunnel server
+            "-p",
+            config.tunnel_server_port,
+            f"tunnel@{config.tunnel_server}",
+        ]
 
-    print(f"[CLIENT] [INFO] Spawning SSH - {' '.join(ssh_command)}")
+        print(f"[CLIENT] [INFO] Spawning SSH - {' '.join(ssh_command)}")
 
-    # Open the SSH process
-    ssh_proc = subprocess.Popen(
-        ssh_command,
-        text = True,
-        stdin = subprocess.PIPE,
-        stdout = subprocess.PIPE,
-        # Send stderr to the same handler as stdout
-        stderr = subprocess.STDOUT
-    )
-
-    print("[CLIENT] [INFO] Preparing to negotiate tunnel configuration...")
-
-    configure_tunnel(ssh_proc, config)
-
-    # Just forward stdout (which contains stderr) until the process exits
-    for line in ssh_proc.stdout:
-        print(line.rstrip())
-
-    # Belt and braces to make sure the process has definitely terminated
-    ssh_proc.wait()
-
-    if ssh_proc.returncode == 0:
-        print("[CLIENT] [INFO] SSH process exited without an error")
-    else:
-        print(
-            f"[CLIENT] [WARNING] SSH process exited with non-zero exit code ({ssh_proc.returncode})",
-            file = sys.stderr
+        # Open the SSH process
+        ssh_proc = subprocess.Popen(
+            ssh_command,
+            text = True,
+            stdin = subprocess.PIPE,
+            stdout = subprocess.PIPE,
+            # Send stderr to the same handler as stdout
+            stderr = subprocess.STDOUT
         )
 
-    # Exit with the returncode from the SSH command
-    sys.exit(ssh_proc.returncode)
+        print("[CLIENT] [INFO] Preparing to negotiate tunnel configuration...")
+
+        configure_tunnel(ssh_proc, config)
+
+        # Just forward stdout (which contains stderr) until the process exits
+        for line in ssh_proc.stdout:
+            print(line.rstrip())
+
+        # Belt and braces to make sure the process has definitely terminated
+        ssh_proc.wait()
+
+        if ssh_proc.returncode == 0:
+            print("[CLIENT] [INFO] SSH process exited without an error")
+        else:
+            print(
+                f"[CLIENT] [WARNING] SSH process exited with non-zero exit code ({ssh_proc.returncode})",
+                file = sys.stderr
+            )
+
+        # Exit with the returncode from the SSH command
+        sys.exit(ssh_proc.returncode)
 
 
 if __name__ == "__main__":
