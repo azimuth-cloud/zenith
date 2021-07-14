@@ -80,7 +80,7 @@ def get_config_from_env():
     if 'SUBDOMAIN' in os.environ:
         subdomain = os.environ['SUBDOMAIN']
     else:
-        subdomain = "".join(random.choices(string.ascii_letters + string.digits, k = 32))
+        subdomain = "".join(random.choices(string.ascii_lowercase + string.digits, k = 32))
     # We allow arbitrary metadata to be associated with the tunnel, read from
     # environment variables beginning TUNNEL_META_
     metadata = {
