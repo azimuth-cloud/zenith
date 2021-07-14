@@ -92,6 +92,7 @@ sshd:
   service:
     type: NodePort
     port: 22
+    nodePort: 2222
   # Resources for SSHD containers
   resources: {}
   # Customise node selector for SSHD pods
