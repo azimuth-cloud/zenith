@@ -84,7 +84,7 @@ def get_config_from_env():
     # We allow arbitrary metadata to be associated with the tunnel, read from
     # environment variables beginning TUNNEL_META_
     metadata = {
-        re.sub(r'[^a-z0-9]+', '-', name.removeprefix("TUNNEL_META_").lower()): value
+        re.sub(r'[^a-z0-9]+', '-', name[12:].lower()): value
         for name, value in os.environ.items()
         if name.startswith("TUNNEL_META_")
     }
