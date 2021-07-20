@@ -23,7 +23,7 @@ spec:
       containers:
         - name: {{ $component }}
           securityContext: {{ toYaml $values.securityContext | nindent 12 }}
-          image: {{ printf "%s:%s" $values.image.repository $values.image.tag }}
+          image: {{ printf "%s:%s" $values.image.repository (tpl $values.image.tag .) }}
           imagePullPolicy: {{ $values.image.pullPolicy }}
           env:
             - name: PROXY_BASE_DOMAIN

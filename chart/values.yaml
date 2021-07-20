@@ -11,7 +11,7 @@ proxy:
   image:
     repository: ghcr.io/stackhpc/tunnel-proxy
     pullPolicy: IfNotPresent
-    tag: latest
+    tag: "{{ .Chart.AppVersion }}"
   imagePullSecrets: []
   # The number of proxy replicas to use
   replicaCount: 1
@@ -64,7 +64,7 @@ sshd:
   image:
     repository: ghcr.io/stackhpc/tunnel-sshd
     pullPolicy: IfNotPresent
-    tag: latest
+    tag: "{{ .Chart.AppVersion }}"
   imagePullSecrets: []
   # The number of SSHD replicas to use
   replicaCount: 1
