@@ -2,6 +2,11 @@ nameOverride: ""
 fullnameOverride: ""
 
 consul:
+  # Whether or not to deploy Consul as a dependency of this chart
+  # Whether this is true or not, we expect Consul to be deployed into Kubernetes
+  # using the Helm chart
+  # This flag just makes it easier to incorporate this chart as a dependency of other charts
+  enabled: true
   # By default, start consul in a non-replicated mode
   server:
     replicas: 1
@@ -57,7 +62,6 @@ proxy:
       #   secretName: <secret-name-for-base-domain-cert>
       # - hosts: ["*.<baseDomain>"]
       #   secretName: <secret-name-for-wildcard-cert>
-
 
 sshd:
   # The image to use for the SSHD server
