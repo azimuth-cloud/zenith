@@ -30,7 +30,7 @@ spec:
               value: {{ $values.baseDomain | required "proxy.baseDomain is required" | quote }}
             # For the proxy, contact Consul using the load-balanced cluster service
             - name: CONSUL_HTTP_ADDR
-              value: {{ include "consul.fullname" . | printf "%s-server:8500" | quote }}
+              value: {{ printf "%s-consul-server:8500" .Release.Name | quote }}
           ports:
             - name: http
               containerPort: 8080
