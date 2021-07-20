@@ -7,6 +7,9 @@ metadata:
   labels: {{ include "tunnel-proxy.componentLabels" (list . $component) | nindent 4 }}
 spec:
   type: {{ $values.service.type }}
+  {{- with $values.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
   ports:
     - port: {{ $values.service.port }}
       targetPort: sshd
