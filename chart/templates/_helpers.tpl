@@ -2,7 +2,7 @@
 Expand the name of the chart.
 */}}
 {{- define "tunnel-proxy.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- default .Chart.Name .Values.nameOverride | lower | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
@@ -12,13 +12,13 @@ If release name contains chart name it will be used as a full name.
 */}}
 {{- define "tunnel-proxy.fullname" -}}
 {{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- .Values.fullnameOverride | lower | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- $name := default .Chart.Name .Values.nameOverride }}
 {{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- .Release.Name | lower | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- printf "%s-%s" .Release.Name $name | lower | trunc 63 | trimSuffix "-" }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -30,7 +30,7 @@ Create a fully qualified name for a component resource.
 {{- $context := index . 0 }}
 {{- $componentName := index . 1 }}
 {{- $fullName := include "tunnel-proxy.fullname" $context }}
-{{- printf "%s-%s" $fullName $componentName | trunc 63 | trimSuffix "-" }}
+{{- printf "%s-%s" $fullName $componentName | lower | trunc 63 | trimSuffix "-" }}
 {{- end -}}
 
 {{/*
@@ -55,7 +55,7 @@ app.kubernetes.io/component: {{ $componentName }}
 Common labels for all resources.
 */}}
 {{- define "tunnel-proxy.commonLabels" -}}
-helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | lower | trunc 63 | trimSuffix "-" }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
