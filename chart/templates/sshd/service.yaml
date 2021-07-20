@@ -12,7 +12,7 @@ spec:
       targetPort: sshd
       protocol: TCP
       name: sshd
-      {{- with $values.service.nodePort }}
-      nodePort: {{ . }}
+      {{- if (eq $values.service.type "NodePort") }}
+      nodePort: {{ $values.service.nodePort }}
       {{- end }}
   selector: {{ include "tunnel-proxy.componentSelectorLabels" (list . $component) | nindent 4 }}

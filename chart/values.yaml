@@ -96,6 +96,8 @@ sshd:
   service:
     type: NodePort
     port: 22
+    # Use a fixed default node port
+    nodePort: 32222
   # Resources for SSHD containers
   resources: {}
   # Customise node selector for SSHD pods
