@@ -113,6 +113,8 @@ def main():
     update_chart_versions(chart_directory, version, app_version)
     # Build the chart tag - the repository should be in the environment
     chart_tag = "{}:{}".format(os.environ['CHART_REPOSITORY'], version)
+    # Update the dependencies
+    cmd(["helm", "dependency", "update", chart_directory])
     # Save the chart to the local cache
     cmd(["helm", "chart", "save", chart_directory, chart_tag])
     # Push the chart to the repository
