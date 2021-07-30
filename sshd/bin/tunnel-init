@@ -32,45 +32,18 @@
 #      This makes it more difficult for a nefarious client to discover a valid
 #      domain and bind to it.
 #
-#   4. Only allow ports to be bound to localhost. This prevents a nefarious user
-#      from accessing the bound port directly, bypassing the proxy and any
-#      associated authentication.
-#
-#   5. Only allow reverse port-forwarding, not regular port-forwarding. This
+#   4. Only allow reverse port-forwarding, not regular port-forwarding. This
 #      prevents a nefarious client from setting up a regular port-foward to
 #      the bound port for another service and sending traffic directly to it,
 #      bypassing the proxy and any associated authentication.
 #
-# CORRECT USAGE
+#   5. Only allow a domain to be bound to a port that is listening. This
+#      prevents a nefarious client from binding a known domain to a port that
+#      is not yet in use in the hope of intercepting traffic in the future.
 #
-# The correct usage of this tunnel server would look something like:
-#
-#   $ ssh -t -o ExitOnForwardFailure=yes -R 0:localhost:8000 tunnel@<tunnelhost>
-#   [stderr] Allocated port 43627 for remote forward to localhost:8000
-#   [stdout] Reading configuration from stdin...
-#   [stdout] SET_PORT
-#   [STDIN]  43627           <-- Corresponds to allocated port
-#   [stdout] SET_SUBDOMAIN
-#   [STDIN]  b103b6ae7f13d66d4fedeac0794160ca
-#
-# This would allocate the specified subdomain to the bound port.
-#
-# ATTEMPTING TO SEND UNAUTHENTICATED TRAFFIC DOWN A REGULAR PORT-FORWARD
-#
-# If a nefarious client wanted to send traffic directly to the above service and
-# not via the proxy in order to bypass authentication, and was able to discover
-# the bound port number, they might try something like:
-#
-#          Try to open a forwarded port to the service's port
-#                                |
-#   $ ssh -N -L 5000:localhost:43627 tunnel@<tunnelhost>
-#
-# However any attempt to send traffic down this tunnel results in multiple
-# messages like the following, and a reset connection:
-#
-#   channel 3: open failed: administratively prohibited: open failed
-#   channel 4: open failed: administratively prohibited: open failed
-#   ...
+#   6. Only allow one domain to be bound to each tunnel. This prevents a
+#      nefarious client from binding an additional domain that is known to
+#      them to an existing tunnel in order to intercept traffic.
 ####
 
 import contextlib

@@ -23,12 +23,17 @@ spec:
       containers:
         - name: {{ $component }}
           securityContext: {{ toYaml $values.securityContext | nindent 12 }}
-          image: {{ printf "%s:%s" $values.image.repository (tpl $values.image.tag .) }}
+          image: {{ printf "%s:%s" $values.image.repository (default .Chart.AppVersion $values.image.tag) }}
           imagePullPolicy: {{ $values.image.pullPolicy }}
           env:
-            # For SSHD, we register services using the Consul agent running on each node
-            # This allows Consul to know on which node the services are running
-            # This isn't used for anything specifically, but is interesting to know
+            {{- if $values.consulAgentAddress }}
+            - name: CONSUL_HTTP_ADDR
+              value: {{ tpl $values.consulAgentAddress . | quote }}
+            {{- end }}
+            # Pass the host IP using the downward API
+            # If a Consul agent address is not explicitly specified, we will attempt to connect to
+            # an agent running on the host (the official Consul Helm chart deploys an agent on
+            # each host using a daemonset)
             - name: HOST_IP
               valueFrom:
                 fieldRef:

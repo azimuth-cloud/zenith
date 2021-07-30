@@ -2,21 +2,26 @@ nameOverride: ""
 fullnameOverride: ""
 
 consul:
-  # Whether or not to deploy Consul as a dependency of this chart
-  # Whether this is true or not, we expect Consul to be deployed into Kubernetes
-  # using the Helm chart
-  # This flag just makes it easier to incorporate this chart as a dependency of other charts
+  # Whether or not to deploy a Consul instance
   enabled: true
-  # By default, start consul in a non-replicated mode
-  server:
-    replicas: 1
+  # The spec for the Consul instance
+  # The structure of this corresponds to the values for the official Consul Helm chart
+  #   https://www.consul.io/docs/k8s/helm
+  spec: {}
 
 proxy:
+  # The base domain to use for the proxy
+  # Proxied services will be made available at <subdomain>.<base domain>
+  baseDomain:
+  # The address to use for the Consul server
+  # By default, this uses the load-balanced server from the internal Consul
+  # This is treated as a template, so may include variables such as the release name
+  consulServerAddress: "{{ include \"tunnel-proxy.componentname\" (list . \"consul\") }}-consul-server:8500"
   # The image to use for the proxy
   image:
     repository: ghcr.io/stackhpc/tunnel-proxy
     pullPolicy: IfNotPresent
-    tag: "{{ .Chart.AppVersion }}"
+    tag: ""
   imagePullSecrets: []
   # The number of proxy replicas to use
   replicaCount: 1
@@ -44,9 +49,6 @@ proxy:
   tolerations: []
   # Customise affinity rules for proxy pods
   affinity: {}
-  # The base domain to use for the proxy
-  # Proxied services will be made available at <subdomain>.<base domain>
-  baseDomain:
   # Ingress settings
   ingress:
     enabled: true
@@ -64,11 +66,15 @@ proxy:
       #   secretName: <secret-name-for-wildcard-cert>
 
 sshd:
+  # The address of the Consul agent to register services with
+  # If not given, the local agent for the node is used
+  # This is treated as a template, so may include variables such as the release name
+  consulAgentAddress:
   # The image to use for the SSHD server
   image:
     repository: ghcr.io/stackhpc/tunnel-sshd
     pullPolicy: IfNotPresent
-    tag: "{{ .Chart.AppVersion }}"
+    tag: ""
   imagePullSecrets: []
   # The number of SSHD replicas to use
   replicaCount: 1

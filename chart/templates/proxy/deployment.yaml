@@ -23,14 +23,13 @@ spec:
       containers:
         - name: {{ $component }}
           securityContext: {{ toYaml $values.securityContext | nindent 12 }}
-          image: {{ printf "%s:%s" $values.image.repository (tpl $values.image.tag .) }}
+          image: {{ printf "%s:%s" $values.image.repository (default .Chart.AppVersion $values.image.tag) }}
           imagePullPolicy: {{ $values.image.pullPolicy }}
           env:
             - name: PROXY_BASE_DOMAIN
               value: {{ $values.baseDomain | required "proxy.baseDomain is required" | quote }}
-            # For the proxy, contact Consul using the load-balanced cluster service
             - name: CONSUL_HTTP_ADDR
-              value: {{ printf "%s-consul-server:8500" .Release.Name | quote }}
+              value: {{ tpl $values.consulServerAddress . | quote }}
           ports:
             - name: http
               containerPort: 8080
