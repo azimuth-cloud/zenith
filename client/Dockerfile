@@ -1,5 +1,5 @@
 #####
-## Container image spec for tunnel-proxy client
+## Container image spec for tunnel-server client
 #####
 
 FROM debian:buster-slim

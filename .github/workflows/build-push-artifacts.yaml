@@ -36,7 +36,7 @@ jobs:
         id: image-meta
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/stackhpc/tunnel-client
+          images: ghcr.io/stackhpc/tunnel-server-client
           # Produce the branch name or tag and the SHA as tags
           tags: |
             type=ref,event=branch
@@ -97,7 +97,7 @@ jobs:
         id: image-meta
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/stackhpc/tunnel-proxy
+          images: ghcr.io/stackhpc/tunnel-server-proxy
           # Produce the branch name or tag and the SHA as tags
           tags: |
             type=ref,event=branch
@@ -158,7 +158,7 @@ jobs:
         id: image-meta
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/stackhpc/tunnel-sshd
+          images: ghcr.io/stackhpc/tunnel-server-sshd
           # Produce the branch name or tag and the SHA as tags
           tags: |
             type=ref,event=branch
@@ -211,5 +211,5 @@ jobs:
         env:
           HELM_EXPERIMENTAL_OCI: "1"
           CHART_DIRECTORY: ./chart
-          CHART_REPOSITORY: ghcr.io/stackhpc/tunnel-proxy-chart
+          CHART_REPOSITORY: ghcr.io/stackhpc/tunnel-server
         run: ./scripts/build-push-chart.py

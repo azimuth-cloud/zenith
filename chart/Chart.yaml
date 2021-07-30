@@ -1,6 +1,6 @@
 apiVersion: v2
-name: tunnel-proxy
-description: Helm chart for deploying a tunnel proxy on Kubernetes
+name: tunnel-server
+description: Helm chart for deploying a tunnel server on Kubernetes
 type: application
 # The version and appVersion are updated by the chart build script
 version: 0.1.0

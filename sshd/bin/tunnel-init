@@ -60,7 +60,7 @@ import uuid
 import requests
 
 
-TUNNEL_PROXY_SERVICE_TAG = "tunnel-proxy-subdomain"
+TUNNEL_PROXY_SERVICE_TAG = "tunnel-server-subdomain"
 
 
 @dataclasses.dataclass

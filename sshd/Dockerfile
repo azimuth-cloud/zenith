@@ -1,5 +1,5 @@
 #####
-## Container image spec for tunnel-proxy SSHD server
+## Container image spec for tunnel-server SSHD server
 #####
 
 FROM debian:buster-slim
