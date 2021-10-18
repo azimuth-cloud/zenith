@@ -2,7 +2,7 @@
 apiVersion: charts.stackhpc.com/v1alpha1
 kind: Consul
 metadata:
-  name: {{ include "tunnel-server.componentname" (list . "consul") }}
-  labels: {{ include "tunnel-server.componentLabels" (list . "consul") | nindent 4 }}
+  name: {{ include "zenith.componentname" (list . "consul") }}
+  labels: {{ include "zenith.componentLabels" (list . "consul") | nindent 4 }}
 spec: {{ toYaml .Values.consul.spec | nindent 2 }}
 {{- end }}

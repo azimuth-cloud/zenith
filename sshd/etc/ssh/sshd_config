@@ -1,8 +1,8 @@
 #####
-## SSHD config for the tunnel server
+## SSHD config for the Zenith server
 ##
-## It is designed to shut out SSH access for all users except the tunnel user
-## and restrict the tunnel user to a particular sandbox
+## It is designed to shut out SSH access for all users except the zenith user
+## and restrict the zenith user to a particular sandbox
 #####
 
 # Use a different port to the standard SSH
@@ -18,13 +18,13 @@ HostKey /var/run/sshd/ssh_host_rsa_key
 HostKey /var/run/sshd/ssh_host_ecdsa_key
 HostKey /var/run/sshd/ssh_host_ed25519_key
 
-# Allow the tunnel user only
-AllowUsers tunnel
+# Allow the zenith user only
+AllowUsers zenith
 
-# The tunnel user can authenticate with any public key
+# The zenith user can authenticate with any public key
 PubkeyAuthentication yes
 AuthorizedKeysCommand /usr/bin/accept-key "%t" "%k"
-AuthorizedKeysCommandUser tunnel
+AuthorizedKeysCommandUser zenith
 
 # Force the tunnel-init command to run
 ForceCommand tunnel-init

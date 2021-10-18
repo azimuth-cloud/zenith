@@ -3,15 +3,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "tunnel-server.componentname" (list . $component) }}
-  labels: {{ include "tunnel-server.componentLabels" (list . $component) | nindent 4 }}
+  name: {{ include "zenith.componentname" (list . $component) }}
+  labels: {{ include "zenith.componentLabels" (list . $component) | nindent 4 }}
 spec:
   replicas: {{ $values.replicaCount }}
   selector:
-    matchLabels: {{ include "tunnel-server.componentSelectorLabels" (list . $component) | nindent 6 }}
+    matchLabels: {{ include "zenith.componentSelectorLabels" (list . $component) | nindent 6 }}
   template:
     metadata:
-      labels: {{ include "tunnel-server.componentSelectorLabels" (list . $component) | nindent 8 }}
+      labels: {{ include "zenith.componentSelectorLabels" (list . $component) | nindent 8 }}
       {{- with $values.podAnnotations }}
       annotations: {{ toYaml . | nindent 8 }}
       {{- end }}

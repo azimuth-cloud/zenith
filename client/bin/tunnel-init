@@ -18,16 +18,16 @@ import typing
 @dataclasses.dataclass
 class Config:
     """
-    Class representing the configuration of the tunnel client.
+    Class representing the configuration of the Zenith client.
     """
     #: The SSH executable to use
     ssh_executable: str
     #: Configure timeout
-    tunnel_configure_timeout: int
-    #: The tunnel server to connect to
-    tunnel_server: str
-    #: The tunnel server SSH port
-    tunnel_server_port: int
+    configure_timeout: int
+    #: The Zenith server to connect to
+    zenith_server: str
+    #: The Zenith server SSH port
+    zenith_server_port: int
     #: The host to forward tunnel traffic to
     forward_to_host: str
     #: The port to forward tunnel traffic to
@@ -61,7 +61,7 @@ def make_ssh_key():
             "-N",
             "",
             "-C",
-            "tunnel-key",
+            "zenith-key",
             "-f",
             key_file
         ])
@@ -82,18 +82,18 @@ def get_config_from_env():
     else:
         subdomain = "".join(random.choices(string.ascii_lowercase + string.digits, k = 32))
     # We allow arbitrary metadata to be associated with the tunnel, read from
-    # environment variables beginning TUNNEL_META_
+    # environment variables beginning META_
     metadata = {
         re.sub(r'[^a-z0-9]+', '-', name[12:].lower()): value
         for name, value in os.environ.items()
-        if name.startswith("TUNNEL_META_")
+        if name.startswith("META_")
     }
     return Config(
         ssh_executable = os.environ.get('SSH_EXECUTABLE', 'ssh'),
         # Default to a 5s timeout
-        tunnel_configure_timeout = int(os.environ.get('TUNNEL_CONFIGURE_TIMEOUT', '5')),
-        tunnel_server = os.environ['TUNNEL_SERVER'],
-        tunnel_server_port = os.environ.get('TUNNEL_SERVER_PORT', '22'),
+        configure_timeout = int(os.environ.get('CONFIGURE_TIMEOUT', '5')),
+        zenith_server = os.environ['ZENITH_SERVER'],
+        zenith_server_port = os.environ.get('ZENITH_SERVER_PORT', '22'),
         forward_to_host = os.environ.get('FORWARD_TO_HOST', 'localhost'),
         forward_to_port = os.environ.get('FORWARD_TO_PORT', '8000'),
         subdomain = subdomain,
@@ -162,7 +162,7 @@ def configure_tunnel(ssh_proc, config):
     # If the server is behaving correctly configuring the tunnel should be quick,
     # so we should time out if it takes too long
     try:
-        with timeout(config.tunnel_configure_timeout):
+        with timeout(config.configure_timeout):
             # Get the dynamically allocated port from the SSH process
             # This is received on stdout, but we have configured the process to send
             # stderr to stdout
@@ -232,10 +232,10 @@ def main():
             # Use a dynamically allocated port
             "-R",
             f"0:{config.forward_to_host}:{config.forward_to_port}",
-            # Configure the tunnel server
+            # Configure the Zenith server
             "-p",
-            config.tunnel_server_port,
-            f"tunnel@{config.tunnel_server}",
+            config.zenith_server_port,
+            f"zenith@{config.zenith_server}",
         ]
 
         print(f"[CLIENT] [INFO] Spawning SSH - {' '.join(ssh_command)}")

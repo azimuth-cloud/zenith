@@ -2,9 +2,18 @@ name: Publish artifacts
 # Run the tasks on every push
 on: push
 jobs:
-  build_push_client:
-    name: Build and push client image
+  build_push_images:
+    name: Build and push images
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: client
+            context: ./client
+          - name: proxy
+            context: ./proxy
+          - name: sshd
+            context: ./sshd
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
@@ -21,9 +30,9 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-client-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ matrix.name }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-client-
+            ${{ runner.os }}-buildx-${{ matrix.name }}-
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -36,7 +45,7 @@ jobs:
         id: image-meta
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/stackhpc/tunnel-server-client
+          images: ghcr.io/stackhpc/zenith-${{ matrix.name }}
           # Produce the branch name or tag and the SHA as tags
           tags: |
             type=ref,event=branch
@@ -46,129 +55,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v2
         with:
-          context: ./client
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.image-meta.outputs.tags }}
-          labels: ${{ steps.image-meta.outputs.labels }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-
-      # Temp fix
-      # https://github.com/docker/build-push-action/issues/252
-      # https://github.com/moby/buildkit/issues/1896
-      # https://github.com/docker/buildx/pull/535
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-  build_push_proxy:
-    name: Build and push proxy image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-        with:
-          platforms: all
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Set up Docker layer caching
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-proxy-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-proxy-
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Calculate metadata for image
-        id: image-meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ghcr.io/stackhpc/tunnel-server-proxy
-          # Produce the branch name or tag and the SHA as tags
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,prefix=
-
-      - name: Build and push image
-        uses: docker/build-push-action@v2
-        with:
-          context: ./proxy
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.image-meta.outputs.tags }}
-          labels: ${{ steps.image-meta.outputs.labels }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-
-      # Temp fix
-      # https://github.com/docker/build-push-action/issues/252
-      # https://github.com/moby/buildkit/issues/1896
-      # https://github.com/docker/buildx/pull/535
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-  build_push_sshd:
-    name: Build and push SSHD image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-        with:
-          platforms: all
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Set up Docker layer caching
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-sshd-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-sshd-
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Calculate metadata for image
-        id: image-meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ghcr.io/stackhpc/tunnel-server-sshd
-          # Produce the branch name or tag and the SHA as tags
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,prefix=
-
-      - name: Build and push image
-        uses: docker/build-push-action@v2
-        with:
-          context: ./sshd
+          context: ${{ matrix.context }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.image-meta.outputs.tags }}
@@ -189,7 +76,7 @@ jobs:
     name: Build and push Helm chart
     runs-on: ubuntu-latest
     # Only build and push the chart if the images built successfully
-    needs: [build_push_client, build_push_proxy, build_push_sshd]
+    needs: [build_push_images]
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
@@ -198,18 +85,13 @@ jobs:
           # determining the number of commits since the last tag
           fetch-depth: 0
 
-      - name: Login to GitHub Container Registry
-        env:
-          HELM_EXPERIMENTAL_OCI: "1"
-          REGISTRY: ghcr.io
-          USERNAME: ${{ github.actor }}
-          PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "$PASSWORD" | helm registry login --username "$USERNAME" --password-stdin "$REGISTRY"
+      # Use an up-to-date version of Python for the script
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
 
       # This action packages and pushes the chart
-      - name: Package and push chart
+      - name: Publish charts
         env:
-          HELM_EXPERIMENTAL_OCI: "1"
-          CHART_DIRECTORY: ./chart
-          CHART_REPOSITORY: ghcr.io/stackhpc/tunnel-server
-        run: ./scripts/build-push-chart.py
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./ci/publish-charts.py

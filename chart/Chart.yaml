@@ -1,6 +1,6 @@
 apiVersion: v2
-name: tunnel-server
-description: Helm chart for deploying a tunnel server on Kubernetes
+name: zenith-server
+description: Helm chart for deploying a Zenith server on Kubernetes
 type: application
 # The version and appVersion are updated by the chart build script
 version: 0.1.0

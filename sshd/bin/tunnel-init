@@ -60,7 +60,7 @@ import uuid
 import requests
 
 
-TUNNEL_PROXY_SERVICE_TAG = "tunnel-server-subdomain"
+ZENITH_SERVICE_TAG = "zenith-subdomain"
 
 
 @dataclasses.dataclass
@@ -237,7 +237,7 @@ def consul_check_service_host_and_port(server_config, tunnel_config):
         filter = (
             f"Address == \"{server_config.service_host}\" and "
             f"Port == \"{tunnel_config.service_port}\" and "
-            f"\"{TUNNEL_PROXY_SERVICE_TAG}\" in Tags"
+            f"\"{ZENITH_SERVICE_TAG}\" in Tags"
         )
     )
     response = requests.get(url, params = params)
@@ -268,7 +268,7 @@ def consul_register_service(server_config, tunnel_config):
         "Address": server_config.service_host,
         "Port": tunnel_config.service_port,
         # Tag the service as a tunnel proxy subdomain
-        "Tags": [TUNNEL_PROXY_SERVICE_TAG],
+        "Tags": [ZENITH_SERVICE_TAG],
         # Associate any specified metadata
         "Meta": tunnel_config.metadata,
         # Specify a TTL check

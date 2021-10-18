@@ -1,7 +1,5 @@
 ################################################################################
-##                        StackHPC tunnel proxy server                        ##
-##                                                                            ##
-## This tunnel server and the corresponding client allow HTTP services that   ##
+## This Zenith server and the corresponding client allow HTTP services that   ##
 ## are behind a NAT to be exposed to the internet.                            ##
 ##                                                                            ##
 ## This is accomplished using a combination of SSH reverse tunneling and a    ##

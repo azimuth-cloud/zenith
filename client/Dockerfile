@@ -1,20 +1,20 @@
 #####
-## Container image spec for tunnel-server client
+## Container image spec for zenith client
 #####
 
 FROM debian:buster-slim
 
 # Add an unprivileged user to initiate tunnels
-ENV TUNNEL_UID 1001
-ENV TUNNEL_USER tunnel
+ENV ZENITH_UID 1001
+ENV ZENITH_USER zenith
 RUN useradd \
       --create-home \
-      --home-dir /home/tunnel \
+      --home-dir /home/zenith \
       --user-group \
       --shell /bin/rbash \
-      --uid $TUNNEL_UID \
-      $TUNNEL_USER && \
-    passwd -d $TUNNEL_USER
+      --uid $ZENITH_UID \
+      $ZENITH_USER && \
+    passwd -d $ZENITH_USER
 
 RUN apt-get update && \
     apt-get install -y openssh-client python3 tini && \
@@ -23,6 +23,6 @@ RUN apt-get update && \
 # Copy in required files
 COPY ./bin /usr/bin/
 
-USER $TUNNEL_UID
+USER $ZENITH_UID
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["/usr/bin/tunnel-init"]

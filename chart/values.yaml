@@ -16,10 +16,10 @@ proxy:
   # The address to use for the Consul server
   # By default, this uses the load-balanced server from the internal Consul
   # This is treated as a template, so may include variables such as the release name
-  consulServerAddress: "{{ include \"tunnel-server.componentname\" (list . \"consul\") }}-consul-server:8500"
+  consulServerAddress: "{{ include \"zenith.componentname\" (list . \"consul\") }}-consul-server:8500"
   # The image to use for the proxy
   image:
-    repository: ghcr.io/stackhpc/tunnel-server-proxy
+    repository: ghcr.io/stackhpc/zenith-proxy
     pullPolicy: IfNotPresent
     tag: ""
   imagePullSecrets: []
@@ -72,7 +72,7 @@ sshd:
   consulAgentAddress:
   # The image to use for the SSHD server
   image:
-    repository: ghcr.io/stackhpc/tunnel-server-sshd
+    repository: ghcr.io/stackhpc/zenith-sshd
     pullPolicy: IfNotPresent
     tag: ""
   imagePullSecrets: []

@@ -1,5 +1,5 @@
 #####
-## Container image spec for tunnel-server dynamic proxy server
+## Container image spec for zenith dynamic proxy server
 #####
 
 # Use a named build stage for consul-template
