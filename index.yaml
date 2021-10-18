@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  zenith-server:
+  - apiVersion: v2
+    appVersion: cd70ddf
+    created: "2021-10-18T09:49:16.038157139Z"
+    description: Helm chart for deploying a Zenith server on Kubernetes
+    digest: 89a11005fc7f35d83b3d9a9aeb8e0dbdbfb39b6290a040f1ece5604abb406b38
+    name: zenith-server
+    type: application
+    urls:
+    - zenith-server-0.1.0-dev.0.main.37.tgz
+    version: 0.1.0-dev.0.main.37
+generated: "2021-10-18T09:49:16.036983849Z"
