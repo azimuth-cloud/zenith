@@ -2,7 +2,7 @@
 ## Container image spec for zenith client
 #####
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 # Add an unprivileged user to initiate tunnels
 ENV ZENITH_UID 1001

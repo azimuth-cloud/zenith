@@ -2,7 +2,7 @@
 ## Container image spec for zenith SSHD server
 #####
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 # Add an unprivileged user to accept tunnel requests
 # The user has a home directory, a restricted shell to allow the tunnel-init

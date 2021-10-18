@@ -8,12 +8,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: client
-            context: ./client
-          - name: proxy
-            context: ./proxy
-          - name: sshd
-            context: ./sshd
+          - component: client
+          - component: proxy
+          - component: sshd
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
@@ -30,9 +27,9 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ matrix.name }}-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ matrix.component }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-${{ matrix.name }}-
+            ${{ runner.os }}-buildx-${{ matrix.component }}-
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -45,7 +42,7 @@ jobs:
         id: image-meta
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/stackhpc/zenith-${{ matrix.name }}
+          images: ghcr.io/stackhpc/zenith-${{ matrix.component }}
           # Produce the branch name or tag and the SHA as tags
           tags: |
             type=ref,event=branch
@@ -55,7 +52,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v2
         with:
-          context: ${{ matrix.context }}
+          context: ./${{ matrix.component }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.image-meta.outputs.tags }}
