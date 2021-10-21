@@ -62,7 +62,6 @@ jobs:
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-    
 
   build_push_component_images:
     name: Build and push images
@@ -142,7 +141,7 @@ jobs:
     name: Build and push Helm chart
     runs-on: ubuntu-latest
     # Only build and push the chart if the images built successfully
-    needs: [build_push_images]
+    needs: [build_push_component_images]
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
