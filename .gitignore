@@ -1,3 +1,6 @@
 .python-version
 chart/charts
 chart/Chart.lock
+__pycache__
+*.egg-info
+kubeconfig

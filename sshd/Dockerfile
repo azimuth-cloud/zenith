@@ -1,12 +1,9 @@
-#####
-## Container image spec for zenith SSHD server
-#####
+ARG ZENITH_TAG=
+FROM ghcr.io/stackhpc/zenith-common:${ZENITH_TAG}
 
-FROM debian:bullseye-slim
-
-# Add an unprivileged user to accept tunnel requests
-# The user has a home directory, a restricted shell to allow the tunnel-init
-# script to run and an empty password to allow anonymous SSH
+# Create an unprivileged user to accept tunnel requests
+# The user has a home directory, a restricted shell to allow the tunnel script
+# to run and an empty password to allow anonymous SSH
 ENV ZENITH_UID 1001
 ENV ZENITH_USER zenith
 RUN useradd \
@@ -18,18 +15,21 @@ RUN useradd \
       $ZENITH_USER && \
     passwd -d $ZENITH_USER
 
+# Install openssh server package
 RUN apt-get update && \
-    apt-get install -y openssh-server python3 python3-pip tini && \
+    apt-get install -y openssh-server && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/run/sshd && \
     chown zenith:zenith /var/run/sshd
 
-# The tunnel-init script requires requests
-RUN pip3 install --no-cache-dir requests
+# Installing dependencies separately ensures better use of the build cache
+COPY requirements.txt /opt/zenith/sshd/
+RUN pip3 install --no-deps --requirement /opt/zenith/sshd/requirements.txt
+
+COPY setup.py setup.cfg zenith /opt/zenith/sshd/
+RUN pip3 install --no-deps -e /opt/zenith/sshd
 
 COPY ./etc /etc/
-COPY ./bin /usr/bin/
 
 USER $ZENITH_UID
-ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
-CMD ["/usr/bin/sshd-start"]
+CMD ["zenith", "sshd", "start"]

@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zenith.componentname" (list . "sync") }}
+  labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
+spec:
+  # The sync component can only have a single instance at any one time to avoid races
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {{ include "zenith.componentSelectorLabels" (list . "sync") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{ include "zenith.componentSelectorLabels" (list . "sync") | nindent 8 }}
+      {{- with .Values.sync.podAnnotations }}
+      annotations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "zenith.componentname" (list . "sync") }}
+      {{- with .Values.sync.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{ toYaml .Values.sync.podSecurityContext | nindent 8 }}
+      containers:
+        - name: sync
+          securityContext: {{ toYaml .Values.sync.securityContext | nindent 12 }}
+          image: {{ printf "%s:%s" .Values.sync.image.repository (default .Chart.AppVersion .Values.sync.image.tag) }}
+          imagePullPolicy: {{ .Values.sync.image.pullPolicy }}
+          resources: {{ toYaml .Values.sync.resources | nindent 12 }}
+          volumeMounts:
+            - name: etc-zenith
+              mountPath: /etc/zenith
+              readOnly: true
+        # The sync container requires kubectl proxy to access the API server
+        - name: kubectl-proxy
+          securityContext: {{ toYaml .Values.sync.kubectlProxy.securityContext | nindent 12 }}
+          image: {{ printf "%s:%s" .Values.sync.kubectlProxy.image.repository (default (trimPrefix "v" .Capabilities.KubeVersion.Version) .Values.sync.kubectlProxy.image.tag) }}
+          imagePullPolicy: {{ .Values.sync.kubectlProxy.image.pullPolicy }}
+          resources: {{ toYaml .Values.sync.kubectlProxy.resources | nindent 12 }}
+      {{- with .Values.sync.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sync.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sync.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: etc-zenith
+          configMap:
+            name: {{ include "zenith.componentname" (list . "sync-conf") }}

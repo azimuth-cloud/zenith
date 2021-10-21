@@ -1,51 +1,5 @@
 #!/usr/bin/env python3
 
-####
-# This script runs when a user connects over SSH, and is responsible for
-# registering the mapping of a subdomain to the port for a reverse SSH tunnel
-# with Consul.
-#
-# The client specifies the bound port and subdomain using stdin.
-#
-# We would prefer to detect the bound port for the tunnel on this side but
-# doing this reliably might be impossible, and is certainly very difficult
-# and probably requires root.
-#
-# To get round this, the client reads the tunnel's dynamically-allocated port
-# from stderr and pushes it back via stdin along with the subdomain.
-#
-# This obviously places a lot of trust in a client to specify the SSH
-# connection correctly, and also to specify the actual port it was allocated
-# rather than a different port that another service may be connected to.
-#
-# We mitigate against this in a number of ways:
-#
-#   1. Only allow the execution of this script over the SSH connection. This
-#      limits the ability of a nefarious client to collect information about
-#      other tunnels connected to the system and their ports.
-#
-#   2. Encourage clients to use dynamically-allocated ports. This makes the
-#      port for a service more difficult to guess and so harder to connect
-#      to for nefarious purposes.
-#
-#   3. Encourage clients to use subdomains that are hard to guess.
-#      This makes it more difficult for a nefarious client to discover a valid
-#      domain and bind to it.
-#
-#   4. Only allow reverse port-forwarding, not regular port-forwarding. This
-#      prevents a nefarious client from setting up a regular port-foward to
-#      the bound port for another service and sending traffic directly to it,
-#      bypassing the proxy and any associated authentication.
-#
-#   5. Only allow a domain to be bound to a port that is listening. This
-#      prevents a nefarious client from binding a known domain to a port that
-#      is not yet in use in the hope of intercepting traffic in the future.
-#
-#   6. Only allow one domain to be bound to each tunnel. This prevents a
-#      nefarious client from binding an additional domain that is known to
-#      them to an existing tunnel in order to intercept traffic.
-####
-
 import contextlib
 import dataclasses
 import json
@@ -58,33 +12,6 @@ import typing
 import uuid
 
 import requests
-
-
-ZENITH_SERVICE_TAG = "zenith-subdomain"
-
-
-@dataclasses.dataclass
-class ServerConfig:
-    """
-    Object representing the configuration for this server.
-    """
-    #: The timeout for negotiating configuration with the client in seconds
-    configure_timeout: int
-    #: The URL of the consul server to register services with
-    consul_url: str
-    #: The TTL to use with the Consul health check
-    #: This uses a string format for intervals, e.g. 30s, 2m
-    consul_ttl: str
-    #: The time between heartbeats in seconds
-    consul_heartbeat_interval: int
-    #: The time the service can be in a critical state before it is forgotten by Consul
-    #: This uses a string format for intervals, e.g. 5m, 1h
-    consul_deregister_interval: str
-    #: The number of times that we can fail to post our status to Consul before exiting
-    #: This is in the case that Consul becomes unavailable, which should be rare
-    consul_heartbeat_failures: int
-    #: The host for the service (the external IP or hostname of the host running the script)
-    service_host: str
 
 
 @dataclasses.dataclass
@@ -100,29 +27,6 @@ class TunnelConfig:
     subdomain: str
     #: Metadata for the tunnel
     metadata: typing.Dict[str, str]
-
-
-def get_server_config():
-    """
-    Returns a server config object from environment variables.
-    """
-    return ServerConfig(
-        # Negotiaiting configuration with a well-behaved client should be fast
-        configure_timeout = int(os.environ.get('CONFIGURE_TIMEOUT', '5')),
-        # Populate config items from environment variables
-        consul_url = f"http://{os.environ['CONSUL_HTTP_ADDR']}",
-        # By default, use a TTL of 30s and a heartbeat of 10s
-        # This means that if we fail to post a status update three times, the service
-        # is moved into a critical state and removed from the proxy
-        # It also means that once a tunnel is disconnected for 30s, it is removed from
-        # the proxy
-        consul_ttl = os.environ.get('CONSUL_TTL', '30s'),
-        consul_heartbeat_interval = int(os.environ.get('CONSUL_HEARTBEAT_INTERVAL', '10')),
-        consul_deregister_interval = os.environ.get('CONSUL_DEREGISTER_INTERVAL', '5m'),
-        consul_heartbeat_failures = int(os.environ.get('CONSUL_HEARTBEAT_FAILURES', '3')),
-        # The service host cannot be set by the client - it should point to this host
-        service_host = os.environ['SERVICE_HOST']
-    )
 
 
 def raise_timeout_error(signum, frame):
@@ -237,7 +141,7 @@ def consul_check_service_host_and_port(server_config, tunnel_config):
         filter = (
             f"Address == \"{server_config.service_host}\" and "
             f"Port == \"{tunnel_config.service_port}\" and "
-            f"\"{ZENITH_SERVICE_TAG}\" in Tags"
+            f"\"{server_config.service_tag}\" in Tags"
         )
     )
     response = requests.get(url, params = params)
@@ -279,7 +183,7 @@ def consul_register_service(server_config, tunnel_config):
             # Use a TTL health check
             # This will move into the critical state, removing the service from
             # the proxy, if we do not post a status update within the TTL
-            "TTL": server_config.consul_ttl,
+            "TTL": server_config.consul_service_ttl,
             # This deregisters the service once it has been critical for 5 minutes
             # We can probably assume the service will not come back up
             "DeregisterCriticalServiceAfter": server_config.consul_deregister_interval,
@@ -347,11 +251,52 @@ def register_signal_handlers(server_config, tunnel_config):
     # Any well-behaved exit request should be SIGTERM
 
 
-def main():
+def run(server_config):
     """
-    The entrypoint for this script.
+    This function is called when a user connects over SSH, and is responsible for
+    registering the mapping of a subdomain to the port for a reverse SSH tunnel
+    with Consul.
+
+    The client specifies the bound port and subdomain using stdin.
+
+    We would prefer to detect the bound port for the tunnel on this side but
+    doing this reliably might be impossible, and is certainly very difficult
+    and probably requires root.
+
+     To get round this, the client reads the tunnel's dynamically-allocated port
+    from stderr and pushes it back via stdin along with the subdomain.
+
+    This obviously places a lot of trust in a client to specify the SSH
+    connection correctly, and also to specify the actual port it was allocated
+    rather than a different port that another service may be connected to.
+
+    We mitigate against this in a number of ways:
+
+      1. Only allow the execution of this script over the SSH connection. This
+         limits the ability of a nefarious client to collect information about
+         other tunnels connected to the system and their ports.
+
+      2. Encourage clients to use dynamically-allocated ports. This makes the
+         port for a service more difficult to guess and so harder to connect
+         to for nefarious purposes.
+
+      3. Encourage clients to use subdomains that are hard to guess.
+         This makes it more difficult for a nefarious client to discover a valid
+         domain and bind to it.
+
+      4. Only allow reverse port-forwarding, not regular port-forwarding. This
+         prevents a nefarious client from setting up a regular port-foward to
+         the bound port for another service and sending traffic directly to it,
+         bypassing the proxy and any associated authentication.
+
+      5. Only allow a domain to be bound to a port that is listening. This
+         prevents a nefarious client from binding a known domain to a port that
+         is not yet in use in the hope of intercepting traffic in the future.
+
+      6. Only allow one domain to be bound to each tunnel. This prevents a
+         nefarious client from binding an additional domain that is known to
+         them to an existing tunnel in order to intercept traffic.
     """
-    server_config = get_server_config()
     tunnel_config = get_tunnel_config(server_config.configure_timeout)   
     consul_check_service_host_and_port(server_config, tunnel_config)
     consul_register_service(server_config, tunnel_config)
@@ -361,7 +306,3 @@ def main():
     while True:
         failures = consul_heartbeat(server_config, tunnel_config, failures)
         time.sleep(server_config.consul_heartbeat_interval)
-
-
-if __name__ == "__main__":
-    main()

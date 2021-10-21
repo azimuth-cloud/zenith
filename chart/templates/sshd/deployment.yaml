@@ -1,46 +1,41 @@
-{{- $component := "sshd" -}}
-{{- $values := get .Values $component -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "zenith.componentname" (list . $component) }}
-  labels: {{ include "zenith.componentLabels" (list . $component) | nindent 4 }}
+  name: {{ include "zenith.componentname" (list . "sshd") }}
+  labels: {{ include "zenith.componentLabels" (list . "sshd") | nindent 4 }}
 spec:
-  replicas: {{ $values.replicaCount }}
+  replicas: {{ .Values.sshd.replicaCount }}
   selector:
-    matchLabels: {{ include "zenith.componentSelectorLabels" (list . $component) | nindent 6 }}
+    matchLabels: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 6 }}
   template:
     metadata:
-      labels: {{ include "zenith.componentSelectorLabels" (list . $component) | nindent 8 }}
-      {{- with $values.podAnnotations }}
+      labels: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 8 }}
+      {{- with .Values.sshd.podAnnotations }}
       annotations: {{ toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      {{- with $values.imagePullSecrets }}
+      {{- with .Values.sshd.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
-      securityContext: {{ toYaml $values.podSecurityContext | nindent 8 }}
+      securityContext: {{ toYaml .Values.sshd.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ $component }}
-          securityContext: {{ toYaml $values.securityContext | nindent 12 }}
-          image: {{ printf "%s:%s" $values.image.repository (default .Chart.AppVersion $values.image.tag) }}
-          imagePullPolicy: {{ $values.image.pullPolicy }}
+        - name: sshd
+          securityContext: {{ toYaml .Values.sshd.securityContext | nindent 12 }}
+          image: {{ printf "%s:%s" .Values.sshd.image.repository (default .Chart.AppVersion .Values.sshd.image.tag) }}
+          imagePullPolicy: {{ .Values.sshd.image.pullPolicy }}
           env:
-            {{- if $values.consulAgentAddress }}
-            - name: CONSUL_HTTP_ADDR
-              value: {{ tpl $values.consulAgentAddress . | quote }}
-            {{- end }}
-            # Pass the host IP using the downward API
+            {{- if not .Values.sshd.config.consulAddress }}
+            # Pass the host IP using the downward API unless given in the config
             # If a Consul agent address is not explicitly specified, we will attempt to connect to
             # an agent running on the host (the official Consul Helm chart deploys an agent on
             # each host using a daemonset)
-            - name: HOST_IP
+            - name: ZENITH_SSHD__CONSUL_ADDRESS
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-            # The pod IP should be used as the service host in Consul so that requests are
-            # routed directly to the required pod by the proxy
-            - name: SERVICE_HOST
+            {{- end }}
+            # The pod IP should ALWAYS be used as the service host in Consul
+            - name: ZENITH_SSHD__SERVICE_HOST
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
@@ -48,19 +43,25 @@ spec:
             - name: sshd
               containerPort: 2222
               protocol: TCP
-          resources: {{ toYaml $values.resources | nindent 12 }}
+          resources: {{ toYaml .Values.sshd.resources | nindent 12 }}
           volumeMounts:
+            - name: etc-zenith
+              mountPath: /etc/zenith
+              readOnly: true
             - name: var-run-sshd
               mountPath: /var/run/sshd
-      {{- with $values.nodeSelector }}
+      {{- with .Values.sshd.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $values.affinity }}
+      {{- with .Values.sshd.affinity }}
       affinity: {{ toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $values.tolerations }}
+      {{- with .Values.sshd.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        - name: etc-zenith
+          configMap:
+            name: {{ include "zenith.componentname" (list . "sshd-conf") }}
         - name: var-run-sshd
           emptyDir: {}
