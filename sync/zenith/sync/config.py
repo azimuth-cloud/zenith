@@ -2,7 +2,7 @@ import re
 
 from pydantic import Field
 
-from zenith.common.config import Configuration, Section
+from configomatic import Configuration, Section, LoggingConfiguration
 
 
 class ConsulConfig(Section):
@@ -96,6 +96,9 @@ class SyncConfig(Configuration):
         default_path = '/etc/zenith/sync.yaml'
         path_env_var = 'ZENITH_SYNC_CONFIG'
         env_prefix = 'ZENITH_SYNC'
+
+    #: The logging configuration
+    logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
 
     #: The Consul configuration
     consul: ConsulConfig = Field(default_factory = ConsulConfig)

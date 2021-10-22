@@ -25,16 +25,15 @@ spec:
           imagePullPolicy: {{ .Values.sshd.image.pullPolicy }}
           env:
             {{- if not .Values.sshd.config.consulAddress }}
-            # Pass the host IP using the downward API unless given in the config
-            # If a Consul agent address is not explicitly specified, we will attempt to connect to
-            # an agent running on the host (the official Consul Helm chart deploys an agent on
-            # each host using a daemonset)
+            # If a Consul agent address is not explicitly specified, we will attempt to connect
+            # to an agent running on the host (as deployed by the Consul Helm chart)
             - name: ZENITH_SSHD__CONSUL_ADDRESS
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
             {{- end }}
-            # The pod IP should ALWAYS be used as the service host in Consul
+            # The pod IP should ALWAYS be used as the service host in Consul, even if service
+            # host is specified in the configuration
             - name: ZENITH_SSHD__SERVICE_HOST
               valueFrom:
                 fieldRef:

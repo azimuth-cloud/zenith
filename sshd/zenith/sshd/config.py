@@ -2,7 +2,7 @@ import socket
 
 from pydantic import DirectoryPath, Field
 
-from zenith.common.config import Configuration
+from configomatic import Configuration, LoggingConfiguration
 
 
 def default_service_host():
@@ -21,6 +21,9 @@ class SSHDConfig(Configuration):
         default_path = '/etc/zenith/sshd.yaml'
         path_env_var = 'ZENITH_SSHD_CONFIG'
         env_prefix = 'ZENITH_SSHD'
+
+    #: The logging configuration
+    logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
 
     #: The address of the Consul server
     consul_address: str = "127.0.0.1"

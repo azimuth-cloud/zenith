@@ -1,5 +1,4 @@
 import asyncio
-import logging.config
 
 import click
 
@@ -14,5 +13,5 @@ def main(config):
     Synchronises Zenith services from Consul with Kubernetes.
     """
     config = SyncConfig(_path = config)
-    logging.config.dictConfig(config.logging)
+    config.logging.apply()
     asyncio.run(run(config))

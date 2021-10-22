@@ -1,11 +1,8 @@
 import asyncio
 import contextlib
 import logging
-import os
-import pathlib
 
 import httpx
-import yaml
 
 from .model import EventKind
 

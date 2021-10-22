@@ -1,5 +1,7 @@
-ARG ZENITH_TAG=
-FROM ghcr.io/stackhpc/zenith-common:${ZENITH_TAG}
+FROM debian:bullseye-slim
+
+# Don't buffer stdout and stderr as it breaks realtime logging
+ENV PYTHONUNBUFFERED 1
 
 # Create an unprivileged user to accept tunnel requests
 # The user has a home directory, a restricted shell to allow the tunnel script
@@ -15,9 +17,9 @@ RUN useradd \
       $ZENITH_USER && \
     passwd -d $ZENITH_USER
 
-# Install openssh server package
+# Install tini, which we will use to marshal the processes, Python and OpenSSH
 RUN apt-get update && \
-    apt-get install -y openssh-server && \
+    apt-get install -y git openssh-server python3 python3-pip tini && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/run/sshd && \
     chown zenith:zenith /var/run/sshd
@@ -32,4 +34,5 @@ RUN pip3 install --no-deps -e /opt/zenith/sshd
 COPY ./etc /etc/
 
 USER $ZENITH_UID
-CMD ["zenith", "sshd", "start"]
+ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
+CMD ["zenith-sshd", "start"]

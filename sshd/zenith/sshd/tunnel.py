@@ -3,7 +3,6 @@
 import contextlib
 import dataclasses
 import json
-import os
 import signal
 import socket
 import sys

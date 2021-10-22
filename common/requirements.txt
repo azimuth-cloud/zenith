@@ -1,5 +1,0 @@
-click==8.0.3
--e git+https://github.com/stackhpc/configomatic.git@a784c28afdcf56f8dc59803836778ce29713d59a#egg=configomatic
-pydantic==1.8.2
-PyYAML==6.0
-typing-extensions==3.10.0.2

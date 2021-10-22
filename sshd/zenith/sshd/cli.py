@@ -1,4 +1,4 @@
-import logging.config
+import logging
 import os
 import pathlib
 import subprocess
@@ -18,7 +18,7 @@ def main(ctx, config):
     """
     ctx.ensure_object(dict)
     ctx.obj["CONFIG"] = SSHDConfig(_path = config)
-    logging.config.dictConfig(ctx.obj["CONFIG"].logging)
+    ctx.obj["CONFIG"].logging.apply()
 
 
 @main.command()
@@ -47,11 +47,14 @@ def start(ctx):
     """
     Configures and starts a Zenith SSHD server.
     """
+    logger = logging.getLogger(__name__)
+    logger.info("Ensuring host keys exist")
     # Generate unique hostkeys in the SSHD run directory if not present
     run_directory = pathlib.Path(ctx.obj["CONFIG"].run_directory)
     for key_type, key_bits in HOSTKEYS:
         key_file = run_directory / f"ssh_host_{key_type}_key"
         if not key_file.exists():
+            logger.info(f"Generating {key_type} host key at {key_file}")
             keygen_args = ["ssh-keygen", "-q", "-N", "", "-t", key_type, "-f", str(key_file)]
             if key_bits:
                 keygen_args.extend(["-b", str(key_bits)])
@@ -62,6 +65,7 @@ def start(ctx):
         for name, value in os.environ.items()
         if name.startswith("ZENITH_SSHD_")
     )
+    logger.info("Starting SSHD")
     # Invoke SSHD by replacing the current process
     os.execlp("/usr/bin/sshd", "-D", "-e", "-o", f"SetEnv={forward_env}")
 
