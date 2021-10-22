@@ -28,10 +28,10 @@ RUN apt-get update && \
 COPY requirements.txt /opt/zenith/sshd/
 RUN pip3 install --no-deps --requirement /opt/zenith/sshd/requirements.txt
 
-COPY setup.py setup.cfg zenith /opt/zenith/sshd/
-RUN pip3 install --no-deps -e /opt/zenith/sshd
-
-COPY ./etc /etc/
+COPY . /opt/zenith/sshd
+RUN pip3 install --no-deps -e /opt/zenith/sshd && \
+    ln -sf /opt/zenith/sshd/etc/motd /etc/motd && \
+    ln -sf /opt/zenith/sshd/etc/ssh/sshd_config /etc/ssh/sshd_config
 
 USER $ZENITH_UID
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]

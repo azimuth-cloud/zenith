@@ -19,6 +19,7 @@ def main(ctx, config):
     ctx.ensure_object(dict)
     ctx.obj["CONFIG"] = SSHDConfig(_path = config)
     ctx.obj["CONFIG"].logging.apply()
+    ctx.obj["LOGGER"] = logging.getLogger(__name__)
 
 
 @main.command()
@@ -43,31 +44,42 @@ HOSTKEYS = [
 
 @main.command()
 @click.pass_context
-def start(ctx):
+def ensure_hostkeys(ctx):
     """
-    Configures and starts a Zenith SSHD server.
+    Ensure that the required SSHD hostkeys exist.
     """
-    logger = logging.getLogger(__name__)
-    logger.info("Ensuring host keys exist")
+    ctx.obj["LOGGER"].info("Ensuring host keys exist")
     # Generate unique hostkeys in the SSHD run directory if not present
     run_directory = pathlib.Path(ctx.obj["CONFIG"].run_directory)
     for key_type, key_bits in HOSTKEYS:
         key_file = run_directory / f"ssh_host_{key_type}_key"
         if not key_file.exists():
-            logger.info(f"Generating {key_type} host key at {key_file}")
+            ctx.obj["LOGGER"].info(f"Generating {key_type} host key at {key_file}")
             keygen_args = ["ssh-keygen", "-q", "-N", "", "-t", key_type, "-f", str(key_file)]
             if key_bits:
                 keygen_args.extend(["-b", str(key_bits)])
             subprocess.run(keygen_args, check = True)
+
+
+@main.command()
+@click.pass_context
+def start(ctx):
+    """
+    Configure and start a Zenith SSHD server.
+    """
+    # Ensure the hostkeys are present
+    ctx.forward(ensure_hostkeys)
+    ctx.obj["LOGGER"].info("Collecting forwarded environment variables")
     # Ensure all environment variables starting ZENITH_SSHD are forwarded by SSHD
     forward_env = " ".join(
         f"{name}=\"{value}\""
         for name, value in os.environ.items()
         if name.startswith("ZENITH_SSHD_")
     )
-    logger.info("Starting SSHD")
-    # Invoke SSHD by replacing the current process
-    os.execlp("/usr/bin/sshd", "-D", "-e", "-o", f"SetEnv={forward_env}")
+    ctx.obj["LOGGER"].info("Starting SSHD")
+    # Run SSHD by replacing the current process
+    sshd_executable = ctx.obj["CONFIG"].sshd_executable
+    os.execl(sshd_executable, sshd_executable, "-D", "-e", "-o", f"SetEnv={forward_env}")
 
 
 @main.command()

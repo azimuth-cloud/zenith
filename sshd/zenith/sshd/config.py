@@ -1,6 +1,6 @@
 import socket
 
-from pydantic import DirectoryPath, Field
+from pydantic import DirectoryPath, FilePath, Field
 
 from configomatic import Configuration, LoggingConfiguration
 
@@ -43,6 +43,9 @@ class SSHDConfig(Configuration):
     service_tag: str = "zenith-service"
     #: The number of seconds to wait to receive a tunnel configuration before exiting
     configure_timeout: int = 5
+
+    #: The SSHD executable location
+    sshd_executable: FilePath = "/usr/sbin/sshd"
     #: The SSHD run directory
     run_directory: DirectoryPath = "/var/run/sshd"
 
