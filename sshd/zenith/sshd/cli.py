@@ -58,7 +58,7 @@ def ensure_hostkeys(ctx):
             keygen_args = ["ssh-keygen", "-q", "-N", "", "-t", key_type, "-f", str(key_file)]
             if key_bits:
                 keygen_args.extend(["-b", str(key_bits)])
-            subprocess.run(keygen_args, check = True)
+            subprocess.check_call(keygen_args)
 
 
 @main.command()

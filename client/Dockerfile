@@ -1,28 +1,27 @@
-#####
-## Container image spec for zenith client
-#####
-
 FROM debian:bullseye-slim
 
-# Add an unprivileged user to initiate tunnels
+# Create an unprivileged user to run the application process
 ENV ZENITH_UID 1001
 ENV ZENITH_USER zenith
 RUN useradd \
-      --create-home \
-      --home-dir /home/zenith \
+      --no-create-home \
       --user-group \
-      --shell /bin/rbash \
+      --shell /sbin/nologin \
       --uid $ZENITH_UID \
-      $ZENITH_USER && \
-    passwd -d $ZENITH_USER
+      $ZENITH_USER
 
+# Install tini, which we will use to marshal the processes, Python and the OpenSSH client
 RUN apt-get update && \
-    apt-get install -y openssh-client python3 tini && \
+    apt-get install -y git openssh-client python3 python3-pip tini && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy in required files
-COPY ./bin /usr/bin/
+# Installing dependencies separately ensures better use of the build cache
+COPY requirements.txt /opt/zenith/client/
+RUN pip3 install --no-deps --requirement /opt/zenith/client/requirements.txt
+
+COPY . /opt/zenith/client
+RUN pip3 install --no-deps -e /opt/zenith/client
 
 USER $ZENITH_UID
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
-CMD ["/usr/bin/tunnel-init"]
+CMD ["zenith-client"]

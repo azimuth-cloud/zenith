@@ -3,9 +3,7 @@ FROM debian:bullseye-slim
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
 
-# Create an unprivileged user to accept tunnel requests
-# The user has a home directory, a restricted shell to allow the tunnel script
-# to run and an empty password to allow anonymous SSH
+# Create an unprivileged user to run the application process
 ENV ZENITH_UID 1001
 ENV ZENITH_USER zenith
 RUN useradd \
@@ -13,8 +11,7 @@ RUN useradd \
       --user-group \
       --shell /sbin/nologin \
       --uid $ZENITH_UID \
-      $ZENITH_USER && \
-    passwd -d $ZENITH_USER
+      $ZENITH_USER
 
 # Install tini, which we will use to marshal the processes and Python
 RUN apt-get update && \

@@ -28,7 +28,7 @@ class ClientConfig(BaseModel):
     #: The subdomain to use
     #: Subdomains must be at most 63 characters long, can only contain alphanumeric characters
     #: and hyphens, and cannot start or end with a hyphen
-    #: In addition, Kubernetes service names cannot start with a number and must be lower case
+    #: In addition, Kubernetes service names must start with a letter and be lower case
     #: See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
     subdomain: constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
     #: Metadata for the tunnel
