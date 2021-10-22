@@ -2,7 +2,6 @@
 
 import contextlib
 import dataclasses
-import json
 import signal
 import socket
 import sys
@@ -10,7 +9,61 @@ import time
 import typing
 import uuid
 
+from pydantic import BaseModel, Field, constr, validator
 import requests
+
+
+#: Constraint for a Consul metadata key
+MetadataKey = constr(regex = r"^[a-zA-Z0-9_-]+$", max_length = 128)
+#: Constraint for a Consul metadata value
+MetadataValue = constr(max_length = 512)
+
+
+class ClientConfig(BaseModel):
+    """
+    Object for validating the client configuration.
+    """
+    #: The port for the service (the tunnel port)
+    allocated_port: int
+    #: The subdomain to use
+    #: Subdomains must be at most 63 characters long, can only contain alphanumeric characters
+    #: and hyphens, and cannot start or end with a hyphen
+    #: In addition, Kubernetes service names cannot start with a number and must be lower case
+    #: See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
+    subdomain: constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
+    #: Metadata for the tunnel
+    metadata: typing.Dict[MetadataKey, MetadataValue] = Field(default_factory = dict)
+
+    @validator("allocated_port")
+    def validate_port(cls, v):
+        """
+        Validate the given input as a port.
+        """
+        # The port must be an integer
+        port = int(v)
+        # The port must be in the registered port range
+        if port < 1024 or port >= 49152:
+            raise ValueError("Port must be in the registered port range")
+        # The port must be in use for something
+        # We validate this by trying to bind to it and catching the error
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                # This is the condition we want
+                return port
+            else:
+                raise ValueError("Given port is not in use")
+
+    @validator("metadata")
+    def validate_metadata(cls, v):
+        """
+        Validates the given input as a metadata dict.
+        """
+        if len(v) > 64:
+            raise ValueError("at most 64 metadata items are permitted")
+        else:
+            return v
 
 
 @dataclasses.dataclass
@@ -26,6 +79,15 @@ class TunnelConfig:
     subdomain: str
     #: Metadata for the tunnel
     metadata: typing.Dict[str, str]
+
+    @classmethod
+    def from_client_config(cls, config):
+        return cls(
+            service_id = str(uuid.uuid4()),
+            service_port = config.allocated_port,
+            subdomain = config.subdomain,
+            metadata = config.metadata
+        )
 
 
 def raise_timeout_error(signum, frame):
@@ -47,41 +109,6 @@ def timeout(seconds):
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, previous)
-
-
-def validate_port(input):
-    """
-    Attempts to validate the given input as a port.
-    """
-    # The port must be an integer
-    try:
-        port = int(input)
-    except ValueError:
-        print("[SERVER] [ERROR] Port must be an integer")
-        sys.exit(1)
-    # The port must be in the registered port range
-    if port < 1024 or port >= 49152:
-        print("[SERVER] [ERROR] Port must be in the registered port range")
-        sys.exit(1)
-    # The port must be in use for something
-    # We validate this by trying to bind to it and catching the error
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        try:
-            sock.bind(("127.0.0.1", port))
-        except OSError:
-            # This is the condition we want
-            return port
-        else:
-            # This is the error condition
-            print("[SERVER] [ERROR] Given port is not in use")
-            sys.exit(1)
-
-
-def validate_subdomain(input):
-    """
-    Attempts to validate the given input as a subdomain.
-    """
-    return input
 
 
 def get_tunnel_config(timeout_secs):
@@ -116,15 +143,8 @@ def get_tunnel_config(timeout_secs):
     print(f"[SERVER] [INFO] Received configuration: {''.join(input_lines)}")
     sys.stdout.flush()
     # Try to parse the received configuration as JSON
-    client_config = json.loads(''.join(input_lines))
-    return TunnelConfig(
-        # Generate a UUID for the service that is unique to this tunnel
-        service_id = str(uuid.uuid4()),
-        # Extract the port, subdomain and metadata from the config
-        service_port = validate_port(client_config['allocated_port']),
-        subdomain = validate_subdomain(client_config['subdomain']),
-        metadata = dict(client_config.get('metadata', {}))
-    )
+    client_config = ClientConfig.parse_raw("".join(input_lines))
+    return TunnelConfig.from_client_config(client_config)
 
 
 def consul_check_service_host_and_port(server_config, tunnel_config):
