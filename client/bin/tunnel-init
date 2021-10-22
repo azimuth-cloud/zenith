@@ -235,7 +235,7 @@ def main():
             # Configure the Zenith server
             "-p",
             config.zenith_server_port,
-            f"tunnel@{config.zenith_server}",
+            f"zenith@{config.zenith_server}",
         ]
 
         print(f"[CLIENT] [INFO] Spawning SSH - {' '.join(ssh_command)}")

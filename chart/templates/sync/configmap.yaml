@@ -1,4 +1,3 @@
-{{- $_ := required "baseDomain is required" .Values.sync.config.kubernetes.ingress.baseDomain -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,4 +5,8 @@ metadata:
   labels: {{ include "zenith.componentLabels" (list . "sync-conf") | nindent 4 }}
 data:
   sync.yaml: |
+    {{- if .Values.sync.config.kubernetes.ingress.baseDomain }}
     {{- tpl (toYaml .Values.sync.config) . | nindent 4 }}
+    {{- else }}
+    {{- fail "baseDomain is required" }}
+    {{- end }}

@@ -10,10 +10,11 @@ consul:
 sync:
   config:
     consul:
-      # The URL of the Consul server
+      # The address of the Consul server
       # By default, this uses the load-balanced server from the internal Consul
-      # This is treated as a template, so may include variables such as the release name
-      url: "http://{{ include \"zenith.componentname\" (list . \"consul\") }}-consul-server:8500"
+      address: "{{ include \"zenith.componentname\" (list . \"consul\") }}-consul-server"
+      # The port of the Consul server
+      port: 8500
       # The timeout to use with Consul blocking queries
       blockingQueryTimeout: 300
       # The tag to use to filter out Zenith services
