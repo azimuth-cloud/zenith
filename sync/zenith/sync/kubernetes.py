@@ -10,6 +10,15 @@ from .model import EventKind
 logger = logging.getLogger(__name__)
 
 
+class KubernetesApiError(Exception):
+    """
+    Exception that is raised when a Kubernetes API error occurs that is in the 4xx range.
+    """
+    def __init__(self, data):
+        self.data = data
+        super().__init__(data.get("message", str(data)))
+
+
 class KubernetesClient(httpx.AsyncClient):
     """
     Custom HTTPX client for Kubernetes.
@@ -26,21 +35,34 @@ class KubernetesClient(httpx.AsyncClient):
             url = str(url)
         return super()._merge_url(url.format(namespace = self.default_namespace))
 
+    async def request(self, *args, **kwargs):
+        # Make requests raise exceptions for bad responses
+        response = await super().request(*args, **kwargs)
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if 400 <= exc.response.status_code < 500:
+                raise KubernetesApiError(exc.response.json())
+            else:
+                raise
+        else:
+            return response
+
     @contextlib.asynccontextmanager
-    async def suppress_api_exception(self, status, reason = None):
+    async def suppress_api_exception(self, status_code, reason = None):
         """
         Context manager that suppresses exceptions raised by the Kubernetes client
-        with the given status and optional reason.
+        with the given status code and optional reason.
         """
         try:
             yield
-        except httpx.HTTPStatusError as exc:
+        except KubernetesApiError as exc:
             # If the status doesn't match, re-raise the exception
-            if exc.response.status_code != status:
+            if exc.data.get("code") != status_code:
                 raise
             # If a reason was given, check if it matches the reason from the exception
             # and re-raise it if not
-            if reason and reason != exc.response.json()["reason"]:
+            if reason and reason != exc.data.get("reason"):
                 raise
             # If we get to here, the exception is suppressed
 
@@ -86,7 +108,6 @@ class KubernetesResource:
         if labels:
             params["labelSelector"] = ",".join(f"{k}={v}" for k, v in labels.items())
         resp = await self.client.get(self._path(namespace = namespace), params = params)
-        resp.raise_for_status()
         return resp.json()["items"]
 
     async def one(self, *, namespace = None, labels = None):
@@ -103,7 +124,6 @@ class KubernetesResource:
         """
         path = self._path(namespace = namespace, name = name)
         resp = await self.client.get(path)
-        resp.raise_for_status()
         return resp.json()
 
     async def create(self, body, *, namespace = None):
@@ -115,7 +135,6 @@ class KubernetesResource:
         # Use the namespace from the body if specified
         namespace = namespace or body.get("metadata", {}).get("namespace")
         resp = await self.client.post(self._path(namespace = namespace), json = body)
-        resp.raise_for_status()
         return resp.json()
 
     async def patch(self, body, *, namespace = None, name = None):
@@ -134,7 +153,6 @@ class KubernetesResource:
             json = body,
             headers = { "Content-Type": "application/merge-patch+json" }
         )
-        resp.raise_for_status()
         return resp.json()
 
     async def create_or_patch(self, body, *, namespace = None):
@@ -151,8 +169,7 @@ class KubernetesResource:
         Deletes an instance of the resource.
         """
         path = self._path(namespace = namespace, name = name)
-        resp = await self.client.delete(path)
-        resp.raise_for_status()
+        await self.client.delete(path)
 
     async def delete_all(self, *, namespace = None, labels = None):
         """
@@ -161,8 +178,7 @@ class KubernetesResource:
         params = {}
         if labels:
             params["labelSelector"] = ",".join(f"{k}={v}" for k, v in labels.items())
-        resp = await self.client.delete(self._path(namespace = namespace), params = params)
-        resp.raise_for_status()
+        await self.client.delete(self._path(namespace = namespace), params = params)
 
     @classmethod
     def make(cls, api_version, kind, plural = None, namespaced = True):

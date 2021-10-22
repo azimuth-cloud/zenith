@@ -74,8 +74,9 @@ class ServiceWatcher:
             name = name,
             # Merge the metadata from the instances together
             metadata = {
-                k: v for instance in instances
-                for k, v in instance["Service"]["Meta"].items()
+                k: v
+                for instance in instances
+                for k, v in (instance["Service"].get("Meta") or {}).items()
             },
             # Get the address and port of each instance for which all the checks are passing
             endpoints = [
