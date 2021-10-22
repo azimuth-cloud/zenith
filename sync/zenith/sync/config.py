@@ -9,12 +9,21 @@ class ConsulConfig(Section):
     """
     Model for the Consul configuration section.
     """
-    #: The URL to use to access Consul
-    url: str = "http://127.0.0.1:8500"
+    #: The address of the Consul server
+    address: str = "127.0.0.1"
+    #: The port of the Consul server
+    port: int = 8500
     #: The timeout to use with Consul blocking queries
     blocking_query_timeout: int = 300
     #: The tag to use to filter out Zenith services
     service_tag: str = "zenith-service"
+
+    @property
+    def url(self):
+        """
+        The URL to use to access Consul.
+        """
+        return f"http://{self.address}:{self.port}"
 
 
 class DNSLabel(str):

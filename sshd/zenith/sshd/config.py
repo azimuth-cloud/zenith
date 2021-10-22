@@ -54,4 +54,4 @@ class SSHDConfig(Configuration):
         """
         The URL to use to access Consul.
         """
-        return f"http://{self.address}:{self.port}"
+        return f"http://{self.consul_address}:{self.consul_port}"
