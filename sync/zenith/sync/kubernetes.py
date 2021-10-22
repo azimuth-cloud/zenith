@@ -190,7 +190,6 @@ class KubernetesResource:
         )
 
 
-Namespace = KubernetesResource.make("v1", "Namespace", namespaced = False)
 Service = KubernetesResource.make("v1", "Service")
 Endpoints = KubernetesResource.make("v1", "Endpoints", "endpoints")
 Ingress = KubernetesResource.make("networking.k8s.io/v1", "Ingress", "ingresses")
@@ -329,14 +328,6 @@ class ServiceReconciler:
             client.default_namespace
         )
         async with client:
-            async with client.suppress_already_exists():
-                # First, create the namespace that we will be using
-                await Namespace(client).create({
-                    "metadata": {
-                        "name": self.config.namespace,
-                    }
-                })
-                logger.info("Created namespace '%s'", self.config.namespace)
             initial_services, events, _ = await source.subscribe()
             # Before we start listening to events, we reconcile the existing services
             # We also remove any services that exist that are not part of the initial set
