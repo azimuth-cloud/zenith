@@ -10,9 +10,12 @@ spec:
   template:
     metadata:
       labels: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 8 }}
-      {{- with .Values.sshd.podAnnotations }}
-      annotations: {{ toYaml . | nindent 8 }}
-      {{- end }}
+      annotations:
+        # Force the deployment to roll when the config changes
+        checksum/config: {{ include (print $.Template.BasePath "/sshd/configmap.yaml") . | sha256sum }}
+        {{- with .Values.sshd.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.sshd.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}

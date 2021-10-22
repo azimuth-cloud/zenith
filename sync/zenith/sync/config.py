@@ -81,6 +81,8 @@ class IngressConfig(Section):
     """
     #: Base domain for the proxied services
     base_domain: DomainName
+    #: The ingress class to use when creating ingress resources
+    class_name: str = "nginx"
 
 
 class KubernetesConfig(Section):

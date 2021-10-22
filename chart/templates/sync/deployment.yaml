@@ -13,9 +13,12 @@ spec:
   template:
     metadata:
       labels: {{ include "zenith.componentSelectorLabels" (list . "sync") | nindent 8 }}
-      {{- with .Values.sync.podAnnotations }}
-      annotations: {{ toYaml . | nindent 8 }}
-      {{- end }}
+      annotations:
+        # Force the deployment to roll when the config changes
+        checksum/config: {{ include (print $.Template.BasePath "/sync/configmap.yaml") . | sha256sum }}
+        {{- with .Values.sync.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ include "zenith.componentname" (list . "sync") }}
       {{- with .Values.sync.imagePullSecrets }}

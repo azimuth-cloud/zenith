@@ -278,6 +278,7 @@ class ServiceReconciler:
                         "name": service.name,
                     },
                     "spec": {
+                        "ingressClassName": self.config.ingress.class_name,
                         "rules": [
                             {
                                 "host": f"{service.name}.{self.config.ingress.base_domain}",

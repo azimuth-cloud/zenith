@@ -12,13 +12,13 @@ sync:
     consul:
       # The address of the Consul server
       # By default, this uses the load-balanced server from the internal Consul
-      address: "{{ include \"zenith.componentname\" (list . \"consul\") }}-consul-server"
+      address: "{{ include \"zenith.fullname\" . }}-consul-server"
       # The port of the Consul server
-      port: 8500
+      # port:
       # The timeout to use with Consul blocking queries
-      blockingQueryTimeout: 300
+      # blockingQueryTimeout:
       # The tag to use to filter out Zenith services
-      serviceTag: zenith-subdomain
+      # serviceTag:
     kubernetes:
       # The namespace to create Zenith service resources in
       namespace: zenith-services
@@ -27,6 +27,8 @@ sync:
         # The base domain to use for the proxied services
         # Proxied services will be made available at <subdomain>.<base domain>
         baseDomain:
+        # The ingress class to use for ingress resources
+        # className:
   # The image to use for the sync component
   image:
     repository: ghcr.io/stackhpc/zenith-sync

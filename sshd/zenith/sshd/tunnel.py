@@ -171,7 +171,7 @@ def consul_register_service(server_config, tunnel_config):
         "Address": server_config.service_host,
         "Port": tunnel_config.service_port,
         # Tag the service as a tunnel proxy subdomain
-        "Tags": [ZENITH_SERVICE_TAG],
+        "Tags": [server_config.service_tag],
         # Associate any specified metadata
         "Meta": tunnel_config.metadata,
         # Specify a TTL check
