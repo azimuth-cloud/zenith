@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 """
-This script returns a SemVer-compatible version for the current commit using the distance
-from the last tag and the name of the branch that the commit is on.
+This script generates a SemVer-compatible version for the current commit using a combination
+of the last tag, the distance from that tag and the name of the branch that the commit is on.
 
 The version is constructed such that the versions for a particular branch will order correctly.
 
