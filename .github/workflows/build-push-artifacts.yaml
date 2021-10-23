@@ -87,7 +87,7 @@ jobs:
         uses: ./.github/actions/semver-action
 
       - name: Publish Helm charts
-        run: ./.github/actions/helm-publish-action
+        uses: ./.github/actions/helm-publish-action
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: ${{ steps.semver.outputs.version }}
