@@ -67,6 +67,7 @@ runs:
     # https://github.com/moby/buildkit/issues/1896
     # https://github.com/docker/buildx/pull/535
     - name: Move cache
+      shell: bash
       run: |
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
