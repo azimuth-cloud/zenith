@@ -1,0 +1,33 @@
+name: Publish Helm charts
+description: >
+  Publishes all the Helm charts from the given directory with the given version and app-version
+  to the specified branch.
+inputs:
+  directory:
+    description: The directory to publish charts from (defaults to current working directory).
+    required: false
+    default: ""
+  version:
+    description: The version to use when publishing charts (defaults to version in Chart.yaml).
+    required: false
+    default: ""
+  app-version:
+    description: The appVersion to use when publishing charts (default to appVersion in Chart.yaml).
+    required: false
+    default: ""
+  branch:
+    description: The branch to publish charts to.
+    required: false
+    default: gh-pages
+  token:
+    description: The GitHub token.
+    required: true
+runs:
+  using: docker
+  image: Dockerfile
+  env:
+    CHART_DIRECTORY: ${{ inputs.directory }}
+    VERSION: ${{ inputs.version }}
+    APP_VERSION: ${{ inputs.app-version }}
+    PUBLISH_BRANCH: ${{ inputs.branch }}
+    GITHUB_TOKEN: ${{ inputs.token }}

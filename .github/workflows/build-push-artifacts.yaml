@@ -86,8 +86,12 @@ jobs:
         id: semver
         uses: ./.github/actions/semver-action
 
-      - run: echo "${{ steps.semver.outputs.version }}"
-      - run: echo "${{ steps.semver.outputs.short-sha }}"
+      - name: Publish Helm charts
+        run: ./.github/actions/helm-publish-action
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ steps.semver.outputs.version }}
+          app-version: ${{ steps.semver.outputs.short-sha }}
 
       # Use an up-to-date version of Python for the script
       # - uses: actions/setup-python@v2

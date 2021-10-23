@@ -3,7 +3,6 @@ description: >
   Generates a SemVer-compatible version for the current commit using a combination
   of the last tag, the distance from that tag and the name of the branch that the
   commit is on.
-inputs:
 outputs:
   version:
     description: The SemVer-compatible version for the current commit.
