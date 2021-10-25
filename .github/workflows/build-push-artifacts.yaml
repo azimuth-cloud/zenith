@@ -34,7 +34,7 @@ jobs:
             type=sha,prefix=
 
       - name: Build and push image
-        uses: stackhpc/github-actions/docker-multiarch-build-push@main
+        uses: stackhpc/github-actions/docker-multiarch-build-push@master
         with:
           cache-key: ${{ matrix.component }}
           context: ./${{ matrix.component }}
@@ -58,10 +58,10 @@ jobs:
 
       - name: Get SemVer version for current commit
         id: semver
-        uses: stackhpc/github-actions/semver@main
+        uses: stackhpc/github-actions/semver@master
 
       - name: Publish Helm charts
-        uses: stackhpc/github-actions/helm-publish@main
+        uses: stackhpc/github-actions/helm-publish@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: ${{ steps.semver.outputs.version }}
