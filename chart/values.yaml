@@ -30,6 +30,19 @@ sync:
         baseDomain:
         # The ingress class to use for ingress resources
         # className:
+        # Custom annotations to add to the created ingress resources
+        # annotations:
+        # The TLS configuration
+        #   * If given, the wildcard secret is used with highest precedence
+        #   * Otherwise a cert-manager issuer is used if specified
+        #   * If neither are specified, TLS is not enabled
+        # tls:
+        #   The name of a secret containing a wildcard certificate
+        #   wildcardSecretName:
+        #   The type of the cert-manager issuer to generate annotations for
+        #   certManagerIssuerType: namespace | cluster (default cluster)
+        #   The name of the cert-manager issuer to use
+        #   certManagerIssuerName:
   # The image to use for the sync component
   image:
     repository: ghcr.io/stackhpc/zenith-sync
@@ -68,6 +81,22 @@ sync:
 sshd:
   enabled: true
   config: {}
+    # The address of the Consul agent
+    # consulAddress:
+    # The port of the Consul agent
+    # consulPort:
+    # The TTL for the services created in Consul
+    # consulServiceTtl:
+    # The heartbeat interval for services created in Consul
+    # consulHeartbeatInterval:
+    # The interval after which a service in Consul will be deregistered
+    # consulDeregisterInterval:
+    # The number of times that posting a heartbeat to Consul can fail before a tunnel is closed
+    # consulHeartbeatFailures:
+    # The tag to use when registering services with Consul
+    # serviceTag:
+    # The number of seconds to wait to receive a tunnel configuration before exiting
+    # configureTimeout:
   # The image to use for the SSHD server
   image:
     repository: ghcr.io/stackhpc/zenith-sshd

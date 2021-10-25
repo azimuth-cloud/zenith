@@ -9,6 +9,9 @@ rules:
     resources: ["services", "endpoints"]
     verbs: ["*"]
   - apiGroups: ["networking.k8s.io"]
+    resources: ["ingressclasses"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["*"]
 {{- end }}
