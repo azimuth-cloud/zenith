@@ -5,3 +5,9 @@ type: application
 # The version and appVersion are updated by the chart build script
 version: 0.1.0
 appVersion: main
+
+dependencies:
+  - name: consul
+    version: ~0.35.0
+    repository: https://helm.releases.hashicorp.com
+    condition: consul.enabled

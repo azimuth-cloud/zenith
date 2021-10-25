@@ -1,35 +1,40 @@
 nameOverride: ""
 fullnameOverride: ""
 
+# Configuration for Consul
+# See https://www.consul.io/docs/k8s/helm
 consul:
   # Whether or not to deploy a Consul instance
   enabled: true
-  # The spec for the Consul instance
-  # The structure of this corresponds to the values for the official Consul Helm chart
-  #   https://www.consul.io/docs/k8s/helm
-  spec: {}
 
-proxy:
-  # The base domain to use for the proxy
-  # Proxied services will be made available at <subdomain>.<base domain>
-  baseDomain:
-  # The address to use for the Consul server
-  # By default, this uses the load-balanced server from the internal Consul
-  # This is treated as a template, so may include variables such as the release name
-  consulServerAddress: "{{ include \"zenith.componentname\" (list . \"consul\") }}-consul-server:8500"
-  # The image to use for the proxy
+sync:
+  config:
+    consul:
+      # The address of the Consul server
+      # By default, this uses the load-balanced server from the internal Consul
+      address: "{{ include \"zenith.fullname\" . }}-consul-server"
+      # The port of the Consul server
+      # port:
+      # The timeout to use with Consul blocking queries
+      # blockingQueryTimeout:
+      # The tag to use to filter out Zenith services
+      # serviceTag:
+    kubernetes:
+      # The namespace to create Zenith service resources in
+      namespace: zenith-services
+      # The ingress configuration
+      ingress:
+        # The base domain to use for the proxied services
+        # Proxied services will be made available at <subdomain>.<base domain>
+        baseDomain:
+        # The ingress class to use for ingress resources
+        # className:
+  # The image to use for the sync component
   image:
-    repository: ghcr.io/stackhpc/zenith-proxy
+    repository: ghcr.io/stackhpc/zenith-sync
     pullPolicy: IfNotPresent
-    tag: ""
-  imagePullSecrets: []
-  # The number of proxy replicas to use
-  replicaCount: 1
-  # Customise annotations for proxy pods
-  podAnnotations: {}
-  # Customise pod-level security context for proxy pods
-  podSecurityContext: {}
-  # Customise container-level security context for proxy pods
+    tag: ""  # Defaults to appVersion if not given
+  # Customise container-level security context for sync pods
   securityContext:
     # By default, require that the container runs as a non-root user with
     # a read-only root filesystem
@@ -37,44 +42,35 @@ proxy:
       drop: [ALL]
     readOnlyRootFilesystem: true
     runAsNonRoot: true
-  # The service definition for the proxy
-  service:
-    type: ClusterIP
-    port: 8080
-  # Resources for proxy containers
+  # Resources for sync containers
   resources: {}
-  # Customise node selector for proxy pods
+  # Configuration for the kubectl proxy container
+  kubectlProxy:
+    image:
+      repository: bitnami/kubectl
+      pullPolicy: IfNotPresent
+      tag: ""  # Defaults to the Kubernetes version if not given
+    securityContext: {}
+    resources: {}
+  imagePullSecrets: []
+  # Customise annotations for sync pods
+  podAnnotations: {}
+  # Customise pod-level security context for sync pods
+  podSecurityContext: {}
+  # Customise node selector for sync pods
   nodeSelector: {}
-  # Customise tolerations for proxy pods
+  # Customise tolerations for sync pods
   tolerations: []
-  # Customise affinity rules for proxy pods
+  # Customise affinity rules for sync pods
   affinity: {}
-  # Ingress settings
-  ingress:
-    enabled: true
-    # The TLS configuration has to cover <baseDomain> and *.<baseDomain>
-    tls:
-      # If you have one certificate with a SAN for each, you can use a single secret
-      # - hosts:
-      #     - "<baseDomain>"
-      #     - "*.<baseDomain>"
-      #   secretName: <secret-name-for-san-cert>
-      # Otherwise you can use separate certificates for the base and wildcard domains
-      # - hosts: ["<baseDomain>"]
-      #   secretName: <secret-name-for-base-domain-cert>
-      # - hosts: ["*.<baseDomain>"]
-      #   secretName: <secret-name-for-wildcard-cert>
 
 sshd:
-  # The address of the Consul agent to register services with
-  # If not given, the local agent for the node is used
-  # This is treated as a template, so may include variables such as the release name
-  consulAgentAddress:
+  config: {}
   # The image to use for the SSHD server
   image:
     repository: ghcr.io/stackhpc/zenith-sshd
     pullPolicy: IfNotPresent
-    tag: ""
+    tag: ""  # Defaults to appVersion if not given
   imagePullSecrets: []
   # The number of SSHD replicas to use
   replicaCount: 1
@@ -90,12 +86,6 @@ sshd:
       drop: [ALL]
     readOnlyRootFilesystem: true
     runAsNonRoot: true
-    # By default, require that the container runs as a non-root user with
-    # a read-only root filesystem and only the required capabilities
-    # capabilities:
-    #   drop: [ALL]
-    #   add: [AUDIT_WRITE, CHOWN, SYS_CHROOT, SETGID, SETUID]
-    # readOnlyRootFilesystem: true
   # The service definition for SSHD
   # Because SSH is a TCP service, it cannot be exposed with an Ingress
   # Instead, it must be exposed with a NodePort or LoadBalancer service

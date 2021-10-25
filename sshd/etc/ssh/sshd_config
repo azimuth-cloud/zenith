@@ -23,11 +23,11 @@ AllowUsers zenith
 
 # The zenith user can authenticate with any public key
 PubkeyAuthentication yes
-AuthorizedKeysCommand /usr/bin/accept-key "%t" "%k"
+AuthorizedKeysCommand /usr/local/bin/zenith-sshd authorized-keys "%t" "%k"
 AuthorizedKeysCommandUser zenith
 
-# Force the tunnel-init command to run
-ForceCommand tunnel-init
+# Force the tunnel command to run
+ForceCommand zenith-sshd tunnel
 
 # Allow the user to create reverse SSH tunnels only
 AllowTcpForwarding remote

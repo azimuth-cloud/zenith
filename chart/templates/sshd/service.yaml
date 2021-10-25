@@ -1,21 +1,19 @@
-{{- $component := "sshd" -}}
-{{- $values := get .Values $component -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "zenith.componentname" (list . $component) }}
-  labels: {{ include "zenith.componentLabels" (list . $component) | nindent 4 }}
+  name: {{ include "zenith.componentname" (list . "sshd") }}
+  labels: {{ include "zenith.componentLabels" (list . "sshd") | nindent 4 }}
 spec:
-  type: {{ $values.service.type }}
-  {{- with $values.service.loadBalancerIP }}
+  type: {{ .Values.sshd.service.type }}
+  {{- with .Values.sshd.service.loadBalancerIP }}
   loadBalancerIP: {{ . }}
   {{- end }}
   ports:
-    - port: {{ $values.service.port }}
+    - port: {{ .Values.sshd.service.port }}
       targetPort: sshd
       protocol: TCP
       name: sshd
-      {{- if (eq $values.service.type "NodePort") }}
-      nodePort: {{ $values.service.nodePort }}
+      {{- if (eq .Values.sshd.service.type "NodePort") }}
+      nodePort: {{ .Values.sshd.service.nodePort }}
       {{- end }}
-  selector: {{ include "zenith.componentSelectorLabels" (list . $component) | nindent 4 }}
+  selector: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 4 }}
