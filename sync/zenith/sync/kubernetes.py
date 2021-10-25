@@ -4,6 +4,7 @@ import logging
 
 import httpx
 
+from .config import CertManagerIssuerType
 from .model import EventKind
 
 
@@ -286,40 +287,59 @@ class ServiceReconciler:
             )
         )
         # Finally, create or update the ingress object
-        await Ingress(client).create_or_patch(
-            self._adopt(
-                service,
-                {
-                    "metadata": {
-                        "name": service.name,
-                    },
-                    "spec": {
-                        "ingressClassName": self.config.ingress.class_name,
-                        "rules": [
-                            {
-                                "host": f"{service.name}.{self.config.ingress.base_domain}",
-                                "http": {
-                                    "paths": [
-                                        {
-                                            "path": "/",
-                                            "pathType": "Prefix",
-                                            "backend": {
-                                                "service": {
-                                                    "name": service.name,
-                                                    "port": {
-                                                        "name": "dynamic",
-                                                    },
-                                                },
+        service_domain = f"{service.name}.{self.config.ingress.base_domain}"
+        ingress = {
+            "metadata": {
+                "name": service.name,
+                "annotations": dict(self.config.ingress.annotations),
+            },
+            "spec": {
+                "ingressClassName": self.config.ingress.class_name,
+                "rules": [
+                    {
+                        "host": service_domain,
+                        "http": {
+                            "paths": [
+                                {
+                                    "path": "/",
+                                    "pathType": "Prefix",
+                                    "backend": {
+                                        "service": {
+                                            "name": service.name,
+                                            "port": {
+                                                "name": "dynamic",
                                             },
                                         },
-                                    ],
+                                    },
                                 },
-                            },
-                        ],
+                            ],
+                        },
                     },
+                ],
+            },
+        }
+        # Add TLS section if configured
+        if self.config.ingress.tls.wildcard_secret_name:
+            ingress["spec"]["tls"] = [
+                {
+                    "hosts": [service_domain],
+                    "secretName": self.config.ingress.tls.wildcard_secret_name,
                 }
-            )
-        )
+            ]
+        elif self.config.ingress.tls.cert_manager_issuer_name:
+            if self.config.ingress.tls.cert_manager_issuer_type == CertManagerIssuerType.CLUSTER:
+                issuer_annotation = "cert-manager.io/cluster-issuer"
+            else:
+                issuer_annotation = "cert-manager.io/issuer"
+            issuer_name = self.config.ingress.tls.cert_manager_issuer_name
+            ingress["metadata"]["annotations"][issuer_annotation] = issuer_name
+            ingress["spec"]["tls"] = [
+                {
+                    "hosts": [service_domain],
+                    "secretName": f"tls-{service.name}",
+                }
+            ]
+        await Ingress(client).create_or_patch(self._adopt(service, ingress))
 
     async def _remove_service(self, client, name):
         """

@@ -8,6 +8,7 @@ consul:
   enabled: true
 
 sync:
+  enabled: true
   config:
     consul:
       # The address of the Consul server
@@ -65,6 +66,7 @@ sync:
   affinity: {}
 
 sshd:
+  enabled: true
   config: {}
   # The image to use for the SSHD server
   image:

@@ -1,4 +1,6 @@
+{{- if .Values.sync.enabled }}
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Values.sync.config.kubernetes.namespace }}
+{{- end }}

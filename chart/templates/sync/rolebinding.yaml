@@ -1,3 +1,4 @@
+{{- if .Values.sync.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -14,3 +15,4 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: {{ include "zenith.componentname" (list . "sync") }}
+{{- end }}

@@ -1,3 +1,4 @@
+{{- if .Values.sync.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -10,3 +11,4 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["*"]
+{{- end }}

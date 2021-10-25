@@ -26,7 +26,6 @@ class ServiceWatcher:
         (result, next index) tuple.
         """
         params = { "index": index, "wait": f"{self.config.blocking_query_timeout}s" }
-        # Ignore read timeouts and just continue with the same index
         while True:
             try:
                 response = await client.get(
@@ -35,6 +34,7 @@ class ServiceWatcher:
                     timeout = self.config.blocking_query_timeout + 1
                 )
             except httpx.ReadTimeout:
+                # Ignore read timeouts and just continue with the same index
                 continue
             else:
                 response.raise_for_status()
@@ -146,7 +146,7 @@ class ServiceWatcher:
                 for name in known_names.difference(names):
                     self._services.pop(name)
                     self._emit(EventKind.DELETED, Service(name = name))
-                    #service_tasks.pop(name).cancel()
+                    service_tasks.pop(name).cancel()
                 services_task = asyncio.create_task(self._wait_services(client, idx))
             else:
                 # If the completed task was a service health task, process the update
