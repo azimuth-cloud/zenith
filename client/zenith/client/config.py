@@ -12,10 +12,6 @@ from configomatic import Configuration, LoggingConfiguration
 
 #: Constraint for a Zenith subdomain
 Subdomain = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
-#: Constraint for a Zenith metadata key
-MetadataKey = constr(regex = r"^[a-zA-Z0-9_-]+$", max_length = 128)
-#: Constraint for a Zenith metadata value
-MetadataValue = constr(max_length = 512)
 
 
 def default_subdomain():
@@ -85,15 +81,5 @@ class ClientConfig(Configuration):
     #: and hyphens, and cannot start or end with a hyphen
     #: In addition, Zenith subdomains must start with a letter and be lower case
     subdomain: Subdomain = Field(default_factory = default_subdomain)
-    #: The metadata associated with the tunnel
-    metadata: typing.Dict[MetadataKey, MetadataValue] = Field(default_factory = dict)
-
-    @validator("metadata")
-    def validate_metadata(cls, v):
-        """
-        Validates the given input as a metadata dict.
-        """
-        if len(v) > 64:
-            raise ValueError("at most 64 metadata items are permitted")
-        else:
-            return v
+    #: The backend protocol
+    backend_protocol: typing.Literal["http", "https"] = "http"

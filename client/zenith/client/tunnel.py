@@ -80,7 +80,7 @@ def configure_tunnel(ssh_proc, config):
             tunnel_config = dict(
                 allocated_port = allocated_port,
                 subdomain = config.subdomain,
-                metadata = config.metadata
+                backend_protocol = config.backend_protocol,
             )
             # The server will ask for the config when it is ready
             wait_for_marker(ssh_proc.stdout, "SEND_CONFIGURATION")

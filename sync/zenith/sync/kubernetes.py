@@ -1,11 +1,13 @@
 import asyncio
 import contextlib
+import importlib.metadata
 import logging
 
 import httpx
 
 from .config import CertManagerIssuerType
 from .model import EventKind
+from .ingress_modifier import INGRESS_MODIFIERS_ENTRY_POINT_GROUP
 
 
 logger = logging.getLogger(__name__)
@@ -209,6 +211,12 @@ class KubernetesResource:
 
 Service = KubernetesResource.make("v1", "Service")
 Endpoints = KubernetesResource.make("v1", "Endpoints", "endpoints")
+IngressClass = KubernetesResource.make(
+    "networking.k8s.io/v1",
+    "IngressClass",
+    "ingressclasses",
+    namespaced = False
+)
 Ingress = KubernetesResource.make("networking.k8s.io/v1", "Ingress", "ingresses")
 
 
@@ -234,7 +242,7 @@ class ServiceReconciler:
         })
         return resource
 
-    async def _reconcile_service(self, client, service):
+    async def _reconcile_service(self, client, service, ingress_modifier):
         """
         Reconciles a service with Kubernetes.
         """
@@ -339,6 +347,10 @@ class ServiceReconciler:
                     "secretName": f"tls-{service.name}",
                 }
             ]
+        # Apply ingress-specific modifications for the backend protocol
+        protocol = service.metadata.get("backend-protocol", "http")
+        ingress_modifier.configure_backend_protocol(ingress, protocol)
+        # Check if the backend uses TLS, in which case we need to add an annotation
         await Ingress(client).create_or_patch(self._adopt(service, ingress))
 
     async def _remove_service(self, client, name):
@@ -365,13 +377,23 @@ class ServiceReconciler:
             client.default_namespace
         )
         async with client:
+            # Before we process the service, retrieve information about the ingress class
+            # we are using
+            ingress_class = await IngressClass(client).get(self.config.ingress.class_name)
+            # Load the ingress modifier that handles the controller
+            entry_points = importlib.metadata.entry_points()[INGRESS_MODIFIERS_ENTRY_POINT_GROUP]
+            ingress_modifier = next(
+                ep.load()()
+                for ep in entry_points
+                if ep.name == ingress_class["spec"]["controller"]
+            )
             initial_services, events, _ = await source.subscribe()
             # Before we start listening to events, we reconcile the existing services
             # We also remove any services that exist that are not part of the initial set
             services = await Service(client).list()
             existing_services = set(s["metadata"]["name"] for s in services)
             tasks = [
-                self._reconcile_service(client, service)
+                self._reconcile_service(client, service, ingress_modifier)
                 for service in initial_services
             ] + [
                 self._remove_service(client, name)
@@ -383,4 +405,4 @@ class ServiceReconciler:
                 if event.kind == EventKind.DELETED:
                     await self._remove_service(client, event.service.name)
                 else:
-                    await self._reconcile_service(client, event.service)
+                    await self._reconcile_service(client, event.service, ingress_modifier)

@@ -9,14 +9,8 @@ import time
 import typing
 import uuid
 
-from pydantic import BaseModel, Field, constr, validator
+from pydantic import BaseModel, constr, validator
 import requests
-
-
-#: Constraint for a Consul metadata key
-MetadataKey = constr(regex = r"^[a-zA-Z0-9_-]+$", max_length = 128)
-#: Constraint for a Consul metadata value
-MetadataValue = constr(max_length = 512)
 
 
 class ClientConfig(BaseModel):
@@ -31,8 +25,8 @@ class ClientConfig(BaseModel):
     #: In addition, Kubernetes service names must start with a letter and be lower case
     #: See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
     subdomain: constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
-    #: Metadata for the tunnel
-    metadata: typing.Dict[MetadataKey, MetadataValue] = Field(default_factory = dict)
+    #: The backend protocol
+    backend_protocol: typing.Literal["http", "https"] = "http"
 
     @validator("allocated_port")
     def validate_port(cls, v):
@@ -55,39 +49,16 @@ class ClientConfig(BaseModel):
             else:
                 raise ValueError("Given port is not in use")
 
-    @validator("metadata")
-    def validate_metadata(cls, v):
-        """
-        Validates the given input as a metadata dict.
-        """
-        if len(v) > 64:
-            raise ValueError("at most 64 metadata items are permitted")
-        else:
-            return v
-
 
 @dataclasses.dataclass
-class TunnelConfig:
+class Tunnel:
     """
-    Object representing the configuration for this tunnel.
+    Object representing the state of this tunnel.
     """
-    #: The ID of the service, unique to this tunnel
-    service_id: str
-    #: The port for the service (the tunnel port)
-    service_port: int
-    #: The subdomain to use
-    subdomain: str
-    #: Metadata for the tunnel
-    metadata: typing.Dict[str, str]
-
-    @classmethod
-    def from_client_config(cls, config):
-        return cls(
-            service_id = str(uuid.uuid4()),
-            service_port = config.allocated_port,
-            subdomain = config.subdomain,
-            metadata = config.metadata
-        )
+    #: The unqiue ID of the tunnel
+    id: str
+    # The configuration of the tunnel
+    config: ClientConfig
 
 
 def raise_timeout_error(signum, frame):
@@ -142,12 +113,15 @@ def get_tunnel_config(timeout_secs):
     print("RECEIVED_CONFIGURATION")
     print(f"[SERVER] [INFO] Received configuration: {''.join(input_lines)}")
     sys.stdout.flush()
-    # Try to parse the received configuration as JSON
-    client_config = ClientConfig.parse_raw("".join(input_lines))
-    return TunnelConfig.from_client_config(client_config)
+    return Tunnel(
+        # Generate a unique ID for the tunnel
+        id = str(uuid.uuid4()),
+        # Try to parse and validate the received configuration
+        config = ClientConfig.parse_raw("".join(input_lines))
+    )
 
 
-def consul_check_service_host_and_port(server_config, tunnel_config):
+def consul_check_service_host_and_port(server_config, tunnel):
     """
     Checks that there is not already an existing service with the same host and port.
 
@@ -159,7 +133,7 @@ def consul_check_service_host_and_port(server_config, tunnel_config):
     params = dict(
         filter = (
             f"Address == \"{server_config.service_host}\" and "
-            f"Port == \"{tunnel_config.service_port}\" and "
+            f"Port == \"{tunnel.config.allocated_port}\" and "
             f"\"{server_config.service_tag}\" in Tags"
         )
     )
@@ -175,7 +149,7 @@ def consul_check_service_host_and_port(server_config, tunnel_config):
         print("[SERVER] [INFO] No existing service found")
 
 
-def consul_register_service(server_config, tunnel_config):
+def consul_register_service(server_config, tunnel):
     """
     Registers the service with Consul.
     """
@@ -184,20 +158,22 @@ def consul_register_service(server_config, tunnel_config):
     url = f"{server_config.consul_url}/v1/agent/service/register"
     response = requests.put(url, json = {
         # Use the tunnel ID as the unique id
-        "ID": tunnel_config.service_id,
+        "ID": tunnel.id,
         # Use the specified subdomain as the service name
-        "Name": tunnel_config.subdomain,
+        "Name": tunnel.config.subdomain,
         # Use the service host and port as the address and port in Consul
         "Address": server_config.service_host,
-        "Port": tunnel_config.service_port,
+        "Port": tunnel.config.allocated_port,
         # Tag the service as a tunnel proxy subdomain
         "Tags": [server_config.service_tag],
-        # Associate any specified metadata
-        "Meta": tunnel_config.metadata,
+        # Associate any required metadata
+        "Meta": {
+            "backend-protocol": tunnel.config.backend_protocol,
+        },
         # Specify a TTL check
         "Check": {
             # Use the unique ID for the tunnel as the check id
-            "CheckId": tunnel_config.service_id,
+            "CheckId": tunnel.id,
             "Name": "tunnel-active",
             # Use a TTL health check
             # This will move into the critical state, removing the service from
@@ -216,7 +192,7 @@ def consul_register_service(server_config, tunnel_config):
         sys.exit(1)
 
 
-def consul_deregister_service(server_config, tunnel_config):
+def consul_deregister_service(server_config, tunnel):
     """
     Deregisters the service in Consul.
 
@@ -225,17 +201,17 @@ def consul_deregister_service(server_config, tunnel_config):
     up the process in the case where the client disconnects or we are given a
     chance to exit gracefully.
     """
-    url = f"{server_config.consul_url}/v1/agent/service/deregister/{tunnel_config.service_id}"
+    url = f"{server_config.consul_url}/v1/agent/service/deregister/{tunnel.id}"
     requests.put(url)
 
 
-def consul_heartbeat(server_config, tunnel_config, failures):
+def consul_heartbeat(server_config, tunnel, failures):
     """
     Updates the health check for the service to the pass state.
     """
     print("[SERVER] [INFO] Updating service health status in Consul...")
     # Post the service information to consul
-    url = f"{server_config.consul_url}/v1/agent/check/pass/{tunnel_config.service_id}"
+    url = f"{server_config.consul_url}/v1/agent/check/pass/{tunnel.id}"
     response = requests.put(url, params = { "note": "Tunnel active" })
     if 200 <= response.status_code < 300:
         print("[SERVER] [INFO] Service health updated successfully")
@@ -252,12 +228,12 @@ def consul_heartbeat(server_config, tunnel_config, failures):
     sys.exit(1)
 
 
-def register_signal_handlers(server_config, tunnel_config):
+def register_signal_handlers(server_config, tunnel):
     """
     Registers signal handlers for each of the exit signals we care about.
     """
     def signal_handler(signum, frame):
-        consul_deregister_service(server_config, tunnel_config)
+        consul_deregister_service(server_config, tunnel)
         sys.exit()
 
     signal.signal(signal.SIGALRM, signal_handler)
@@ -316,12 +292,12 @@ def run(server_config):
          nefarious client from binding an additional domain that is known to
          them to an existing tunnel in order to intercept traffic.
     """
-    tunnel_config = get_tunnel_config(server_config.configure_timeout)   
-    consul_check_service_host_and_port(server_config, tunnel_config)
-    consul_register_service(server_config, tunnel_config)
-    register_signal_handlers(server_config, tunnel_config)
+    tunnel = get_tunnel_config(server_config.configure_timeout)
+    consul_check_service_host_and_port(server_config, tunnel)
+    consul_register_service(server_config, tunnel)
+    register_signal_handlers(server_config, tunnel)
     # We need to send a regular heartbeat to Consul
     failures = 0
     while True:
-        failures = consul_heartbeat(server_config, tunnel_config, failures)
+        failures = consul_heartbeat(server_config, tunnel, failures)
         time.sleep(server_config.consul_heartbeat_interval)
