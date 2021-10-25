@@ -5,7 +5,7 @@ import string
 import tempfile
 import typing
 
-from pydantic import Field, FilePath, constr, validator
+from pydantic import Field, FilePath, constr
 
 from configomatic import Configuration, LoggingConfiguration
 
@@ -64,22 +64,46 @@ class ClientConfig(Configuration):
     ssh_executable: str = "ssh"
     #: Path to the SSH identity to use
     #: If not given, a temporary SSH key is created
-    ssh_identity_path: FilePath = Field(default_factory = default_ssh_identity_path)
+    ssh_identity_path: FilePath = Field(
+        default_factory = default_ssh_identity_path,
+        description = "The SSH identity to use. If not given, a temporary identity is generated."
+    )
     #: The time to wait for a successful configuration before timing out
-    configure_timeout: int = 5
+    configure_timeout: int = Field(
+        5,
+        description = "Time to wait for a successful configuration before timing out."
+    )
     #: The address of the target Zenith server
-    server_address: str
+    server_address: str = Field(
+        ...,
+        description = "The address of the target Zenith server."
+    )
     #: The port of the target Zenith server
-    server_port: int = 22
+    server_port: int = Field(
+        22,
+        description = "The port of the target Zenith server."
+    )
     #: The address to forward tunnel traffic to
-    forward_to_host: str = "localhost"
+    forward_to_host: str = Field(
+        "localhost",
+        description = "The address to forward tunnel traffic to."
+    )
     #: The port to forward tunnel traffic to
-    forward_to_port: int = 8000
+    forward_to_port: int = Field(
+        8000,
+        description = "The port to forward tunnel traffic to."
+    )
     #: The subdomain to request
     #: If not given, a random subdomain is used
     #: Subdomains must be at most 63 characters long, can only contain alphanumeric characters
     #: and hyphens, and cannot start or end with a hyphen
     #: In addition, Zenith subdomains must start with a letter and be lower case
-    subdomain: Subdomain = Field(default_factory = default_subdomain)
+    subdomain: Subdomain = Field(
+        default_factory = default_subdomain,
+        description = "The subdomain to request. If not given, a random subdomain is used."
+    )
     #: The backend protocol
-    backend_protocol: typing.Literal["http", "https"] = "http"
+    backend_protocol: typing.Literal["http", "https"] = Field(
+        "http",
+        description = "The backend protocol to use."
+    )
