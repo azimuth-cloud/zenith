@@ -1,3 +1,4 @@
+import base64
 import contextlib
 import json
 import logging
@@ -64,6 +65,14 @@ def timeout(seconds):
         signal.signal(signal.SIGALRM, previous)
 
 
+def base64_encoded_content(path):
+    """
+    Returns the base64-encoded content of the file at the given path as a string.
+    """
+    with path.open("rb") as fh:
+        return base64.b64encode(fh.read()).decode()
+
+
 def configure_tunnel(ssh_proc, config):
     """
     Configures the tunnel.
@@ -82,10 +91,18 @@ def configure_tunnel(ssh_proc, config):
                 subdomain = config.subdomain,
                 backend_protocol = config.backend_protocol,
             )
+            if config.tls_cert_file:
+                tunnel_config["tls_cert"] = base64_encoded_content(config.tls_cert_file)
+                tunnel_config["tls_key"] = base64_encoded_content(config.tls_key_file)
+            if config.tls_client_ca_file:
+                tunnel_config["tls_client_ca"] = base64_encoded_content(config.tls_client_ca_file)
             # The server will ask for the config when it is ready
             wait_for_marker(ssh_proc.stdout, "SEND_CONFIGURATION")
-            # Then we send a JSON-encoded version of the configuration
-            json.dump(tunnel_config, ssh_proc.stdin)
+            # Dump the configuration as JSON and encode it as base64 with line breaks
+            config = base64.encodebytes(json.dumps(tunnel_config).encode()).decode()
+            # Send each line to the SSH process
+            for line in config.splitlines():
+                print(line, file = ssh_proc.stdin)
             # We need to send a newline to trigger the read on the server
             print("", file = ssh_proc.stdin)
             # Indicate that we have sent all the configuration that we will send

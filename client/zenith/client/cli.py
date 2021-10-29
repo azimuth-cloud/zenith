@@ -1,5 +1,6 @@
-import click
 import functools
+
+import click
 
 from .config import ClientConfig
 from . import tunnel

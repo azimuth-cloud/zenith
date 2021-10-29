@@ -20,6 +20,19 @@ class ServiceWatcher:
         self._queues = {}
         self._running = False
 
+    async def _tls_config(self, client, instance):
+        """
+        Fetches the TLS configuration from Consul for the given instance.
+        """
+        url = f"/v1/kv/{self.config.tls_key_prefix}/{instance['Service']['ID']}?raw=true"
+        response = await client.get(url)
+        if 200 <= response.status_code < 300:
+            return response.json()
+        elif response.status_code == 404:
+            # Not found is fine - just return an empty configuration
+            return {}
+        response.raise_for_status()
+
     async def _wait(self, client, path, index = 0):
         """
         Fetches the path using a blocking query using the given index and returns a
@@ -70,6 +83,8 @@ class ServiceWatcher:
         """
         # The return value from the health endpoint for the service is a list of instances
         instances, next_idx = await self._wait(client, f"/v1/health/service/{name}", index)
+        # Request the TLS configurations for each instance in parallel
+        tls_configs = await asyncio.gather(*[self._tls_config(client, i) for i in instances])
         service = Service(
             name = name,
             # Merge the metadata from the instances together
@@ -86,7 +101,9 @@ class ServiceWatcher:
                 )
                 for instance in instances
                 if all(c["Status"] == "passing" for c in instance["Checks"])
-            ]
+            ],
+            # Merge the TLS configuration associated with each instance
+            tls = { k: v for tls_config in tls_configs for k, v in tls_config.items() }
         )
         return service, next_idx
 

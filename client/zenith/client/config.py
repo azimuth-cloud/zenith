@@ -5,7 +5,7 @@ import string
 import tempfile
 import typing
 
-from pydantic import Field, FilePath, constr
+from pydantic import Field, FilePath, constr, root_validator, validator
 
 from configomatic import Configuration, LoggingConfiguration
 
@@ -70,7 +70,7 @@ class ClientConfig(Configuration):
     )
     #: The time to wait for a successful configuration before timing out
     configure_timeout: int = Field(
-        5,
+        10,
         description = "Time to wait for a successful configuration before timing out."
     )
     #: The address of the target Zenith server
@@ -107,3 +107,27 @@ class ClientConfig(Configuration):
         "http",
         description = "The backend protocol to use."
     )
+    #: Path to a file containing a TLS certificate chain to use
+    tls_cert_file: typing.Optional[FilePath] = Field(
+        default = None,
+        description = "Path to a file containing a TLS certificate chain to use."
+    )
+    #: Path to a file containing a TLS certificate key to use
+    tls_key_file: typing.Optional[FilePath] = Field(
+        default = None,
+        description = "Path to a file containing the TLS private key to use."
+    )
+    #: Path to a file containing a CA to use to validate TLS client certificates
+    tls_client_ca_file: typing.Optional[FilePath] = Field(
+        default = None,
+        description = "Path to a file containing the CA for validating TLS client certificates."
+    )
+
+    @root_validator()
+    def validate(cls, values):
+        # Cert file and key file must be given together or not at all
+        tls_cert_file = values.get("tls_cert_file")
+        tls_key_file = values.get("tls_key_file")
+        if tls_cert_file and not tls_key_file:
+            raise ValueError("TLS key is required if TLS cert is specified")
+        return values

@@ -209,15 +209,16 @@ class KubernetesResource:
         )
 
 
-Service = KubernetesResource.make("v1", "Service")
 Endpoints = KubernetesResource.make("v1", "Endpoints", "endpoints")
+Secret = KubernetesResource.make("v1", "Secret")
+Service = KubernetesResource.make("v1", "Service")
+Ingress = KubernetesResource.make("networking.k8s.io/v1", "Ingress", "ingresses")
 IngressClass = KubernetesResource.make(
     "networking.k8s.io/v1",
     "IngressClass",
     "ingressclasses",
     namespaced = False
 )
-Ingress = KubernetesResource.make("networking.k8s.io/v1", "Ingress", "ingresses")
 
 
 class ServiceReconciler:
@@ -232,14 +233,22 @@ class ServiceReconciler:
     def _log(self, level, *args, **kwargs):
         getattr(self._logger, level)(*args, **kwargs)
 
+    def _labels(self, name):
+        """
+        Returns the labels that identify a resource as belonging to a service.
+        """
+        return {
+            self.config.created_by_label: "zenith-sync",
+            self.config.service_name_label: name,
+        }
+
     def _adopt(self, service, resource):
         """
         Adopts the given resource for the service.
         """
-        resource.setdefault("metadata", {}).setdefault("labels", {}).update({
-            self.config.created_by_label: "zenith-sync",
-            self.config.service_name_label: service.name,
-        })
+        metadata = resource.setdefault("metadata", {})
+        labels = metadata.setdefault("labels", {})
+        labels.update(self._labels(service.name))
         return resource
 
     async def _reconcile_service(self, client, service, ingress_modifier):
@@ -326,31 +335,75 @@ class ServiceReconciler:
                 ],
             },
         }
-        # Add TLS section if configured
-        if self.config.ingress.tls.wildcard_secret_name:
-            ingress["spec"]["tls"] = [
-                {
-                    "hosts": [service_domain],
-                    "secretName": self.config.ingress.tls.wildcard_secret_name,
-                }
-            ]
+        # Apply ingress-specific modifications for the backend protocol
+        protocol = service.metadata.get("backend-protocol", "http")
+        ingress_modifier.configure_backend_protocol(ingress, protocol)
+        # Add a TLS section if required
+        tls_secret_name = None
+        if "tls-cert" in service.tls:
+            # If the service specified a TLS certificate, that takes precedence
+            # Make a secret with the certificate in to pass to the ingress
+            tls_secret_name = f"tls-{service.name}"
+            await Secret(client).create_or_patch(
+                self._adopt(
+                    service,
+                    {
+                        "metadata": {
+                            "name": tls_secret_name,
+                        },
+                        "type": "kubernetes.io/tls",
+                        "data": {
+                            "tls.crt": service.tls["tls-cert"],
+                            "tls.key": service.tls["tls-key"],
+                        },
+                    }
+                )
+            )
+        elif self.config.ingress.tls.wildcard_secret_name:
+            # If a wildcard certificate was given, use that next
+            tls_secret_name = self.config.ingress.tls.wildcard_secret_name
         elif self.config.ingress.tls.cert_manager_issuer_name:
+            # Configure a cert-manager issuer if specified
+            # cert-manager will put the TLS certificate and key in this secret
+            tls_secret_name = f"tls-{service.name}"
             if self.config.ingress.tls.cert_manager_issuer_type == CertManagerIssuerType.CLUSTER:
                 issuer_annotation = "cert-manager.io/cluster-issuer"
             else:
                 issuer_annotation = "cert-manager.io/issuer"
             issuer_name = self.config.ingress.tls.cert_manager_issuer_name
             ingress["metadata"]["annotations"][issuer_annotation] = issuer_name
+        # Configure the TLS section
+        if tls_secret_name:
             ingress["spec"]["tls"] = [
                 {
                     "hosts": [service_domain],
-                    "secretName": f"tls-{service.name}",
-                }
+                    "secretName": tls_secret_name,
+                },
             ]
-        # Apply ingress-specific modifications for the backend protocol
-        protocol = service.metadata.get("backend-protocol", "http")
-        ingress_modifier.configure_backend_protocol(ingress, protocol)
-        # Check if the backend uses TLS, in which case we need to add an annotation
+        # Configure client certificate handling if required
+        if "tls-client-ca" in service.tls:
+            # First, make a secret containing the CA certificate
+            client_ca_secret = f"tls-client-ca-{service.name}"
+            await Secret(client).create_or_patch(
+                self._adopt(
+                    service,
+                    {
+                        "metadata": {
+                            "name": client_ca_secret,
+                        },
+                        "data": {
+                            "ca.crt": service.tls["tls-client-ca"]
+                        }
+                    }
+                )
+            )
+            # Apply ingress-specific modifications for client certificate handling
+            ingress_modifier.configure_tls_client_certificates(
+                ingress,
+                self.config.namespace,
+                client_ca_secret
+            )
+        # Create or update the ingress
         await Ingress(client).create_or_patch(self._adopt(service, ingress))
 
     async def _remove_service(self, client, name):
@@ -365,6 +418,11 @@ class ServiceReconciler:
             await Endpoints(client).delete(name)
         async with client.suppress_not_found():
             await Service(client).delete(name)
+        # Also delete any secrets created for the service
+        # This will leave behind secrets created by cert-manager, which is fine because
+        # it means that if a reconnection occurs for the same domain it will be a
+        # renewal which doesn't count towards the rate limit
+        await Secret(client).delete_all(labels = self._labels(name))
 
     async def run(self, source):
         """

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import base64
 import contextlib
 import dataclasses
+import json
 import signal
 import socket
 import sys
@@ -9,7 +11,9 @@ import time
 import typing
 import uuid
 
-from pydantic import BaseModel, constr, validator
+from cryptography.x509 import load_pem_x509_certificate
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from pydantic import BaseModel, constr, root_validator, validator
 import requests
 
 
@@ -27,6 +31,21 @@ class ClientConfig(BaseModel):
     subdomain: constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
     #: The backend protocol
     backend_protocol: typing.Literal["http", "https"] = "http"
+    #: Base64-encoded TLS certificate to use
+    tls_cert: typing.Optional[str] = None
+    #: Base64-encoded TLS private key to use (corresponds to TLS cert)
+    tls_key: typing.Optional[str] = None
+    #: Base64-encoded CA for validating TLS client certificates, if required
+    tls_client_ca: typing.Optional[str] = None
+
+    @root_validator()
+    def validate(cls, values):
+        # Chain file and key file must be given together or not at all
+        tls_cert = values.get("tls_cert")
+        tls_key = values.get("tls_key")
+        if tls_cert and not tls_key:
+            raise ValueError("TLS key is required if TLS cert is specified")
+        return values
 
     @validator("allocated_port")
     def validate_port(cls, v):
@@ -48,6 +67,33 @@ class ClientConfig(BaseModel):
                 return port
             else:
                 raise ValueError("Given port is not in use")
+
+    @validator("tls_cert")
+    def validate_tls_cert(cls, v):
+        """
+        Validate the given value decoding it and trying to load it as a
+        PEM-encoded X509 certificate.
+        """
+        _ = load_pem_x509_certificate(base64.b64decode(v))
+        return v
+
+    @validator("tls_key")
+    def validate_tls_key(cls, v):
+        """
+        Validate the given value by decoding it and trying to load it as a
+        PEM-encoded private key.
+        """
+        _ = load_pem_private_key(base64.b64decode(v), None)
+        return v
+
+    @validator("tls_client_ca")
+    def validate_tls_client_ca(cls, v):
+        """
+        Validate the given value by decoding it and trying to load it as a
+        PEM-encoded X509 certificate.
+        """
+        _ = load_pem_x509_certificate(base64.b64decode(v))
+        return v
 
 
 @dataclasses.dataclass
@@ -86,7 +132,7 @@ def get_tunnel_config(timeout_secs):
     """
     Returns a config object for the tunnel.
     """
-    print("[SERVER] [INFO] Waiting for configuration...")
+    print("[SERVER] [INFO] Waiting for configuration")
     # A well behaved client should take very little time to negotiate the tunnel config
     # So we timeout if it takes too long
     try:
@@ -109,15 +155,17 @@ def get_tunnel_config(timeout_secs):
             file = sys.stderr
         )
         sys.exit(1)
+    # The configuration should be base64-encoded JSON
+    config_json = json.loads(base64.decodebytes("".join(input_lines).encode()))
     # We confirm that we received the configuration by sending another marker
     print("RECEIVED_CONFIGURATION")
-    print(f"[SERVER] [INFO] Received configuration: {''.join(input_lines)}")
+    print(f"[SERVER] [INFO] Received configuration: {json.dumps(config_json, indent = 2)}")
     sys.stdout.flush()
     return Tunnel(
         # Generate a unique ID for the tunnel
         id = str(uuid.uuid4()),
         # Try to parse and validate the received configuration
-        config = ClientConfig.parse_raw("".join(input_lines))
+        config = ClientConfig.parse_obj(config_json)
     )
 
 
@@ -128,7 +176,7 @@ def consul_check_service_host_and_port(server_config, tunnel):
     This protects against the case where a badly behaved client reports a different port
     to the one that was assigned to them.
     """
-    print("[SERVER] [INFO] Checking if Consul service already exists for allocated port...")
+    print("[SERVER] [INFO] Checking if Consul service already exists for allocated port")
     url = f"{server_config.consul_url}/v1/agent/services"
     params = dict(
         filter = (
@@ -153,7 +201,29 @@ def consul_register_service(server_config, tunnel):
     """
     Registers the service with Consul.
     """
-    print("[SERVER] [INFO] Registering service with Consul...")
+    # First, try to post any TLS configuration to the KV store
+    tls_config = {}
+    if tunnel.config.tls_cert:
+        tls_config.update({
+            "tls-cert": tunnel.config.tls_cert,
+            "tls-key": tunnel.config.tls_key,
+        })
+    if tunnel.config.tls_client_ca:
+        tls_config["tls-client-ca"] = tunnel.config.tls_client_ca
+    if tls_config:
+        print("[SERVER] [INFO] Posting TLS configuration to Consul")
+        url = "{consul_url}/v1/kv/{key_prefix}/{tunnel_id}".format(
+            consul_url = server_config.consul_url,
+            key_prefix = server_config.consul_key_prefix,
+            tunnel_id = tunnel.id
+        )
+        response = requests.put(url, json = tls_config)
+        if 200 <= response.status_code < 300:
+            print("[SERVER] [INFO] Posted TLS configuration successfully")
+        else:
+            print("[SERVER] [ERROR] Failed to post TLS configuration", file = sys.stderr)
+            sys.exit(1)
+    print("[SERVER] [INFO] Registering service with Consul")
     # Post the service information to consul
     url = f"{server_config.consul_url}/v1/agent/service/register"
     response = requests.put(url, json = {
@@ -196,20 +266,28 @@ def consul_deregister_service(server_config, tunnel):
     """
     Deregisters the service in Consul.
 
-    We don't really care if this fails because the service will be marked critical
-    after the TTL and removed after the deregister interval anyway, but this speeds
-    up the process in the case where the client disconnects or we are given a
-    chance to exit gracefully.
+    If this fails, the service will be marked critical after the TTL and removed
+    after the deregister interval anyway, but this speeds up the process in the
+    case where the client disconnects or we are given a chance to exit gracefully.
+
+    We also attempt to remove any TLS configuration for the tunnel. We don't mind
+    too much if this fails, e.g. if there is no TLS configuration - because each
+    tunnel gets a unique id, the worst case scenario is that an unused TLS
+    configuration is left behind in Consul.
     """
-    url = f"{server_config.consul_url}/v1/agent/service/deregister/{tunnel.id}"
-    requests.put(url)
+    requests.put(f"{server_config.consul_url}/v1/agent/service/deregister/{tunnel.id}")
+    requests.delete("{consul_url}/v1/kv/{key_prefix}/{tunnel_id}".format(
+        consul_url = server_config.consul_url,
+        key_prefix = server_config.consul_key_prefix,
+        tunnel_id = tunnel.id
+    ))
 
 
 def consul_heartbeat(server_config, tunnel, failures):
     """
     Updates the health check for the service to the pass state.
     """
-    print("[SERVER] [INFO] Updating service health status in Consul...")
+    print("[SERVER] [INFO] Updating service health status in Consul")
     # Post the service information to consul
     url = f"{server_config.consul_url}/v1/agent/check/pass/{tunnel.id}"
     response = requests.put(url, params = { "note": "Tunnel active" })
