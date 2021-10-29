@@ -228,6 +228,9 @@ def consul_register_service(server_config, tunnel):
     print("[SERVER] [INFO] Registering service with Consul")
     # Post the service information to consul
     url = f"{server_config.consul_url}/v1/agent/service/register"
+    metadata = { "backend-protocol": tunnel.config.backend_protocol }
+    if tunnel.config.read_timeout:
+        metadata.update({ "read-timeout": str(tunnel.config.read_timeout) })
     response = requests.put(url, json = {
         # Use the tunnel ID as the unique id
         "ID": tunnel.id,
@@ -239,10 +242,7 @@ def consul_register_service(server_config, tunnel):
         # Tag the service as a tunnel proxy subdomain
         "Tags": [server_config.service_tag],
         # Associate any required metadata
-        "Meta": {
-            "backend-protocol": tunnel.config.backend_protocol,
-            "read-timeout": tunnel.config.read_timeout,
-        },
+        "Meta": metadata,
         # Specify a TTL check
         "Check": {
             # Use the unique ID for the tunnel as the check id

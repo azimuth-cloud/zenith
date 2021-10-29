@@ -346,7 +346,13 @@ class ServiceReconciler:
         # Apply controller-specific modifications for the read timeout, if given
         read_timeout = service.metadata.get("read-timeout")
         if read_timeout:
-            ingress_modifier.configure_read_timeout(read_timeout)
+            # Check that the read timeout is an int - if it isn't don't use it
+            try:
+                read_timeout = int(read_timeout)
+            except ValueError:
+                logger.warn("Given read timeout is not a valid integer")
+            else:
+                ingress_modifier.configure_read_timeout(read_timeout)
         # Add a TLS section if required
         tls_secret_name = None
         if "tls-cert" in service.tls:
