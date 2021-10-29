@@ -308,7 +308,8 @@ class ServiceReconciler:
         ingress = {
             "metadata": {
                 "name": service.name,
-                "annotations": dict(self.config.ingress.annotations),
+                "labels": {},
+                "annotations": {},
             },
             "spec": {
                 "ingressClassName": self.config.ingress.class_name,
@@ -335,9 +336,17 @@ class ServiceReconciler:
                 ],
             },
         }
-        # Apply ingress-specific modifications for the backend protocol
+        # Apply controller-specific defaults to the ingress
+        ingress_modifier.configure_defaults(ingress)
+        # Apply custom annotations after the controller defaults
+        ingress["metadata"]["annotations"].update(self.config.ingress.annotations)
+        # Apply controller-specific modifications for the backend protocol
         protocol = service.metadata.get("backend-protocol", "http")
         ingress_modifier.configure_backend_protocol(ingress, protocol)
+        # Apply controller-specific modifications for the read timeout, if given
+        read_timeout = service.metadata.get("read-timeout")
+        if read_timeout:
+            ingress_modifier.configure_read_timeout(read_timeout)
         # Add a TLS section if required
         tls_secret_name = None
         if "tls-cert" in service.tls:
@@ -397,7 +406,7 @@ class ServiceReconciler:
                     }
                 )
             )
-            # Apply ingress-specific modifications for client certificate handling
+            # Apply controller-specific modifications for client certificate handling
             ingress_modifier.configure_tls_client_certificates(
                 ingress,
                 self.config.namespace,

@@ -5,7 +5,7 @@ import string
 import tempfile
 import typing
 
-from pydantic import Field, FilePath, constr, root_validator, validator
+from pydantic import Field, FilePath, conint, constr, root_validator
 
 from configomatic import Configuration, LoggingConfiguration
 
@@ -106,6 +106,11 @@ class ClientConfig(Configuration):
     backend_protocol: typing.Literal["http", "https"] = Field(
         "http",
         description = "The backend protocol to use."
+    )
+    #: The read timeout for the service
+    read_timeout: typing.Optional[conint(gt = 0)] = Field(
+        None,
+        description = "The read timeout to use."
     )
     #: Path to a file containing a TLS certificate chain to use
     tls_cert_file: typing.Optional[FilePath] = Field(

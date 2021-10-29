@@ -13,7 +13,7 @@ import uuid
 
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-from pydantic import BaseModel, constr, root_validator, validator
+from pydantic import BaseModel, conint, constr, root_validator, validator
 import requests
 
 
@@ -31,6 +31,8 @@ class ClientConfig(BaseModel):
     subdomain: constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
     #: The backend protocol
     backend_protocol: typing.Literal["http", "https"] = "http"
+    #: The read timeout for the service (in seconds)
+    read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Base64-encoded TLS certificate to use
     tls_cert: typing.Optional[str] = None
     #: Base64-encoded TLS private key to use (corresponds to TLS cert)
@@ -156,16 +158,16 @@ def get_tunnel_config(timeout_secs):
         )
         sys.exit(1)
     # The configuration should be base64-encoded JSON
-    config_json = json.loads(base64.decodebytes("".join(input_lines).encode()))
+    config = json.loads(base64.decodebytes("".join(input_lines).encode()))
     # We confirm that we received the configuration by sending another marker
     print("RECEIVED_CONFIGURATION")
-    print(f"[SERVER] [INFO] Received configuration: {json.dumps(config_json, indent = 2)}")
+    print(f"[SERVER] [INFO] Received configuration: {json.dumps(config, indent = 2)}")
     sys.stdout.flush()
     return Tunnel(
         # Generate a unique ID for the tunnel
         id = str(uuid.uuid4()),
         # Try to parse and validate the received configuration
-        config = ClientConfig.parse_obj(config_json)
+        config = ClientConfig.parse_obj(config)
     )
 
 
@@ -239,6 +241,7 @@ def consul_register_service(server_config, tunnel):
         # Associate any required metadata
         "Meta": {
             "backend-protocol": tunnel.config.backend_protocol,
+            "read-timeout": tunnel.config.read_timeout,
         },
         # Specify a TTL check
         "Check": {

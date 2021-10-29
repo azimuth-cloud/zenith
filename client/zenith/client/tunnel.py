@@ -91,6 +91,8 @@ def configure_tunnel(ssh_proc, config):
                 subdomain = config.subdomain,
                 backend_protocol = config.backend_protocol,
             )
+            if config.read_timeout:
+                tunnel_config.update(read_timeout = config.read_timeout)
             if config.tls_cert_file:
                 tunnel_config["tls_cert"] = base64_encoded_content(config.tls_cert_file)
                 tunnel_config["tls_key"] = base64_encoded_content(config.tls_key_file)
