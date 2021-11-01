@@ -1,4 +1,6 @@
+import enum
 import re
+import typing as t
 
 from pydantic import Field
 
@@ -17,6 +19,8 @@ class ConsulConfig(Section):
     blocking_query_timeout: int = 300
     #: The tag to use to filter out Zenith services
     service_tag: str = "zenith-service"
+    #: The prefix to use when looking for TLS configurations in the KV store
+    tls_key_prefix: str = "zenith"
 
     @property
     def url(self):
@@ -75,6 +79,30 @@ class DomainName(str):
         return cls(".".join(DNSLabel.validate(dns_label) for dns_label in dns_labels))
 
 
+class CertManagerIssuerType(str, enum.Enum):
+    """
+    Enumeration of possible choices for the cert-manager issuer type.
+    """
+    #: Issuer type for a namespace-scoped issuer
+    NAMESPACE = "namespace"
+    #: Issuer type for a cluster-scoped issuer
+    CLUSTER = "cluster"
+
+
+class TLSConfig(Section):
+    """
+    Model for the ingress TLS configuration section.
+    """
+    #: The name of a secret containing a wildcard certificate
+    #: This takes precedence over all other options if given
+    wildcard_secret_name: t.Optional[str] = None
+    #: The type of the cert-manager issuer to generate annotations for
+    cert_manager_issuer_type: CertManagerIssuerType = CertManagerIssuerType.CLUSTER
+    #: The name of the cert-manager issuer to use
+    #: This is used when a secret name is not given
+    cert_manager_issuer_name: t.Optional[str] = None
+
+
 class IngressConfig(Section):
     """
     Model for the ingress configuration section.
@@ -83,6 +111,10 @@ class IngressConfig(Section):
     base_domain: DomainName
     #: The ingress class to use when creating ingress resources
     class_name: str = "nginx"
+    #: The annotations to add to the ingress resources
+    annotations: t.Dict[str, str] = Field(default_factory = dict)
+    #: The TLS configuration
+    tls: TLSConfig = Field(default_factory = TLSConfig)
 
 
 class KubernetesConfig(Section):

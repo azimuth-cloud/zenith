@@ -1,3 +1,4 @@
+{{- if .Values.sshd.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,3 +7,4 @@ metadata:
 data:
   sshd.yaml: |
     {{- tpl (toYaml .Values.sshd.config) . | nindent 4 }}
+{{- end }}

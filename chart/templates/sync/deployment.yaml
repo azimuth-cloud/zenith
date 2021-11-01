@@ -1,3 +1,4 @@
+{{- if .Values.sync.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -57,3 +58,4 @@ spec:
         - name: etc-zenith
           configMap:
             name: {{ include "zenith.componentname" (list . "sync-conf") }}
+{{- end }}

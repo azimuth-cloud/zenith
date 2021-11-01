@@ -1,10 +1,13 @@
 import asyncio
 import contextlib
+import importlib.metadata
 import logging
 
 import httpx
 
+from .config import CertManagerIssuerType
 from .model import EventKind
+from .ingress_modifier import INGRESS_MODIFIERS_ENTRY_POINT_GROUP
 
 
 logger = logging.getLogger(__name__)
@@ -206,9 +209,16 @@ class KubernetesResource:
         )
 
 
-Service = KubernetesResource.make("v1", "Service")
 Endpoints = KubernetesResource.make("v1", "Endpoints", "endpoints")
+Secret = KubernetesResource.make("v1", "Secret")
+Service = KubernetesResource.make("v1", "Service")
 Ingress = KubernetesResource.make("networking.k8s.io/v1", "Ingress", "ingresses")
+IngressClass = KubernetesResource.make(
+    "networking.k8s.io/v1",
+    "IngressClass",
+    "ingressclasses",
+    namespaced = False
+)
 
 
 class ServiceReconciler:
@@ -223,17 +233,25 @@ class ServiceReconciler:
     def _log(self, level, *args, **kwargs):
         getattr(self._logger, level)(*args, **kwargs)
 
+    def _labels(self, name):
+        """
+        Returns the labels that identify a resource as belonging to a service.
+        """
+        return {
+            self.config.created_by_label: "zenith-sync",
+            self.config.service_name_label: name,
+        }
+
     def _adopt(self, service, resource):
         """
         Adopts the given resource for the service.
         """
-        resource.setdefault("metadata", {}).setdefault("labels", {}).update({
-            self.config.created_by_label: "zenith-sync",
-            self.config.service_name_label: service.name,
-        })
+        metadata = resource.setdefault("metadata", {})
+        labels = metadata.setdefault("labels", {})
+        labels.update(self._labels(service.name))
         return resource
 
-    async def _reconcile_service(self, client, service):
+    async def _reconcile_service(self, client, service, ingress_modifier):
         """
         Reconciles a service with Kubernetes.
         """
@@ -286,40 +304,122 @@ class ServiceReconciler:
             )
         )
         # Finally, create or update the ingress object
-        await Ingress(client).create_or_patch(
-            self._adopt(
-                service,
-                {
-                    "metadata": {
-                        "name": service.name,
-                    },
-                    "spec": {
-                        "ingressClassName": self.config.ingress.class_name,
-                        "rules": [
-                            {
-                                "host": f"{service.name}.{self.config.ingress.base_domain}",
-                                "http": {
-                                    "paths": [
-                                        {
-                                            "path": "/",
-                                            "pathType": "Prefix",
-                                            "backend": {
-                                                "service": {
-                                                    "name": service.name,
-                                                    "port": {
-                                                        "name": "dynamic",
-                                                    },
-                                                },
+        service_domain = f"{service.name}.{self.config.ingress.base_domain}"
+        ingress = {
+            "metadata": {
+                "name": service.name,
+                "labels": {},
+                "annotations": {},
+            },
+            "spec": {
+                "ingressClassName": self.config.ingress.class_name,
+                "rules": [
+                    {
+                        "host": service_domain,
+                        "http": {
+                            "paths": [
+                                {
+                                    "path": "/",
+                                    "pathType": "Prefix",
+                                    "backend": {
+                                        "service": {
+                                            "name": service.name,
+                                            "port": {
+                                                "name": "dynamic",
                                             },
                                         },
-                                    ],
+                                    },
                                 },
-                            },
-                        ],
+                            ],
+                        },
                     },
-                }
+                ],
+            },
+        }
+        # Apply controller-specific defaults to the ingress
+        ingress_modifier.configure_defaults(ingress)
+        # Apply custom annotations after the controller defaults
+        ingress["metadata"]["annotations"].update(self.config.ingress.annotations)
+        # Apply controller-specific modifications for the backend protocol
+        protocol = service.metadata.get("backend-protocol", "http")
+        ingress_modifier.configure_backend_protocol(ingress, protocol)
+        # Apply controller-specific modifications for the read timeout, if given
+        read_timeout = service.metadata.get("read-timeout")
+        if read_timeout:
+            # Check that the read timeout is an int - if it isn't don't use it
+            try:
+                read_timeout = int(read_timeout)
+            except ValueError:
+                logger.warn("Given read timeout is not a valid integer")
+            else:
+                ingress_modifier.configure_read_timeout(ingress, read_timeout)
+        # Add a TLS section if required
+        tls_secret_name = None
+        if "tls-cert" in service.tls:
+            # If the service specified a TLS certificate, that takes precedence
+            # Make a secret with the certificate in to pass to the ingress
+            tls_secret_name = f"tls-{service.name}"
+            await Secret(client).create_or_patch(
+                self._adopt(
+                    service,
+                    {
+                        "metadata": {
+                            "name": tls_secret_name,
+                        },
+                        "type": "kubernetes.io/tls",
+                        "data": {
+                            "tls.crt": service.tls["tls-cert"],
+                            "tls.key": service.tls["tls-key"],
+                        },
+                    }
+                )
             )
-        )
+        elif self.config.ingress.tls.wildcard_secret_name:
+            # If a wildcard certificate was given, use that next
+            tls_secret_name = self.config.ingress.tls.wildcard_secret_name
+        elif self.config.ingress.tls.cert_manager_issuer_name:
+            # Configure a cert-manager issuer if specified
+            # cert-manager will put the TLS certificate and key in this secret
+            tls_secret_name = f"tls-{service.name}"
+            if self.config.ingress.tls.cert_manager_issuer_type == CertManagerIssuerType.CLUSTER:
+                issuer_annotation = "cert-manager.io/cluster-issuer"
+            else:
+                issuer_annotation = "cert-manager.io/issuer"
+            issuer_name = self.config.ingress.tls.cert_manager_issuer_name
+            ingress["metadata"]["annotations"][issuer_annotation] = issuer_name
+        # Configure the TLS section
+        if tls_secret_name:
+            ingress["spec"]["tls"] = [
+                {
+                    "hosts": [service_domain],
+                    "secretName": tls_secret_name,
+                },
+            ]
+        # Configure client certificate handling if required
+        if "tls-client-ca" in service.tls:
+            # First, make a secret containing the CA certificate
+            client_ca_secret = f"tls-client-ca-{service.name}"
+            await Secret(client).create_or_patch(
+                self._adopt(
+                    service,
+                    {
+                        "metadata": {
+                            "name": client_ca_secret,
+                        },
+                        "data": {
+                            "ca.crt": service.tls["tls-client-ca"]
+                        }
+                    }
+                )
+            )
+            # Apply controller-specific modifications for client certificate handling
+            ingress_modifier.configure_tls_client_certificates(
+                ingress,
+                self.config.namespace,
+                client_ca_secret
+            )
+        # Create or update the ingress
+        await Ingress(client).create_or_patch(self._adopt(service, ingress))
 
     async def _remove_service(self, client, name):
         """
@@ -333,6 +433,11 @@ class ServiceReconciler:
             await Endpoints(client).delete(name)
         async with client.suppress_not_found():
             await Service(client).delete(name)
+        # Also delete any secrets created for the service
+        # This will leave behind secrets created by cert-manager, which is fine because
+        # it means that if a reconnection occurs for the same domain it will be a
+        # renewal which doesn't count towards the rate limit
+        await Secret(client).delete_all(labels = self._labels(name))
 
     async def run(self, source):
         """
@@ -345,13 +450,23 @@ class ServiceReconciler:
             client.default_namespace
         )
         async with client:
+            # Before we process the service, retrieve information about the ingress class
+            # we are using
+            ingress_class = await IngressClass(client).get(self.config.ingress.class_name)
+            # Load the ingress modifier that handles the controller
+            entry_points = importlib.metadata.entry_points()[INGRESS_MODIFIERS_ENTRY_POINT_GROUP]
+            ingress_modifier = next(
+                ep.load()()
+                for ep in entry_points
+                if ep.name == ingress_class["spec"]["controller"]
+            )
             initial_services, events, _ = await source.subscribe()
             # Before we start listening to events, we reconcile the existing services
             # We also remove any services that exist that are not part of the initial set
             services = await Service(client).list()
             existing_services = set(s["metadata"]["name"] for s in services)
             tasks = [
-                self._reconcile_service(client, service)
+                self._reconcile_service(client, service, ingress_modifier)
                 for service in initial_services
             ] + [
                 self._remove_service(client, name)
@@ -363,4 +478,4 @@ class ServiceReconciler:
                 if event.kind == EventKind.DELETED:
                     await self._remove_service(client, event.service.name)
                 else:
-                    await self._reconcile_service(client, event.service)
+                    await self._reconcile_service(client, event.service, ingress_modifier)

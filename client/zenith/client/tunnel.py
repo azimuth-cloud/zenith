@@ -1,10 +1,13 @@
+import base64
 import contextlib
 import json
 import logging
+import os
 import re
 import signal
 import subprocess
 import sys
+import tempfile
 
 
 logger = logging.getLogger(__name__)
@@ -80,12 +83,22 @@ def configure_tunnel(ssh_proc, config):
             tunnel_config = dict(
                 allocated_port = allocated_port,
                 subdomain = config.subdomain,
-                metadata = config.metadata
+                backend_protocol = config.backend_protocol,
             )
+            if config.read_timeout:
+                tunnel_config.update(read_timeout = config.read_timeout)
+            if config.tls_cert_file:
+                tunnel_config["tls_cert"] = config.tls_cert_data
+                tunnel_config["tls_key"] = config.tls_key_data
+            if config.tls_client_ca_file:
+                tunnel_config["tls_client_ca"] = config.tls_client_ca_data
             # The server will ask for the config when it is ready
             wait_for_marker(ssh_proc.stdout, "SEND_CONFIGURATION")
-            # Then we send a JSON-encoded version of the configuration
-            json.dump(tunnel_config, ssh_proc.stdin)
+            # Dump the configuration as JSON and encode it as base64 with line breaks
+            config = base64.encodebytes(json.dumps(tunnel_config).encode()).decode()
+            # Send each line to the SSH process
+            for line in config.splitlines():
+                print(line, file = ssh_proc.stdin)
             # We need to send a newline to trigger the read on the server
             print("", file = ssh_proc.stdin)
             # Indicate that we have sent all the configuration that we will send
@@ -101,68 +114,111 @@ def configure_tunnel(ssh_proc, config):
         sys.exit(1)
 
 
+@contextlib.contextmanager
+def ssh_identity(config):
+    """
+    Context manager that makes a temporary file to contain the SSH identity, populates it
+    (either using the given private key or by generating one) and yields the path.
+    """
+    with tempfile.TemporaryDirectory() as key_directory:
+        key_file = os.path.join(key_directory, "id_rsa")
+        if config.ssh_private_key_data:
+            logger.info("[CLIENT] Using supplied SSH private key")
+            # If the private key data was given, use it (it is base64-encoded)
+            with open(key_file, 'wb') as fh:
+                fh.write(base64.b64decode(config.ssh_private_key_data))
+        else:
+            logger.info("[CLIENT] Generating temporary SSH private key")
+            # If no key was given, generate one
+            # Use a 2048-bit RSA key as it represents an acceptable compromise between speed
+            # of generation and security, especially for a disposible key
+            subprocess.check_call([
+                "ssh-keygen",
+                "-t",
+                "rsa",
+                "-b",
+                "2048",
+                "-N",
+                "",
+                "-C",
+                "zenith-key",
+                "-f",
+                key_file
+            ])
+        yield key_file
+
+
 def create(config):
     """
     Creates a tunnel with the given configuration.
     """
-    # Derive the SSH command to use from the configuration
-    ssh_command = [
-        config.ssh_executable,
-        # Force a TTY so that we can send data over stdin
-        "-tt",
-        # Exit immediately if the port forwarding fails
-        "-o",
-        "ExitOnForwardFailure=yes",
-        # Ignore host keys (for now)
-        "-o",
-        "StrictHostKeyChecking=no",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        # Use the generated authorized key to authenticate
-        "-o",
-        "IdentitiesOnly=yes",
-        "-i",
-        config.ssh_identity_path,
-        # Use a dynamically allocated port
-        "-R",
-        f"0:{config.forward_to_host}:{config.forward_to_port}",
-        # Configure the Zenith server
-        "-p",
-        str(config.server_port),
-        f"zenith@{config.server_address}",
-    ]
+    # If running as root and another user has been specified, switch to that user
+    if config.run_as_user:
+        if os.getuid() == 0:
+            logger.info("[CLIENT] Switching to uid '%d'", config.run_as_user)
+            os.setuid(config.run_as_user)
+        else:
+            logger.warn("[CLIENT] Cannot switch user - not running as root")
 
-    logging.info("[CLIENT] Spawning SSH process")
-    logging.debug("[CLIENT] SSH command - %s", " ".join(ssh_command))
+    with ssh_identity(config) as ssh_identity_path:
+        # Derive the SSH command to use from the configuration
+        ssh_command = [
+            config.ssh_executable,
+            # Force a TTY so that we can send data over stdin
+            "-tt",
+            # Exit immediately if the port forwarding fails
+            "-o",
+            "ExitOnForwardFailure=yes",
+            # Ignore host keys (for now)
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            # Use the generated authorized key to authenticate
+            "-o",
+            "IdentitiesOnly=yes",
+            "-i",
+            ssh_identity_path,
+            # Use a dynamically allocated port
+            "-R",
+            f"0:{config.forward_to_host}:{config.forward_to_port}",
+            # Configure the Zenith server
+            "-p",
+            str(config.server_port),
+            f"zenith@{config.server_address}",
+        ]
 
-    # Open the SSH process
-    ssh_proc = subprocess.Popen(
-        ssh_command,
-        text = True,
-        stdin = subprocess.PIPE,
-        stdout = subprocess.PIPE,
-        # Send stderr to the same handler as stdout
-        stderr = subprocess.STDOUT
-    )
+        logger.info("[CLIENT] Spawning SSH process")
+        logger.debug("[CLIENT] SSH command - %s", " ".join(ssh_command))
 
-    logger.info("[CLIENT] Negotiating tunnel configuration")
-
-    configure_tunnel(ssh_proc, config)
-
-    # Forward stdout (which contains stderr) until the SSH process exits
-    for line in ssh_proc.stdout:
-        print(line.rstrip())
-
-    # Belt and braces to make sure the process has definitely terminated
-    ssh_proc.wait()
-
-    if ssh_proc.returncode == 0:
-        logger.info("[CLIENT] SSH process exited cleanly")
-    else:
-        logger.error(
-            "[CLIENT] SSH process exited with non-zero exit code (%d)",
-            ssh_proc.returncode
+        # Open the SSH process
+        ssh_proc = subprocess.Popen(
+            ssh_command,
+            text = True,
+            stdin = subprocess.PIPE,
+            stdout = subprocess.PIPE,
+            # Send stderr to the same handler as stdout
+            stderr = subprocess.STDOUT
         )
 
-    # Exit with the returncode from the SSH command
-    sys.exit(ssh_proc.returncode)
+        logger.info("[CLIENT] Negotiating tunnel configuration")
+
+        configure_tunnel(ssh_proc, config)
+
+        # Forward stdout (which contains stderr) until the SSH process exits
+        for line in ssh_proc.stdout:
+            print(line.rstrip())
+
+        # Belt and braces to make sure the process has definitely terminated
+        ssh_proc.wait()
+
+        if ssh_proc.returncode == 0:
+            logger.info("[CLIENT] SSH process exited cleanly")
+        else:
+            logger.error(
+                "[CLIENT] SSH process exited with non-zero exit code (%d)",
+                ssh_proc.returncode
+            )
+
+        # Exit with the returncode from the SSH command
+        sys.exit(ssh_proc.returncode)
