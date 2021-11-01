@@ -322,9 +322,7 @@ def register_signal_handlers(server_config, tunnel):
     signal.signal(signal.SIGHUP, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    # We deliberately ignore SIGKILL as that is meant to signal an ungraceful exit
-    # It is also not supported on some platforms, e.g. OSX
-    # Any well-behaved exit request should be SIGTERM
+    signal.signal(signal.SIGKILL, signal_handler)
 
 
 def run(server_config):
