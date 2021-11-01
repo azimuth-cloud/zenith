@@ -30,9 +30,9 @@ class SSHDConfig(Configuration):
     #: The port of the Consul server
     consul_port: int = 8500
     #: The TTL for the services created in Consul
-    consul_service_ttl: str = "30s"
+    consul_service_ttl: str = "10s"
     #: The heartbeat interval for services created in Consul
-    consul_heartbeat_interval: int = 10
+    consul_heartbeat_interval: int = 2
     #: The interval after which a service in Consul will be deregistered
     consul_deregister_interval: str = "5m"
     #: The number of times that posting a heartbeat to Consul can fail before a tunnel is closed

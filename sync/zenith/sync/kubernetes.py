@@ -352,7 +352,7 @@ class ServiceReconciler:
             except ValueError:
                 logger.warn("Given read timeout is not a valid integer")
             else:
-                ingress_modifier.configure_read_timeout(read_timeout)
+                ingress_modifier.configure_read_timeout(ingress, read_timeout)
         # Add a TLS section if required
         tls_secret_name = None
         if "tls-cert" in service.tls:

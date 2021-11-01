@@ -1,11 +1,9 @@
-import os
+import base64
 import random
-import subprocess
 import string
-import tempfile
 import typing
 
-from pydantic import Field, FilePath, conint, constr, root_validator
+from pydantic import Field, FilePath, conint, constr, validator
 
 from configomatic import Configuration, LoggingConfiguration
 
@@ -24,28 +22,12 @@ def default_subdomain():
     return "".join(chars)
 
 
-def default_ssh_identity_path():
+def base64_encoded_content(path):
     """
-    Generates a temporary SSH identity and returns the path.
+    Returns the base64-encoded content of the file at the given path as a string.
     """
-    key_directory = tempfile.mkdtemp()
-    key_file = os.path.join(key_directory, "id_rsa")
-    # Use a 2048-bit RSA key as it represents an acceptable compromise between speed
-    # of generation and security, especially for a disposible key
-    subprocess.check_call([
-        "ssh-keygen",
-        "-t",
-        "rsa",
-        "-b",
-        "2048",
-        "-N",
-        "",
-        "-C",
-        "zenith-key",
-        "-f",
-        key_file
-    ])
-    return key_file
+    with path.open("rb") as fh:
+        return base64.b64encode(fh.read()).decode()
 
 
 class ClientConfig(Configuration):
@@ -62,11 +44,23 @@ class ClientConfig(Configuration):
 
     #: The SSH executable to use
     ssh_executable: str = "ssh"
-    #: Path to the SSH identity to use
+    #: The user to run as, once configuration has been read
+    #: Only applies when the script is executing as root
+    run_as_user: typing.Optional[conint(gt = 0)] = Field(
+        None,
+        description = "UID to switch to after reading configuration (only used when executed as root)."
+    )
+    #: The SSH identity file to use
     #: If not given, a temporary SSH key is created
-    ssh_identity_path: FilePath = Field(
-        default_factory = default_ssh_identity_path,
-        description = "The SSH identity to use. If not given, a temporary identity is generated."
+    ssh_identity_file: FilePath = Field(
+        None,
+        description = "The SSH identity file to use. If not given, a temporary identity is generated."
+    )
+    #: The SSH private key to use
+    #: If not given, a temporary SSH key is created
+    ssh_private_key_data: FilePath = Field(
+        None,
+        description = "Base64-encoded SSH private key to use. If not given, a temporary identity is generated."
     )
     #: The time to wait for a successful configuration before timing out
     configure_timeout: int = Field(
@@ -114,25 +108,85 @@ class ClientConfig(Configuration):
     )
     #: Path to a file containing a TLS certificate chain to use
     tls_cert_file: typing.Optional[FilePath] = Field(
-        default = None,
+        None,
         description = "Path to a file containing a TLS certificate chain to use."
+    )
+    #: Base64-encoded TLS certificate to use
+    tls_cert_data: typing.Optional[str] = Field(
+        None,
+        description = "Base64-encoded TLS certificate chain to use."
     )
     #: Path to a file containing a TLS certificate key to use
     tls_key_file: typing.Optional[FilePath] = Field(
-        default = None,
+        None,
         description = "Path to a file containing the TLS private key to use."
+    )
+    #: Base64-encoded TLS certificate key to use
+    tls_key_data: typing.Optional[str] = Field(
+        None,
+        description = "Base64-encoded TLS private key data."
     )
     #: Path to a file containing a CA to use to validate TLS client certificates
     tls_client_ca_file: typing.Optional[FilePath] = Field(
-        default = None,
+        None,
         description = "Path to a file containing the CA for validating TLS client certificates."
     )
+    #: Base64-encoded CA to use to validate TLS client certificates
+    tls_client_ca_data: typing.Optional[str] = Field(
+        None,
+        description = "Base64-encoded CA for validating TLS client certificates."
+    )
 
-    @root_validator()
-    def validate(cls, values):
-        # Cert file and key file must be given together or not at all
+    @validator("ssh_private_key_data", always = True)
+    def validate_ssh_private_key_data(cls, v, *, values):
+        """
+        Validates the SSH private key data.
+        """
+        if v:
+            return v
+        ssh_identity_file = values.get("ssh_identity_file")
+        if ssh_identity_file:
+            return base64_encoded_content(ssh_identity_file)
+        else:
+            return None
+
+    @validator("tls_cert_data", always = True)
+    def validate_tls_cert_data(cls, v, *, values):
+        """
+        Validates the TLS cert data.
+        """
+        if v:
+            return v
         tls_cert_file = values.get("tls_cert_file")
+        if tls_cert_file:
+            return base64_encoded_content(tls_cert_file)
+        else:
+            return None
+
+    @validator("tls_key_data", always = True)
+    def validate_tls_key_data(cls, v, *, values):
+        """
+        Validates the TLS private key data.
+        """
+        if v:
+            return v
         tls_key_file = values.get("tls_key_file")
-        if tls_cert_file and not tls_key_file:
+        if tls_key_file:
+            return base64_encoded_content(tls_key_file)
+        if values.get("tls_cert_data"):
             raise ValueError("TLS key is required if TLS cert is specified")
-        return values
+        else:
+            return None
+
+    @validator("tls_client_ca_data", always = True)
+    def validate_tls_client_ca_data(cls, v, *, values):
+        """
+        Validates the TLS client CA data.
+        """
+        if v:
+            return v
+        tls_client_ca_file = values.get("tls_client_ca_file")
+        if tls_client_ca_file:
+            return base64_encoded_content(tls_client_ca_file)
+        else:
+            return None
