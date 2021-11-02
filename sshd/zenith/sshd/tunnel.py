@@ -322,7 +322,6 @@ def register_signal_handlers(server_config, tunnel):
     signal.signal(signal.SIGHUP, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGKILL, signal_handler)
 
 
 def run(server_config):

@@ -5,13 +5,8 @@ metadata:
   name: {{ include "zenith.componentname" (list . "sync") }}
   labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
 rules:
-  - apiGroups: [""]
-    resources: ["endpoints", "secrets", "services"]
-    verbs: ["*"]
+  # The sync process needs to be able to query ingress classes, which are cluster-scoped
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingressclasses"]
     verbs: ["get", "list"]
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses"]
-    verbs: ["*"]
 {{- end }}

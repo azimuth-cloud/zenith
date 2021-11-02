@@ -1,0 +1,17 @@
+{{- if .Values.sync.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "zenith.componentname" (list . "sync") }}
+  labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
+  # Create the role in the target namespace for services
+  namespace: {{ .Values.sync.config.kubernetes.namespace }}
+rules:
+  # We need full access to eps, secrets, services and ingresses in the target namespace
+  - apiGroups: [""]
+    resources: ["endpoints", "secrets", "services"]
+    verbs: ["*"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["*"]
+{{- end }}

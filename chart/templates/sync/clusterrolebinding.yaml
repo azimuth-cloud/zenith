@@ -1,18 +1,16 @@
 {{- if .Values.sync.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: {{ include "zenith.componentname" (list . "sync") }}
   labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
-  # Create the rolebinding in the target namespace for services
-  namespace: {{ .Values.sync.config.kubernetes.namespace }}
 subjects:
-  # Target the service account we created in the release namespace
+  # Target the service account in the release namespace
   - kind: ServiceAccount
     namespace: {{ .Release.Namespace }}
     name: {{ include "zenith.componentname" (list . "sync") }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: {{ include "zenith.componentname" (list . "sync") }}
 {{- end }}
