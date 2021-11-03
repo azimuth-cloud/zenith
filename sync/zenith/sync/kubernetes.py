@@ -356,9 +356,9 @@ class ServiceReconciler:
         # Add a TLS section if required
         tls_secret_name = None
         if "tls-cert" in service.tls:
-            # If the service specified a TLS certificate, that takes precedence
-            # Make a secret with the certificate in to pass to the ingress
+            # If the service pushed a TLS certificate, use it even if auto-TLS is disabled
             tls_secret_name = f"tls-{service.name}"
+            # Make a secret with the certificate in to pass to the ingress
             await Secret(client).create_or_patch(
                 self._adopt(
                     service,
@@ -374,19 +374,10 @@ class ServiceReconciler:
                     }
                 )
             )
-        elif self.config.ingress.tls.wildcard_secret_name:
-            # If a wildcard certificate was given, use that next
-            tls_secret_name = self.config.ingress.tls.wildcard_secret_name
-        elif self.config.ingress.tls.cert_manager_issuer_name:
-            # Configure a cert-manager issuer if specified
-            # cert-manager will put the TLS certificate and key in this secret
-            tls_secret_name = f"tls-{service.name}"
-            if self.config.ingress.tls.cert_manager_issuer_type == CertManagerIssuerType.CLUSTER:
-                issuer_annotation = "cert-manager.io/cluster-issuer"
-            else:
-                issuer_annotation = "cert-manager.io/issuer"
-            issuer_name = self.config.ingress.tls.cert_manager_issuer_name
-            ingress["metadata"]["annotations"][issuer_annotation] = issuer_name
+        elif self.config.ingress.tls.enabled:
+            # If TLS is enabled, set a secret name even if the secret doesn't exist
+            # cert-manager can be enabled using annotations
+            tls_secret_name = self.config.ingress.tls.wildcard_secret_name or f"tls-{service.name}"
         # Configure the TLS section
         if tls_secret_name:
             ingress["spec"]["tls"] = [

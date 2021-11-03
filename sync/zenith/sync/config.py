@@ -79,28 +79,14 @@ class DomainName(str):
         return cls(".".join(DNSLabel.validate(dns_label) for dns_label in dns_labels))
 
 
-class CertManagerIssuerType(str, enum.Enum):
-    """
-    Enumeration of possible choices for the cert-manager issuer type.
-    """
-    #: Issuer type for a namespace-scoped issuer
-    NAMESPACE = "namespace"
-    #: Issuer type for a cluster-scoped issuer
-    CLUSTER = "cluster"
-
-
 class TLSConfig(Section):
     """
     Model for the ingress TLS configuration section.
     """
+    #: Indicates whether TLS should be enabled
+    enabled: bool = True
     #: The name of a secret containing a wildcard certificate
-    #: This takes precedence over all other options if given
     wildcard_secret_name: t.Optional[str] = None
-    #: The type of the cert-manager issuer to generate annotations for
-    cert_manager_issuer_type: CertManagerIssuerType = CertManagerIssuerType.CLUSTER
-    #: The name of the cert-manager issuer to use
-    #: This is used when a secret name is not given
-    cert_manager_issuer_name: t.Optional[str] = None
 
 
 class IngressConfig(Section):

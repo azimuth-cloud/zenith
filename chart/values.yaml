@@ -37,12 +37,10 @@ sync:
         #   * Otherwise a cert-manager issuer is used if specified
         #   * If neither are specified, TLS is not enabled
         # tls:
+        #   Indicates if TLS should be enabled (default true)
+        #   enabled: true
         #   The name of a secret containing a wildcard certificate
         #   wildcardSecretName:
-        #   The type of the cert-manager issuer to generate annotations for
-        #   certManagerIssuerType: namespace | cluster (default cluster)
-        #   The name of the cert-manager issuer to use
-        #   certManagerIssuerName:
   # The image to use for the sync component
   image:
     repository: ghcr.io/stackhpc/zenith-sync
