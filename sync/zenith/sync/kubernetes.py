@@ -5,7 +5,6 @@ import logging
 
 import httpx
 
-from .config import CertManagerIssuerType
 from .model import EventKind
 from .ingress_modifier import INGRESS_MODIFIERS_ENTRY_POINT_GROUP
 
