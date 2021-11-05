@@ -1,3 +1,9 @@
+# Ingress settings are permitted to come from globals, mostly to reducing duplication,
+# and hence potential for mistakes, when used as part of an Azimuth deployment
+# For a standalone deployment, sync.config.kubernetes.ingress should be preferred
+global:
+  ingress: {}
+
 # Configuration for Consul
 # See https://www.consul.io/docs/k8s/helm
 consul:
@@ -21,10 +27,10 @@ sync:
       # The namespace to create Zenith service resources in
       namespace: zenith-services
       # The ingress configuration
-      ingress:
+      # ingress:
         # The base domain to use for the proxied services
         # Proxied services will be made available at <subdomain>.<base domain>
-        baseDomain:
+        # baseDomain:
         # The ingress class to use for ingress resources
         # className:
         # Custom annotations to add to the created ingress resources
