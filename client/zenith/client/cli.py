@@ -1,4 +1,5 @@
 import functools
+import json
 
 import click
 
@@ -6,14 +7,34 @@ from .config import ClientConfig
 from . import tunnel
 
 
+class JsonStringParamType(click.ParamType):
+    """
+    Parameter type for click that decodes the received string as JSON.
+    """
+    name = "json-string"
+
+    def convert(self, value, param, ctx):
+        if not isinstance(value, str):
+            self.fail("given value should be a string")
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            self.fail(f"{value!r} is not a valid JSON document", param, ctx)
+
+
 def config_options(config_cls, exclude = None):
     """
     Returns a decorator that adds command line options for the fields of a Pydantic model.
     """
     exclude = exclude or {}
-    # Convert to kebab-case and prepend with "--"
     options = [
-        (f"--{k.replace('_', '-')}", f.field_info.description)
+        (
+            # Convert to kebab-case and prepend with "--"
+            f"--{k.replace('_', '-')}",
+            f.field_info.description,
+            # For complex types, use the json-string type
+            JsonStringParamType() if f.is_complex() else str
+        )
         for k, f in config_cls.__fields__.items()
         if k not in exclude
     ]
@@ -29,6 +50,7 @@ def config_options(config_cls, exclude = None):
         decorated = functools.reduce(
             lambda f, opt: click.option(
                 opt[0],
+                type = opt[2],
                 # This suppresses the "TEXT" in help output
                 metavar = "",
                 help = opt[1] or ""

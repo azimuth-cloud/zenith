@@ -250,6 +250,96 @@ class ServiceReconciler:
         labels.update(self._labels(service.name))
         return resource
 
+    async def _apply_tls(self, client, service, service_domain, ingress, ingress_modifier):
+        """
+        Applies the TLS configuration to an ingress resource.
+        """
+        # Add a TLS section if required
+        tls_secret_name = None
+        if "tls-cert" in service.tls:
+            # If the service pushed a TLS certificate, use it even if auto-TLS is disabled
+            tls_secret_name = f"tls-{service.name}"
+            # Make a secret with the certificate in to pass to the ingress
+            await Secret(client).create_or_patch(
+                self._adopt(
+                    service,
+                    {
+                        "metadata": {
+                            "name": tls_secret_name,
+                        },
+                        "type": "kubernetes.io/tls",
+                        "data": {
+                            "tls.crt": service.tls["tls-cert"],
+                            "tls.key": service.tls["tls-key"],
+                        },
+                    }
+                )
+            )
+        elif self.config.ingress.tls.enabled:
+            # If TLS is enabled, set a secret name even if the secret doesn't exist
+            # cert-manager can be enabled using annotations
+            tls_secret_name = self.config.ingress.tls.wildcard_secret_name or f"tls-{service.name}"
+        # Configure the TLS section
+        if tls_secret_name:
+            ingress["spec"]["tls"] = [
+                {
+                    "hosts": [service_domain],
+                    "secretName": tls_secret_name,
+                },
+            ]
+        # Configure client certificate handling if required
+        if "tls-client-ca" in service.tls:
+            # First, make a secret containing the CA certificate
+            client_ca_secret = f"tls-client-ca-{service.name}"
+            await Secret(client).create_or_patch(
+                self._adopt(
+                    service,
+                    {
+                        "metadata": {
+                            "name": client_ca_secret,
+                        },
+                        "data": {
+                            "ca.crt": service.tls["tls-client-ca"]
+                        }
+                    }
+                )
+            )
+            # Apply controller-specific modifications for client certificate handling
+            ingress_modifier.configure_tls_client_certificates(
+                ingress,
+                self.config.namespace,
+                client_ca_secret
+            )
+
+    def _apply_auth(self, service, ingress, ingress_modifier):
+        """
+        Apply any authentication configuration defined in the configuration and/or
+        service to the ingress.
+        """
+        # If there is no auth service in the configuration, do nothing
+        if not self.config.ingress.auth.url:
+            return
+        # If the service declared that it wants to skip authentication, then do nothing
+        # The metadata items are all strings, but this is set to either 0 or 1 by the SSHD component
+        skip_auth = service.metadata.get(self.config.ingress.auth.skip_auth_metadata_key, "0")
+        if skip_auth == "1":
+            return
+        # Apply the auth configuration, which may be ingress-controller specific
+        ingress_modifier.configure_authentication(
+            ingress,
+            self.config.ingress.auth.url,
+            self.config.ingress.auth.signin_url,
+            self.config.ingress.auth.next_url_param,
+            # Derive the headers from the auth params in the service metadata
+            {
+                f"{self.config.ingress.auth.param_header_prefix}{name}": value
+                for name, value in service.metadata.items()
+                if name.startswith(self.config.ingress.auth.param_metadata_prefix)
+            },
+            self.config.ingress.auth.upstream_headers
+        )
+
+
     async def _reconcile_service(self, client, service, ingress_modifier):
         """
         Reconciles a service with Kubernetes.
@@ -340,10 +430,10 @@ class ServiceReconciler:
         # Apply custom annotations after the controller defaults
         ingress["metadata"]["annotations"].update(self.config.ingress.annotations)
         # Apply controller-specific modifications for the backend protocol
-        protocol = service.metadata.get("backend-protocol", "http")
+        protocol = service.metadata.get(self.config.ingress.backend_protocol_metadata_key, "http")
         ingress_modifier.configure_backend_protocol(ingress, protocol)
         # Apply controller-specific modifications for the read timeout, if given
-        read_timeout = service.metadata.get("read-timeout")
+        read_timeout = service.metadata.get(self.config.ingress.read_timeout_metadata_key)
         if read_timeout:
             # Check that the read timeout is an int - if it isn't don't use it
             try:
@@ -352,62 +442,10 @@ class ServiceReconciler:
                 logger.warn("Given read timeout is not a valid integer")
             else:
                 ingress_modifier.configure_read_timeout(ingress, read_timeout)
-        # Add a TLS section if required
-        tls_secret_name = None
-        if "tls-cert" in service.tls:
-            # If the service pushed a TLS certificate, use it even if auto-TLS is disabled
-            tls_secret_name = f"tls-{service.name}"
-            # Make a secret with the certificate in to pass to the ingress
-            await Secret(client).create_or_patch(
-                self._adopt(
-                    service,
-                    {
-                        "metadata": {
-                            "name": tls_secret_name,
-                        },
-                        "type": "kubernetes.io/tls",
-                        "data": {
-                            "tls.crt": service.tls["tls-cert"],
-                            "tls.key": service.tls["tls-key"],
-                        },
-                    }
-                )
-            )
-        elif self.config.ingress.tls.enabled:
-            # If TLS is enabled, set a secret name even if the secret doesn't exist
-            # cert-manager can be enabled using annotations
-            tls_secret_name = self.config.ingress.tls.wildcard_secret_name or f"tls-{service.name}"
-        # Configure the TLS section
-        if tls_secret_name:
-            ingress["spec"]["tls"] = [
-                {
-                    "hosts": [service_domain],
-                    "secretName": tls_secret_name,
-                },
-            ]
-        # Configure client certificate handling if required
-        if "tls-client-ca" in service.tls:
-            # First, make a secret containing the CA certificate
-            client_ca_secret = f"tls-client-ca-{service.name}"
-            await Secret(client).create_or_patch(
-                self._adopt(
-                    service,
-                    {
-                        "metadata": {
-                            "name": client_ca_secret,
-                        },
-                        "data": {
-                            "ca.crt": service.tls["tls-client-ca"]
-                        }
-                    }
-                )
-            )
-            # Apply controller-specific modifications for client certificate handling
-            ingress_modifier.configure_tls_client_certificates(
-                ingress,
-                self.config.namespace,
-                client_ca_secret
-            )
+        # Apply any TLS configuration
+        await self._apply_tls(client, service, service_domain, ingress, ingress_modifier)
+        # Apply any auth configuration
+        self._apply_auth(service, ingress, ingress_modifier)
         # Create or update the ingress
         await Ingress(client).create_or_patch(self._adopt(service, ingress))
 

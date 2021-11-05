@@ -18,9 +18,9 @@ class SSHDConfig(Configuration):
     Configuration model for the zenith-sshd package.
     """
     class Config:
-        default_path = '/etc/zenith/sshd.yaml'
-        path_env_var = 'ZENITH_SSHD_CONFIG'
-        env_prefix = 'ZENITH_SSHD'
+        default_path = "/etc/zenith/sshd.yaml"
+        path_env_var = "ZENITH_SSHD_CONFIG"
+        env_prefix = "ZENITH_SSHD"
 
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
@@ -45,6 +45,14 @@ class SSHDConfig(Configuration):
     service_tag: str = "zenith-service"
     #: The number of seconds to wait to receive a tunnel configuration before exiting
     configure_timeout: int = 5
+    #: The metadata key to use for the backend protocol
+    backend_protocol_metadata_key: str = "backend-protocol"
+    #: The metadata key to use for the read timeout
+    read_timeout_metadata_key: str = "read-timeout"
+    #: The metadata key to indicate that auth should be skipped
+    skip_auth_metadata_key: str = "skip-auth"
+    #: The prefix to use for metadata items containing authentication parameters
+    auth_param_metadata_prefix: str = "auth-"
 
     #: The SSHD executable location
     sshd_executable: FilePath = "/usr/sbin/sshd"

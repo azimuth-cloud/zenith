@@ -13,8 +13,17 @@ import uuid
 
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-from pydantic import BaseModel, conint, constr, root_validator, validator
+from pydantic import BaseModel, Field, conint, constr, root_validator, validator
 import requests
+
+
+#: Type for a key in the authentication parameters
+#: This will become a header name, so limit to lowercase alpha-numeric + -
+#: Although HTTP specifies no size limit, we do for readability
+AuthParamsKey = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
+#: Type for a value in the authentication parameters
+#: Must fit in an HTTP header, so limited to 1024 unicode characters (4KB)
+AuthParamsValue = constr(max_length = 1024)
 
 
 class ClientConfig(BaseModel):
@@ -33,6 +42,10 @@ class ClientConfig(BaseModel):
     backend_protocol: typing.Literal["http", "https"] = "http"
     #: The read timeout for the service (in seconds)
     read_timeout: typing.Optional[conint(gt = 0)] = None
+    #: Indicates whether the proxy authentication should be skipped
+    skip_auth: bool = False
+    #: Parameters for the proxy authentication service
+    auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Base64-encoded TLS certificate to use
     tls_cert: typing.Optional[str] = None
     #: Base64-encoded TLS private key to use (corresponds to TLS cert)
@@ -226,37 +239,47 @@ def consul_register_service(server_config, tunnel):
             print("[SERVER] [ERROR] Failed to post TLS configuration", file = sys.stderr)
             sys.exit(1)
     print("[SERVER] [INFO] Registering service with Consul")
-    # Post the service information to consul
-    url = f"{server_config.consul_url}/v1/agent/service/register"
-    metadata = { "backend-protocol": tunnel.config.backend_protocol }
+    # Build the service metadata object
+    metadata = { server_config.backend_protocol_metadata_key: tunnel.config.backend_protocol }
     if tunnel.config.read_timeout:
-        metadata.update({ "read-timeout": str(tunnel.config.read_timeout) })
-    response = requests.put(url, json = {
-        # Use the tunnel ID as the unique id
-        "ID": tunnel.id,
-        # Use the specified subdomain as the service name
-        "Name": tunnel.config.subdomain,
-        # Use the service host and port as the address and port in Consul
-        "Address": server_config.service_host,
-        "Port": tunnel.config.allocated_port,
-        # Tag the service as a tunnel proxy subdomain
-        "Tags": [server_config.service_tag],
-        # Associate any required metadata
-        "Meta": metadata,
-        # Specify a TTL check
-        "Check": {
-            # Use the unique ID for the tunnel as the check id
-            "CheckId": tunnel.id,
-            "Name": "tunnel-active",
-            # Use a TTL health check
-            # This will move into the critical state, removing the service from
-            # the proxy, if we do not post a status update within the TTL
-            "TTL": server_config.consul_service_ttl,
-            # This deregisters the service once it has been critical for 5 minutes
-            # We can probably assume the service will not come back up
-            "DeregisterCriticalServiceAfter": server_config.consul_deregister_interval,
-        },
-    })
+        metadata[server_config.read_timeout_metadata_key] = str(tunnel.config.read_timeout)
+    if tunnel.config.skip_auth:
+        metadata[server_config.skip_auth_metadata_key] = "1"
+    elif tunnel.config.auth_params:
+        metadata.update({
+            f"{server_config.auth_param_metadata_prefix}{key}": value
+            for key, value in tunnel.config.auth_params.items()
+        })
+    # Post the service information to consul
+    response = requests.put(
+        f"{server_config.consul_url}/v1/agent/service/register",
+        json = {
+            # Use the tunnel ID as the unique id
+            "ID": tunnel.id,
+            # Use the specified subdomain as the service name
+            "Name": tunnel.config.subdomain,
+            # Use the service host and port as the address and port in Consul
+            "Address": server_config.service_host,
+            "Port": tunnel.config.allocated_port,
+            # Tag the service as a tunnel proxy subdomain
+            "Tags": [server_config.service_tag],
+            # Associate any required metadata
+            "Meta": metadata,
+            # Specify a TTL check
+            "Check": {
+                # Use the unique ID for the tunnel as the check id
+                "CheckId": tunnel.id,
+                "Name": "tunnel-active",
+                # Use a TTL health check
+                # This will move into the critical state, removing the service from
+                # the proxy, if we do not post a status update within the TTL
+                "TTL": server_config.consul_service_ttl,
+                # This deregisters the service once it has been critical for 5 minutes
+                # We can probably assume the service will not come back up
+                "DeregisterCriticalServiceAfter": server_config.consul_deregister_interval,
+            },
+        }
+    )
     # If we failed to register the service then bail
     if 200 <= response.status_code < 300:
         print("[SERVER] [INFO] Registered service successfully")

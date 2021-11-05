@@ -11,6 +11,10 @@ from configomatic import Configuration, LoggingConfiguration
 #: Constraint for a Zenith subdomain
 Subdomain = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
 
+#: Constraint for Zenith auth params keys and values
+AuthParamsKey = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
+AuthParamsValue = constr(max_length = 1024)
+
 
 def default_subdomain():
     """
@@ -106,6 +110,16 @@ class ClientConfig(Configuration):
         None,
         description = "The read timeout to use."
     )
+    #: Indicates whether the proxy authentication should be skipped
+    skip_auth: bool = Field(
+        False,
+        description = "If set to true, proxy authentication is skipped if enabled."
+    )
+    #: Parameters for the proxy authentication service
+    auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(
+        default_factory = dict,
+        description = "The authentication parameters to use when proxy authentication is enabled."
+    )
     #: Path to a file containing a TLS certificate chain to use
     tls_cert_file: typing.Optional[FilePath] = Field(
         None,
@@ -136,6 +150,18 @@ class ClientConfig(Configuration):
         None,
         description = "Base64-encoded CA for validating TLS client certificates."
     )
+
+    @validator("auth_params", pre = True)
+    def pre_validate_auth_params(cls, value):
+        """
+        Applies pre-validation to the auth params.
+        """
+        # In order to properly support keys coming from environment variables, we need
+        # to replace underscores with hyphens in the keys
+        if isinstance(value, dict):
+            return { k.replace("_", "-"): v for k, v in value.items() }
+        else:
+            return value
 
     @validator("ssh_private_key_data", always = True)
     def validate_ssh_private_key_data(cls, v, *, values):

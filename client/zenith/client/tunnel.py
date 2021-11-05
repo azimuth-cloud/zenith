@@ -87,11 +87,17 @@ def configure_tunnel(ssh_proc, config):
             )
             if config.read_timeout:
                 tunnel_config.update(read_timeout = config.read_timeout)
+            if config.skip_auth:
+                tunnel_config.update(skip_auth = True)
+            elif config.auth_params:
+                tunnel_config.update(auth_params = config.auth_params)
             if config.tls_cert_file:
-                tunnel_config["tls_cert"] = config.tls_cert_data
-                tunnel_config["tls_key"] = config.tls_key_data
+                tunnel_config.update(
+                    tls_cert = config.tls_cert_data,
+                    tls_key = config.tls_key_data
+                )
             if config.tls_client_ca_file:
-                tunnel_config["tls_client_ca"] = config.tls_client_ca_data
+                tunnel_config.update(tls_client_ca = config.tls_client_ca_data)
             # The server will ask for the config when it is ready
             wait_for_marker(ssh_proc.stdout, "SEND_CONFIGURATION")
             # Dump the configuration as JSON and encode it as base64 with line breaks

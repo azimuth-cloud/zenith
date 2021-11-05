@@ -1,8 +1,7 @@
-import enum
 import re
 import typing as t
 
-from pydantic import Field
+from pydantic import Field, AnyHttpUrl
 
 from configomatic import Configuration, Section, LoggingConfiguration
 
@@ -79,6 +78,30 @@ class DomainName(str):
         return cls(".".join(DNSLabel.validate(dns_label) for dns_label in dns_labels))
 
 
+class AuthConfig(Section):
+    """
+    Model for the ingress authentication and authorization configuration section.
+    """
+    #: The external authentication URL
+    #: If not supplied, no authentication is applied to proxied requests
+    #: This URL is called as a subrequest, and so will receive the original request body
+    #: and headers. If it returns a response with a 2xx status code, the request proceeds
+    #: to the upstream. If it returns a 401 or a 403, the access is denied.
+    url: t.Optional[AnyHttpUrl] = None
+    #: The URL to redirect to on an authentication error
+    signin_url: t.Optional[AnyHttpUrl] = None
+    #: The URL parameter to contain the original URL when redirecting to the signin URL
+    next_url_param: str = "next"
+    #: List of headers from the authentication response to add to the upstream request
+    upstream_headers: t.List[str] = Field(default_factory = list)
+    #: The metadata item to look for to indicate that auth should be skipped
+    skip_auth_metadata_key: str = "skip-auth"
+    #: The prefix to filter for metadata items containing authentication parameters
+    param_metadata_prefix: str = "auth-"
+    #: The additional prefix to use when passing authentication parameters to the auth service
+    param_header_prefix: str = "x-"
+
+
 class TLSConfig(Section):
     """
     Model for the ingress TLS configuration section.
@@ -99,8 +122,14 @@ class IngressConfig(Section):
     class_name: str = "nginx"
     #: The annotations to add to the ingress resources
     annotations: t.Dict[str, str] = Field(default_factory = dict)
+    #: The metadata key to use for the backend protocol
+    backend_protocol_metadata_key: str = "backend-protocol"
+    #: The metadata key to use for the read timeout
+    read_timeout_metadata_key: str = "read-timeout"
     #: The TLS configuration
     tls: TLSConfig = Field(default_factory = TLSConfig)
+    #: The auth configuration
+    auth: AuthConfig = Field(default_factory = AuthConfig)
 
 
 class KubernetesConfig(Section):
