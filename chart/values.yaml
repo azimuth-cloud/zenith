@@ -1,6 +1,3 @@
-nameOverride: ""
-fullnameOverride: ""
-
 # Configuration for Consul
 # See https://www.consul.io/docs/k8s/helm
 consul:
@@ -33,14 +30,11 @@ sync:
         # Custom annotations to add to the created ingress resources
         # annotations:
         # The TLS configuration
-        #   * If given, the wildcard secret is used with highest precedence
-        #   * Otherwise a cert-manager issuer is used if specified
-        #   * If neither are specified, TLS is not enabled
         # tls:
         #   Indicates if TLS should be enabled (default true)
         #   enabled: true
         #   The name of a secret containing a wildcard certificate
-        #   wildcardSecretName:
+        #   secretName:
   # The image to use for the sync component
   image:
     repository: ghcr.io/stackhpc/zenith-sync

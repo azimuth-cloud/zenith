@@ -109,7 +109,7 @@ class TLSConfig(Section):
     #: Indicates whether TLS should be enabled
     enabled: bool = True
     #: The name of a secret containing a wildcard certificate
-    wildcard_secret_name: t.Optional[str] = None
+    secret_name: t.Optional[str] = None
 
 
 class IngressConfig(Section):
