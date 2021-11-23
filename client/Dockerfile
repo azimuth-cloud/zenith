@@ -1,5 +1,8 @@
 FROM debian:bullseye-slim
 
+# Don't buffer stdout and stderr as it breaks realtime logging
+ENV PYTHONUNBUFFERED 1
+
 # Create an unprivileged user to run the application process
 ENV ZENITH_UID 1001
 ENV ZENITH_USER zenith
