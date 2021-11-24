@@ -26,7 +26,8 @@ traffic can then flow to the proxied service, even if that service is behind NAT
 ## Architecture
 
 Zenith has two logical components, a server and a client, each of which has subcomponents. It also
-leverages the power of Kubernetes to do most of the heavy lifting for the dynamic proxying.
+leverages the power of Kubernetes on the server-side to do most of the heavy lifting for the dynamic
+proxying.
 
 The Zenith server consists of two main components, both of which are written in
 [Python](https://www.python.org/) and deployed in Kubernetes:
@@ -92,7 +93,7 @@ be reachable by the Zenith client.
 In this example, we start an NGINX container on an isolated Docker network and proxy it by
 deploying the Zenith client onto the same network:
 
-```console
+```
 $ docker network create zenith-test
 13124561fcf532b37c65a76a648964071c1dcb158d7cf4615c88ffd4e19c20f9
 
