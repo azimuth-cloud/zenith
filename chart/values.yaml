@@ -41,6 +41,17 @@ sync:
         #   enabled: true
         #   The name of a secret containing a wildcard certificate
         #   secretName:
+        # The external auth configuration
+        # auth:
+        #   The URL for verifying incoming requests
+        #   url:
+        #   The URL to redirect to when the verify URL returns a 401
+        #   If not set, the 401 will just be returned
+        #   signinUrl:
+        #   The URL parameter to contain the original URL when redirecting to the signin URL
+        #   nextUrlParam: next
+        #   List of headers from the authentication response to add to the upstream request
+        #   upstreamHeaders: []
   # The image to use for the sync component
   image:
     repository: ghcr.io/stackhpc/zenith-sync
@@ -119,10 +130,12 @@ sshd:
   # Because SSH is a TCP service, it cannot be exposed with an Ingress
   # Instead, it must be exposed with a NodePort or LoadBalancer service
   service:
-    type: NodePort
+    type: LoadBalancer
     port: 22
-    # Use a fixed default node port
-    nodePort: 32222
+    # Use a fixed node port
+    # nodePort: 32222
+    # Use a fixed load-balancer IP
+    # loadBalancerIP:
   # Resources for SSHD containers
   resources: {}
   # Customise node selector for SSHD pods

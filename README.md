@@ -45,7 +45,7 @@ The architecture of Zenith is described in more detail in [Zenith Architecture](
 
 ## Deploying a Zenith server
 
-The currently supported deployment mechanism for Zenith is to use [Helm](https://helm.sh/) to
+The only supported deployment mechanism for Zenith is to use [Helm](https://helm.sh/) to
 deploy to a Kubernetes cluster. This documentation assumes that you already have a Kubernetes cluster
 available for your Zenith deployment that has the
 [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/) installed.
