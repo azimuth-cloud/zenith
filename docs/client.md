@@ -9,11 +9,11 @@ over that tunnel is forwarded to the proxied service.
   - [Container image](#container-image)
   - [Python installation](#python-installation)
 - [Usage](#usage)
-- [Specifying the Zenith SSHD server](#specifying-the-zenith-sshd-server)
-- [Specifying the proxied service](#specifying-the-proxied-service)
-- [Specifying the subdomain](#specifying-the-subdomain)
-- [Specifying the protocol of the proxied service](#specifying-the-protocol-of-the-proxied-service)
-- [Specifying authentication parameters](#specifying-authentication-parameters)
+  - [Specifying the Zenith SSHD server](#specifying-the-zenith-sshd-server)
+  - [Specifying the proxied service](#specifying-the-proxied-service)
+  - [Specifying the subdomain](#specifying-the-subdomain)
+  - [Specifying the protocol of the proxied service](#specifying-the-protocol-of-the-proxied-service)
+  - [Specifying authentication parameters](#specifying-authentication-parameters)
 
 ## Installation
 
@@ -63,7 +63,7 @@ This section describes the most commonly used options. For a full list of the av
 `zenith-client --help` or the
 [Zenith client configuration object](../client/zenith/client/config.py).
 
-## Specifying the Zenith SSHD server
+### Specifying the Zenith SSHD server
 
 The Zenith client connects to a Zenith SSHD server to establish a secure tunnel. To do this,
 the client must be configured with the correct address and port for the Zenith SSHD server.
@@ -77,7 +77,7 @@ This is done with the following options:
       * Environment variable: `ZENITH_CLIENT__SERVER_PORT`
       * Default: `22`
 
-## Specifying the proxied service
+### Specifying the proxied service
 
 The Zenith client forwards traffic that arrives down the SSH tunnel to another, locally available
 service. To do this, the Zenith client must be configured with an address and a port to which
@@ -92,7 +92,7 @@ traffic should be forwarded. This is done with the following options:
       * Environment variable: `ZENITH_CLIENT__FORWARD_TO_PORT`
       * Default: `8000`
 
-## Specifying the subdomain
+### Specifying the subdomain
 
 Zenith will forward traffic from a subdomain to our client - this subdomain can either be specified
 when creating the tunnel or Zenith will generate one for you.
@@ -102,7 +102,7 @@ when creating the tunnel or Zenith will generate one for you.
       * Environment variable: `ZENITH_CLIENT__SUBDOMAIN`
       * Default: random
 
-## Specifying the protocol of the proxied service
+### Specifying the protocol of the proxied service
 
 By default, Zenith assumes that the services being proxied use the HTTP protocol. If the service
 implements TLS, then Zenith must be told to use HTTPS instead.
@@ -112,7 +112,7 @@ implements TLS, then Zenith must be told to use HTTPS instead.
       * Environment variable: `ZENITH_CLIENT__BACKEND_PROTOCOL`
       * Default: `http`
 
-## Specifying authentication parameters
+### Specifying authentication parameters
 
 Zenith is able to enforce authentication by calling out to an external auth service. When
 initiating a tunnel, the Zenith client can specify a dictionary of parameters that will be passed
