@@ -16,7 +16,7 @@ sync:
     consul:
       # The address of the Consul server
       # By default, this uses the load-balanced server from the internal Consul
-      address: "{{ include \"zenith.fullname\" . }}-consul-server"
+      address: "{{ .Release.Name }}-consul-server"
       # The port of the Consul server
       # port:
       # The timeout to use with Consul blocking queries
@@ -106,6 +106,8 @@ sshd:
     # serviceTag:
     # The number of seconds to wait to receive a tunnel configuration before exiting
     # configureTimeout:
+    # A list of subdomains that cannot be used for Zenith services
+    # reservedSubdomains:
   # The image to use for the SSHD server
   image:
     repository: ghcr.io/stackhpc/zenith-sshd
