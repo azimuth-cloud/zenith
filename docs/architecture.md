@@ -1,4 +1,4 @@
-# Zenith Architecture
+# Zenith Architecture  <!-- omit in toc -->
 
 This document describes the architecture of Zenith in detail.
 
@@ -13,6 +13,14 @@ Zenith is mostly composed of industry-standard software and protocols such as
 [OpenSSH](https://www.openssh.com/), [Hashicorp Consul](https://www.consul.io/) and the
 [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/), glued together
 with a small amount of custom code and deployed using [Kubernetes](https://kubernetes.io/).
+
+## Contents  <!-- omit in toc -->
+
+- [Architecture Diagram](#architecture-diagram)
+- [Establishing a proxied service](#establishing-a-proxied-service)
+- [Allocated port detection](#allocated-port-detection)
+- [Why not use Consul Service Sync?](#why-not-use-consul-service-sync)
+- [SSHD hardening](#sshd-hardening)
 
 ## Architecture Diagram
 

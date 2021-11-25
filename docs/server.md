@@ -26,12 +26,12 @@ for the vast majority of cases. For more advanced configuration requirements, se
 - [Scaling SSHD](#scaling-sshd)
 - [Transport Layer Security (TLS)](#transport-layer-security-tls)
   - [Using a pre-existing wildcard certificate](#using-a-pre-existing-wildcard-certificate)
-  - [Using a wildcard certificate from a cert-manager Certificate resource](#using-a-wildcard-certificate-from-a-cert-manager-certificate-resource)
-  - [Using cert-manager via annotations (e.g. Let's Encrypt HTTP-01)](#using-cert-manager-via-annotations-eg-lets-encrypt-http-01)
+  - [Using a wildcard certificate managed by cert-manager](#using-a-wildcard-certificate-managed-by-cert-manager)
+  - [Using per-subdomain certificates managed by cert-manager](#using-per-subdomain-certificates-managed-by-cert-manager)
 - [External auth](#external-auth)
 - [Using non-standard images](#using-non-standard-images)
 - [Managing resource consumption](#managing-resource-consumption)
-- [Customising Consul](#customising-consul)
+- [Customising the Consul deployment](#customising-the-consul-deployment)
 
 ## Prerequisites
 
@@ -255,7 +255,7 @@ sync:
 > It is your responsibility to check for the expiry of the wildcard certificate and renew it
 > when required.
 
-### Using a wildcard certificate from a cert-manager Certificate resource
+### Using a wildcard certificate managed by cert-manager
 
 If you use one of the
 [supported DNS providers](https://cert-manager.io/docs/configuration/acme/dns01/#supported-dns01-providers),
@@ -299,7 +299,7 @@ sync:
           secretName: zenith-wildcard-tls
 ```
 
-### Using cert-manager via annotations (e.g. Let's Encrypt HTTP-01)
+### Using per-subdomain certificates managed by cert-manager
 
 When cert-manager is installed and an issuer is configured, it is possible to specify
 annotations that will be added to every `Ingress` resource made by Zenith. These annotations
@@ -433,7 +433,7 @@ Alternatively, you can use the
 [Vertical Pod Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
 to set these values automatically based on observed usage.
 
-## Customising Consul
+## Customising the Consul deployment
 
 [Consul](https://www.consul.io/) is installed automatically as a dependency of Zenith using
 the
