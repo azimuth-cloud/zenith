@@ -8,6 +8,7 @@ over that tunnel is forwarded to the proxied service.
 - [Installation](#installation)
   - [Container image](#container-image)
   - [Python installation](#python-installation)
+- [Resilience](#resilience)
 - [Usage](#usage)
   - [Specifying the Zenith SSHD server](#specifying-the-zenith-sshd-server)
   - [Specifying the proxied service](#specifying-the-proxied-service)
@@ -46,6 +47,21 @@ pip install git+https://github.com/stackhpc/zenith.git#subdirectory=client
 # Show the Zenith client help
 zenith-client --help
 ```
+
+## Resilience
+
+When using the Zenith client to expose a long-running service, it is important to deploy the Zenith
+client in such a way that it can automatically recover from failures. In general, it should be
+assumed that the SSH tunnel established between a Zenith client and a Zenith server could fail at
+any time due to issues with the server, the client or the network in-between.
+
+In particular, it is important to run the Zenith client in such a way that it will be restarted if
+it exits with an error condition. Typically this would be done using a supervising process, e.g. by
+running the Zenith client as a [systemd service](https://en.wikipedia.org/wiki/Systemd) or using a
+process monitor like [Supervisor](http://supervisord.org/). If you are running the Zenith client as
+a Docker container, this can be achieved by setting an appropriate
+[Docker restart policy](https://docs.docker.com/config/containers/start-containers-automatically/#use-a-restart-policy)
+such as `on-failure` for the container.
 
 ## Usage
 
