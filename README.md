@@ -3,6 +3,18 @@
 Zenith is a reliable, scalable and secure tunnelling HTTP(S) proxy built using industry-standard
 software and protocols.
 
+## Contents  <!-- omit in toc -->
+
+- [What is Zenith?](#what-is-zenith)
+- [Architecture](#architecture)
+- [Deploying a Zenith server](#deploying-a-zenith-server)
+- [Proxying a service using the Zenith Client](#proxying-a-service-using-the-zenith-client)
+  - [Container image](#container-image)
+  - [Python installation](#python-installation)
+  - [Example](#example)
+
+## What is Zenith?
+
 Zenith consists of a server and a client which collaborate to establish a secure tunnel over which
 traffic can then flow to the proxied service, even if that service is behind NAT and/or a firewall.
 
@@ -22,15 +34,6 @@ traffic can then flow to the proxied service, even if that service is behind NAT
       for performant, dynamic proxying.
     * [Hashicorp Consul](https://www.consul.io/) to glue everything together.
     * (Recommended) [cert-manager](https://cert-manager.io/docs/) for managing TLS certificates.
-
-## Contents  <!-- omit in toc -->
-
-- [Architecture](#architecture)
-- [Deploying a Zenith server](#deploying-a-zenith-server)
-- [Proxying a service using the Zenith Client](#proxying-a-service-using-the-zenith-client)
-  - [Container image](#container-image)
-  - [Python installation](#python-installation)
-  - [Example](#example)
 
 ## Architecture
 
