@@ -1,4 +1,4 @@
-import random
+import secrets
 import string
 import typing as t
 
@@ -24,8 +24,8 @@ def default_subdomain():
     Returns a random subdomain consisting of 32 alphanumeric characters.
     """
     # Domains must start with a letter
-    chars = [random.choice(string.ascii_lowercase)]
-    chars.extend(random.choices(string.ascii_lowercase + string.digits, k = 31))
+    chars = [secrets.choice(string.ascii_lowercase)]
+    chars.extend(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(31))
     return "".join(chars)
 
 

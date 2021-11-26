@@ -4,7 +4,8 @@ import hashlib
 import hmac
 import typing as t
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Depends, Request, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from httpx import AsyncClient
 
@@ -20,7 +21,33 @@ from .models import (
 )
 
 
+#: The FastAPI application
 app = FastAPI()
+
+
+#: The security object used to apply bearer authentication to admin requests
+admin_security = HTTPBearer(auto_error = False)
+
+
+def check_admin_token(
+    credentials: t.Optional[HTTPAuthorizationCredentials] = Depends(admin_security)
+):
+    """
+    Checks that the given token matches the admin token.
+    """
+    token = getattr(credentials, "credentials", None)
+    if settings.admin_token:
+        if token:
+            # Use a timing-analysis resistant comparison
+            if not hmac.compare_digest(settings.admin_token, token):
+                raise HTTPException(status_code = 403, detail = "Permission denied.")
+        else:
+            raise HTTPException(
+                status_code = 401,
+                detail = "Authentication token required.",
+                headers = { "WWW-Authenticate": "Bearer" }
+            )
+    return True
 
 
 def generate_signature(message: str) -> str:
@@ -39,7 +66,7 @@ def fingerprint(ssh_pubkey: str) -> str:
 
 
 @app.post(
-    "/reserve",
+    "/admin/reserve",
     response_model = Reservation,
     responses = {
         409: {
@@ -48,9 +75,15 @@ def fingerprint(ssh_pubkey: str) -> str:
         },
     }
 )
-async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest] = None):
+async def reserve_subdomain(
+    request: Request,
+    req: t.Optional[ReservationRequest] = None,
+    is_admin: bool = Depends(check_admin_token)
+):
     """
     Reserve a subdomain and return a single-use URL that can be used to associate public keys.
+
+    If no subdomain is given, a random subdomain is reserved and returned.
     """
     if not req:
         req = ReservationRequest()
@@ -59,6 +92,40 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
     token = base64.urlsafe_b64encode(f"{req.subdomain}.{signature}".encode()).decode()
     associate_url = request.url_for(associate_public_keys.__name__, token = token)
     return Reservation(subdomain = req.subdomain, associate_url = associate_url)
+
+
+@app.post(
+    "/admin/verify",
+    response_model = VerificationResult,
+    responses = {
+        404: {
+            "description": "The given SSH public key is not known.",
+            "model": Error,
+        }
+    }
+)
+async def verify_subdomain(
+    req: VerificationRequest,
+    is_admin: bool = Depends(check_admin_token)
+):
+    """
+    Verifies that the specified public key is permitted to use the specified subdomain.
+    """
+    # Try to read a KV entry for the fingerprint
+    async with AsyncClient(base_url = settings.consul_url) as client:
+        url = f"/v1/kv/{settings.consul_key_prefix}/pubkeys/{fingerprint(req.public_key)}"
+        response = await client.get(url)
+        # Report a specific error if we get a 404
+        if response.status_code == 404:
+            raise HTTPException(
+                status_code = 404,
+                detail = "The given SSH public key is not known."
+            )
+        response.raise_for_status()
+        # The response will contain a list, we should take the first item
+        # The value should be in the item, base64-encoded
+        subdomain = base64.b64decode(response.json()[0]["Value"]).decode()
+    return VerificationResult(subdomain = subdomain, public_key = req.public_key)
 
 
 @app.post(
@@ -128,34 +195,3 @@ async def associate_public_keys(token: str, req: PublicKeyAssociationRequest):
             )
         response.raise_for_status()
     return PublicKeyAssociation(subdomain = subdomain, public_keys = req.public_keys)
-
-
-@app.post(
-    "/verify",
-    response_model = VerificationResult,
-    responses = {
-        404: {
-            "description": "The given SSH public key is not known.",
-            "model": Error,
-        }
-    }
-)
-async def verify_subdomain(req: VerificationRequest):
-    """
-    Verifies that the specified public key is permitted to use the specified subdomain.
-    """
-    # Try to read a KV entry for the fingerprint
-    async with AsyncClient(base_url = settings.consul_url) as client:
-        url = f"/v1/kv/{settings.consul_key_prefix}/pubkeys/{fingerprint(req.public_key)}"
-        response = await client.get(url)
-        # Report a specific error if we get a 404
-        if response.status_code == 404:
-            raise HTTPException(
-                status_code = 404,
-                detail = "The given SSH public key is not known."
-            )
-        response.raise_for_status()
-        # The response will contain a list, we should take the first item
-        # The value should be in the item, base64-encoded
-        subdomain = base64.b64decode(response.json()[0]["Value"]).decode()
-    return VerificationResult(subdomain = subdomain, public_key = req.public_key)
