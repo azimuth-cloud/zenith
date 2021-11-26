@@ -5,7 +5,7 @@ import typing as t
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives.serialization import load_ssh_public_key
 
-from pydantic import BaseModel, Field, AnyHttpUrl, conset, constr, validator
+from pydantic import BaseModel, Field, conset, constr, validator
 
 from .config import settings, SSHPublicKeyType
 
@@ -52,8 +52,8 @@ class Reservation(BaseModel):
     """
     #: The subdomain that was reserved
     subdomain: Subdomain
-    #: The URL to use to associate public keys with the subdomain
-    associate_url: AnyHttpUrl
+    #: The token to use to associate public keys with the subdomain
+    token: str
 
 
 class SSHPublicKey(str):
@@ -115,6 +115,8 @@ class PublicKeyAssociationRequest(BaseModel):
     """
     Model for a request to associate public keys with a subdomain.
     """
+    #: The token for the request
+    token: constr(min_length = 1)
     #: The public keys to associate with the subdomain
     public_keys: conset(SSHPublicKey, min_items = 1)
 
