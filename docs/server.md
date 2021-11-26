@@ -28,6 +28,7 @@ for the vast majority of cases. For more advanced configuration requirements, se
   - [Using a pre-existing wildcard certificate](#using-a-pre-existing-wildcard-certificate)
   - [Using a wildcard certificate managed by cert-manager](#using-a-wildcard-certificate-managed-by-cert-manager)
   - [Using per-subdomain certificates managed by cert-manager](#using-per-subdomain-certificates-managed-by-cert-manager)
+- [Reserved subdomains](#reserved-subdomains)
 - [External auth](#external-auth)
 - [Using non-standard images](#using-non-standard-images)
 - [Managing resource consumption](#managing-resource-consumption)
@@ -325,6 +326,21 @@ This mechanism can be used to consume certificates issued by Let's Encrypt using
 > issuance of certificates that, at the time of writing, allows 50 certificates per week
 > per *Registered Domain*. This means that even if Zenith has been given `apps.example.cloud`,
 > the limit would apply to the whole of `example.cloud`.
+
+## Reserved subdomains
+
+Zenith can be configured so that some subdomains are reserved and hence not available
+for Zenith clients to use. For example, the Azimuth portal uses this to reserve the
+subdomain used to expose the portal interface to prevent a malicious Zenith client
+replacing the portal interface with their own.
+
+To configure reserved subdomains, use the following configuration:
+
+```yaml
+sshd:
+  config:
+    reservedSubdomains: [portal, metrics]
+```
 
 ## External auth
 

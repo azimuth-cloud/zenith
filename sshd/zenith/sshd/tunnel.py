@@ -184,6 +184,15 @@ def get_tunnel_config(timeout_secs):
     )
 
 
+def check_subdomain_reserved(server_config, subdomain):
+    """
+    Checks that the subdomain requested for the tunnel is not reserved.
+    """
+    if subdomain in server_config.reserved_subdomains:
+        print(f"[SERVER] [ERROR] '{subdomain}' is a reserved subdomain")
+        sys.exit(1)
+
+
 def consul_check_service_host_and_port(server_config, tunnel):
     """
     Checks that there is not already an existing service with the same host and port.
@@ -394,6 +403,7 @@ def run(server_config):
          them to an existing tunnel in order to intercept traffic.
     """
     tunnel = get_tunnel_config(server_config.configure_timeout)
+    check_subdomain_reserved(server_config, tunnel.config.subdomain)
     consul_check_service_host_and_port(server_config, tunnel)
     consul_register_service(server_config, tunnel)
     register_signal_handlers(server_config, tunnel)

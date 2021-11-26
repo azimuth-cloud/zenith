@@ -1,4 +1,5 @@
 import socket
+import typing
 
 from pydantic import DirectoryPath, FilePath, Field
 
@@ -53,6 +54,9 @@ class SSHDConfig(Configuration):
     skip_auth_metadata_key: str = "skip-auth"
     #: The prefix to use for metadata items containing authentication parameters
     auth_param_metadata_prefix: str = "auth-"
+
+    #: A list of subdomains that are reserved and cannot be used for Zenith services
+    reserved_subdomains: typing.List[str] = Field(default_factory = list)
 
     #: The SSHD executable location
     sshd_executable: FilePath = "/usr/sbin/sshd"
