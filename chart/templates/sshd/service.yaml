@@ -14,8 +14,8 @@ spec:
       targetPort: sshd
       protocol: TCP
       name: sshd
-      {{- if (eq .Values.sshd.service.type "NodePort") }}
-      nodePort: {{ .Values.sshd.service.nodePort }}
+      {{- with .Values.sshd.service.nodePort }}
+      nodePort: {{ . }}
       {{- end }}
   selector: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 4 }}
 {{- end }}
