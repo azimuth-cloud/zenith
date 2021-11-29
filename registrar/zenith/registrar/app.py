@@ -5,7 +5,7 @@ import hmac
 import typing as t
 
 from fastapi import FastAPI, Depends, Request, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
 
 from httpx import AsyncClient
 

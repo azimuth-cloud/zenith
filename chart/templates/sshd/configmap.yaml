@@ -1,4 +1,16 @@
-{{- if .Values.sshd.enabled }}
+{{- define "zenith.sshd.defaults" -}}
+consulKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
+serviceTag: {{ .Values.common.consul.serviceTag | quote }}
+reservedSubdomains: {{
+  .Values.common.reservedSubdomains |
+    concat (default list .Values.sshd.config.reservedSubdomains) |
+    concat (list .Values.common.ingress.registrarSubdomain) |
+    toYaml |
+    nindent 2
+}}
+{{- end }}
+
+{{- if .Values.sshd.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,5 +18,11 @@ metadata:
   labels: {{ include "zenith.componentLabels" (list . "sshd-conf") | nindent 4 }}
 data:
   sshd.yaml: |
-    {{- tpl (toYaml .Values.sshd.config) . | nindent 4 }}
+    {{-
+      include "zenith.sshd.defaults" . |
+        fromYaml |
+        merge (omit .Values.sshd.config "reservedSubdomains") |
+        toYaml |
+        nindent 4
+    }}
 {{- end }}
