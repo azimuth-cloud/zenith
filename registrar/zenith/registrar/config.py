@@ -30,9 +30,12 @@ class RegistrarConfig(Configuration):
 
     #: The key that is used to sign the subdomain tokens
     subdomain_token_signing_key: conbytes(strip_whitespace = True, min_length = 32)
-    #: The shared token that is permitted for admin operations
-    #: If not given then admin operations are not authenticated, i.e. anyone can request a subdomain
-    admin_token: t.Optional[str] = None
+    #: The shared token that is permitted to reserve subdomains
+    #: If not given then reservations are not authenticated
+    reserve_token: t.Optional[str] = None
+    #: The shared token that is permitted to verify SSH public keys
+    #: If not given, verifications are not authenticated
+    verify_token: t.Optional[str] = None
 
     #: A list of subdomains that are reserved and cannot be used for Zenith services
     reserved_subdomains: t.List[str] = Field(default_factory = list)

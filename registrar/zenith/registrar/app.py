@@ -25,29 +25,39 @@ from .models import (
 app = FastAPI()
 
 
-#: The security object used to apply bearer authentication to admin requests
-admin_security = HTTPBearer(auto_error = False)
+class SharedTokenChecker(HTTPBearer):
+    """
+    Class whose instances can be used as a view dependency to check incoming requests
+    for the given shared token.
+    """
+    def __init__(self, token):
+        self.token = token
+        super().__init__(auto_error = False)
+
+    def __call__(self, request: Request):
+        """
+        Checks that the request token matches the given token.
+        """
+        if self.token:
+            credentials = super().__call__(request)
+            token = getattr(credentials, "credentials", None)
+            if token:
+                # Use a timing-analysis resistant comparison
+                if not hmac.compare_digest(self.token, token):
+                    raise HTTPException(status_code = 403, detail = "Permission denied.")
+            else:
+                raise HTTPException(
+                    status_code = 401,
+                    detail = "Authentication token required.",
+                    headers = { "WWW-Authenticate": "Bearer" }
+                )
+        return True
 
 
-def check_admin_token(
-    credentials: t.Optional[HTTPAuthorizationCredentials] = Depends(admin_security)
-):
-    """
-    Checks that the given token matches the admin token.
-    """
-    token = getattr(credentials, "credentials", None)
-    if settings.admin_token:
-        if token:
-            # Use a timing-analysis resistant comparison
-            if not hmac.compare_digest(settings.admin_token, token):
-                raise HTTPException(status_code = 403, detail = "Permission denied.")
-        else:
-            raise HTTPException(
-                status_code = 401,
-                detail = "Authentication token required.",
-                headers = { "WWW-Authenticate": "Bearer" }
-            )
-    return True
+#: Checks for the reservation shared token on a request
+check_reserve_token = SharedTokenChecker(settings.reserve_token)
+#: Checks for the verification shared token on a request
+check_verify_token = SharedTokenChecker(settings.verify_token)
 
 
 def generate_signature(message: str) -> str:
@@ -78,7 +88,7 @@ def fingerprint(ssh_pubkey: str) -> str:
 async def reserve_subdomain(
     request: Request,
     req: t.Optional[ReservationRequest] = None,
-    is_admin: bool = Depends(check_admin_token)
+    permitted: bool = Depends(check_reserve_token)
 ):
     """
     Reserve a subdomain and return a single-use URL that can be used to associate public keys.
@@ -134,7 +144,7 @@ async def reserve_subdomain(
 )
 async def verify_subdomain(
     req: VerificationRequest,
-    is_admin: bool = Depends(check_admin_token)
+    permitted: bool = Depends(check_verify_token)
 ):
     """
     Verifies that the specified public key is permitted to use the specified subdomain.
