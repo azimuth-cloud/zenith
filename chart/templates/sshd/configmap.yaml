@@ -1,13 +1,8 @@
 {{- define "zenith.sshd.defaults" -}}
 consulKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
 serviceTag: {{ .Values.common.consul.serviceTag | quote }}
-reservedSubdomains: {{
-  .Values.common.reservedSubdomains |
-    concat (default list .Values.sshd.config.reservedSubdomains) |
-    concat (list .Values.common.ingress.registrarSubdomain) |
-    toYaml |
-    nindent 2
-}}
+# Use the internal service for the registrar
+registrarUrl: http://{{ include "zenith.componentname" (list . "registrar") }}
 {{- end }}
 
 {{- if .Values.sshd.enabled -}}
@@ -21,7 +16,7 @@ data:
     {{-
       include "zenith.sshd.defaults" . |
         fromYaml |
-        merge (omit .Values.sshd.config "reservedSubdomains") |
+        merge .Values.sshd.config |
         toYaml |
         nindent 4
     }}

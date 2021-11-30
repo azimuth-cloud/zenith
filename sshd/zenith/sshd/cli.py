@@ -4,6 +4,7 @@ import pathlib
 import subprocess
 
 import click
+import requests
 
 from .config import SSHDConfig
 from .tunnel import run as run_tunnel
@@ -23,14 +24,25 @@ def main(ctx, config):
 
 
 @main.command()
+@click.pass_context
 @click.argument("key_type")
 @click.argument("key_content")
-def authorized_keys(key_type, key_content):
+def authorized_keys(ctx, key_type, key_content):
     """
     Authorized keys command for Zenith SSHD instances.
     """
-    # For now, all keys are accepted
-    click.echo(f"{key_type} {key_content}")
+    # Make a request to the registrar service to check the SSH public key
+    url = ctx.obj["CONFIG"].registrar_url + "/admin/verify"
+    response = requests.post(url, json = { "public_key": f"{key_type} {key_content}" })
+    # If the response is a 404, we exit without printing anything as the key is not
+    # associated with any subdomains
+    if response.status_code == 404:
+        return
+    # Any other status codes should be a command error
+    response.raise_for_status()
+    # On success we permit the key, but restrict the command to the associated subdomain
+    subdomain = response.json()["subdomain"]
+    print(f"command=\"zenith-sshd tunnel {subdomain}\" {key_type} {key_content}")
 
 
 # The hostkeys to create, along with the number of bytes
@@ -84,8 +96,9 @@ def start(ctx):
 
 @main.command()
 @click.pass_context
-def tunnel(ctx):
+@click.argument("subdomain")
+def tunnel(ctx, subdomain):
     """
-    Configures a Zenith tunnel for a connecting client.
+    Configures a Zenith tunnel for a connecting client for the given subdomain.
     """
-    run_tunnel(ctx.obj["CONFIG"])
+    run_tunnel(ctx.obj["CONFIG"], subdomain)

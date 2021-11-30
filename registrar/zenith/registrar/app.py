@@ -25,41 +25,6 @@ from .models import (
 app = FastAPI()
 
 
-class SharedTokenChecker(HTTPBearer):
-    """
-    Class whose instances can be used as a view dependency to check incoming requests
-    for the given shared token.
-    """
-    def __init__(self, token):
-        self.token = token
-        super().__init__(auto_error = False)
-
-    def __call__(self, request: Request):
-        """
-        Checks that the request token matches the given token.
-        """
-        if self.token:
-            credentials = super().__call__(request)
-            token = getattr(credentials, "credentials", None)
-            if token:
-                # Use a timing-analysis resistant comparison
-                if not hmac.compare_digest(self.token, token):
-                    raise HTTPException(status_code = 403, detail = "Permission denied.")
-            else:
-                raise HTTPException(
-                    status_code = 401,
-                    detail = "Authentication token required.",
-                    headers = { "WWW-Authenticate": "Bearer" }
-                )
-        return True
-
-
-#: Checks for the reservation shared token on a request
-check_reserve_token = SharedTokenChecker(settings.reserve_token)
-#: Checks for the verification shared token on a request
-check_verify_token = SharedTokenChecker(settings.verify_token)
-
-
 def generate_signature(message: str) -> str:
     """
     Generates a signature for the given message using the signing key.
@@ -68,11 +33,28 @@ def generate_signature(message: str) -> str:
     return hmac.new(key, message.encode(), hashlib.sha1).hexdigest()
 
 
+def fingerprint_bytes(ssh_pubkey: str) -> bytes:
+    """
+    Returns the raw bytes for the fingerprint of an SSH public key.
+    """
+    data = binascii.a2b_base64(ssh_pubkey.split()[1])
+    return hashlib.sha256(data).digest()
+
+
 def fingerprint(ssh_pubkey: str) -> str:
     """
     Returns the fingerprint for an SSH public key.
     """
-    return hashlib.sha256(base64.b64decode(ssh_pubkey.split()[1])).hexdigest()
+    digest = fingerprint_bytes(ssh_pubkey)
+    return base64.b64encode(digest).decode().rstrip("=")
+
+
+def fingerprint_urlsafe(ssh_pubkey: str) -> str:
+    """
+    Returns the fingerprint for an SSH public key.
+    """
+    digest = fingerprint_bytes(ssh_pubkey)
+    return base64.urlsafe_b64encode(digest).decode().rstrip("=")
 
 
 @app.post(
@@ -85,11 +67,7 @@ def fingerprint(ssh_pubkey: str) -> str:
         },
     }
 )
-async def reserve_subdomain(
-    request: Request,
-    req: t.Optional[ReservationRequest] = None,
-    permitted: bool = Depends(check_reserve_token)
-):
+async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest] = None):
     """
     Reserve a subdomain and return a single-use URL that can be used to associate public keys.
 
@@ -142,16 +120,13 @@ async def reserve_subdomain(
         }
     }
 )
-async def verify_subdomain(
-    req: VerificationRequest,
-    permitted: bool = Depends(check_verify_token)
-):
+async def verify_subdomain(req: VerificationRequest):
     """
     Verifies that the specified public key is permitted to use the specified subdomain.
     """
     # Try to read a KV entry for the fingerprint
     async with AsyncClient(base_url = settings.consul_url) as client:
-        url = f"/v1/kv/{settings.consul_key_prefix}/pubkeys/{fingerprint(req.public_key)}"
+        url = f"/v1/kv/{settings.consul_key_prefix}/pubkeys/{fingerprint_urlsafe(req.public_key)}"
         response = await client.get(url)
         # Report a specific error if we get a 404
         if response.status_code == 404:
@@ -200,6 +175,7 @@ async def associate_public_keys(req: PublicKeyAssociationRequest):
         modify_index = int(modify_index)
     except ValueError:
         raise HTTPException(status_code = 400, detail = "The given token is invalid.")
+    # Get the fingerprint of each public key
     async with AsyncClient(base_url = settings.consul_url) as client:
         # Use a transaction to update the subdomain record and pubkey records atomically
         response = await client.put("/v1/txn", json = [
@@ -222,7 +198,9 @@ async def associate_public_keys(req: PublicKeyAssociationRequest):
                     # Use regular set semantics here, as we don't care about splatting existing
                     # pubkey records (it shouldn't happen with a well-behaved client anyway)
                     "Verb": "set",
-                    "Key": f"{settings.consul_key_prefix}/pubkeys/{fingerprint(pubkey)}",
+                    # Use a URL-safe fingerprint as the key, otherwise the "/" characters form a
+                    # nested structure that we don't want
+                    "Key": f"{settings.consul_key_prefix}/pubkeys/{fingerprint_urlsafe(pubkey)}",
                     # The value is the subdomain, which can be looked up by key later
                     "Value": base64.b64encode(subdomain.encode()).decode(),
                 }
@@ -239,4 +217,8 @@ async def associate_public_keys(req: PublicKeyAssociationRequest):
                 )
             )
         response.raise_for_status()
-    return PublicKeyAssociation(subdomain = subdomain, public_keys = req.public_keys)
+    return PublicKeyAssociation(
+        subdomain = subdomain,
+        # Return the non-URL-safe fingerprints so they can be compared with the output of OpenSSH
+        fingerprints = [fingerprint(pubkey) for pubkey in req.public_keys]
+    )

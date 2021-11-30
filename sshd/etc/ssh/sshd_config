@@ -26,9 +26,6 @@ PubkeyAuthentication yes
 AuthorizedKeysCommand /usr/local/bin/zenith-sshd authorized-keys "%t" "%k"
 AuthorizedKeysCommandUser zenith
 
-# Force the tunnel command to run
-ForceCommand zenith-sshd tunnel
-
 # Allow the user to create reverse SSH tunnels only
 AllowTcpForwarding remote
 

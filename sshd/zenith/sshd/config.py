@@ -55,8 +55,8 @@ class SSHDConfig(Configuration):
     #: The prefix to use for metadata items containing authentication parameters
     auth_param_metadata_prefix: str = "auth-"
 
-    #: A list of subdomains that are reserved and cannot be used for Zenith services
-    reserved_subdomains: typing.List[str] = Field(default_factory = list)
+    #: The URL of the Zenith registrar service
+    registrar_url: str
 
     #: The SSHD executable location
     sshd_executable: FilePath = "/usr/sbin/sshd"

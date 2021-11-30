@@ -127,8 +127,8 @@ class PublicKeyAssociation(BaseModel):
     """
     #: The subdomain that the keys were associated with
     subdomain: str
-    #: The public keys that weere associated with the subdomain
-    public_keys: t.List[str]
+    #: The fingerprints of the public keys that weere associated with the subdomain
+    fingerprints: t.List[str]
 
 
 class Error(BaseModel):

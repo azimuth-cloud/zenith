@@ -6,16 +6,11 @@ consul:
 
 # Common configuration
 common:
-  # A list of subdomains that cannot be used for Zenith services
-  # The registrar subdomain will be included in addition to this list
-  reservedSubdomains: []
   # Ingress configuration
   ingress:
     # The base domain to use for services exposed by Zenith
     # Proxied services will be made available at <subdomain>.<base domain>
     baseDomain:
-    # The subdomain that will be reserved for the registrar
-    registrarSubdomain: registrar
     # The ingress class to use
     className: nginx
     # The common annotations for ingress resources
@@ -140,8 +135,6 @@ sshd:
     # serviceTag:
     # The number of seconds to wait to receive a tunnel configuration before exiting
     # configureTimeout:
-    # A list of subdomains that cannot be used for Zenith services
-    # reservedSubdomains:
   # The image to use for the SSHD server
   image:
     repository: ghcr.io/stackhpc/zenith-sshd
@@ -185,7 +178,7 @@ sshd:
 registrar:
   enabled: true
   # The registrar configuration
-  config: {}
+  config:
     # The key that is used to sign the subdomain tokens
     # subdomainTokenSigningKey:
     # The shared token that is permitted to reserve subdomains
@@ -193,7 +186,7 @@ registrar:
     # The shared token that is permitted to verify SSH public keys
     # verifyToken:
     # A list of subdomains that are reserved and cannot be used for Zenith services
-    # reservedSubdomains:
+    reservedSubdomains: []
     # The set of allowed SSH key types
     # sshAllowedKeyTypes: [ssh-rsa, ssh-ed25519, ...] 
     # The minimum size for RSA keys
@@ -206,8 +199,10 @@ registrar:
     # consulKeyPrefix:
   # The registrar ingress configuration
   ingress:
+    # The subdomain that will be reserved for the registrar
+    subdomain: registrar
     # The host for the ingress resource
-    host: "{{ .Values.common.ingress.registrarSubdomain }}.{{ .Values.common.ingress.baseDomain }}"
+    host: "{{ .Values.registrar.ingress.subdomain }}.{{ .Values.common.ingress.baseDomain }}"
     # The annotations for the ingress resource
     # annotations:
     # The class name for the ingress resource

@@ -1,29 +1,15 @@
 import base64
-import random
-import string
+import pathlib
 import typing
 
-from pydantic import Field, FilePath, conint, constr, validator
+from pydantic import Field, FilePath, AnyHttpUrl, conint, constr, validator
 
 from configomatic import Configuration, LoggingConfiguration
 
 
-#: Constraint for a Zenith subdomain
-Subdomain = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
-
 #: Constraint for Zenith auth params keys and values
 AuthParamsKey = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
 AuthParamsValue = constr(max_length = 1024)
-
-
-def default_subdomain():
-    """
-    Returns a random subdomain consisting of 32 alphanumeric characters.
-    """
-    # Domains must start with a letter
-    chars = [random.choice(string.ascii_lowercase)]
-    chars.extend(random.choices(string.ascii_lowercase + string.digits, k = 31))
-    return "".join(chars)
 
 
 def base64_encoded_content(path):
@@ -34,14 +20,37 @@ def base64_encoded_content(path):
         return base64.b64encode(fh.read()).decode()
 
 
-class ClientConfig(Configuration):
+class BootstrapConfig(Configuration):
     """
-    Configuration model for the zenith-client package.
+    Configuration model for the bootstrap command.
     """
     class Config:
-        default_path = '/etc/zenith/client.yaml'
-        path_env_var = 'ZENITH_CLIENT_CONFIG'
-        env_prefix = 'ZENITH_CLIENT'
+        default_path = "/etc/zenith/client-bootstrap.yaml"
+        path_env_var = "ZENITH_CLIENT_BOOTSTRAP_CONFIG"
+        env_prefix = "ZENITH_CLIENT_BOOTSTRAP"
+
+    #: The logging configuration
+    logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
+
+    #: The ssh-keygen executable to use
+    ssh_keygen_executable: str = "ssh-keygen"
+    #: The path of the SSH identity to use
+    #: Either the identity already exists or a new keypair is generated at the specified location
+    ssh_identity_path: pathlib.Path
+    #: The Zenith registrar URL to use to associate the public key
+    registrar_url: AnyHttpUrl
+    #: The Zenith registrar token to use to associate the public key
+    token: constr(min_length = 1)
+
+
+class ConnectConfig(Configuration):
+    """
+    Configuration model for the connect command.
+    """
+    class Config:
+        default_path = "/etc/zenith/client-connect.yaml"
+        path_env_var = "ZENITH_CLIENT_CONNECT_CONFIG"
+        env_prefix = "ZENITH_CLIENT_CONNECT"
 
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
@@ -52,19 +61,17 @@ class ClientConfig(Configuration):
     #: Only applies when the script is executing as root
     run_as_user: typing.Optional[conint(gt = 0)] = Field(
         None,
-        description = "UID to switch to after reading configuration (only used when executed as root)."
+        description = "UID to switch to after reading configuration (when executed as root)."
     )
-    #: The SSH identity file to use
-    #: If not given, a temporary SSH key is created
-    ssh_identity_file: FilePath = Field(
+    #: The path to an SSH identity file to use
+    ssh_identity_path: typing.Optional[FilePath] = Field(
         None,
-        description = "The SSH identity file to use. If not given, a temporary identity is generated."
+        description = "The path to the SSH identity to use."
     )
     #: The SSH private key to use
-    #: If not given, a temporary SSH key is created
-    ssh_private_key_data: FilePath = Field(
+    ssh_private_key_data: typing.Optional[str] = Field(
         None,
-        description = "Base64-encoded SSH private key to use. If not given, a temporary identity is generated."
+        description = "Base64-encoded SSH private key to use."
     )
     #: The time to wait for a successful configuration before timing out
     configure_timeout: int = Field(
@@ -90,15 +97,6 @@ class ClientConfig(Configuration):
     forward_to_port: int = Field(
         8000,
         description = "The port to forward tunnel traffic to."
-    )
-    #: The subdomain to request
-    #: If not given, a random subdomain is used
-    #: Subdomains must be at most 63 characters long, can only contain alphanumeric characters
-    #: and hyphens, and cannot start or end with a hyphen
-    #: In addition, Zenith subdomains must start with a letter and be lower case
-    subdomain: Subdomain = Field(
-        default_factory = default_subdomain,
-        description = "The subdomain to request. If not given, a random subdomain is used."
     )
     #: The backend protocol
     backend_protocol: typing.Literal["http", "https"] = Field(
@@ -170,11 +168,11 @@ class ClientConfig(Configuration):
         """
         if v:
             return v
-        ssh_identity_file = values.get("ssh_identity_file")
-        if ssh_identity_file:
-            return base64_encoded_content(ssh_identity_file)
+        ssh_identity_path = values.get("ssh_identity_path")
+        if ssh_identity_path:
+            return base64_encoded_content(ssh_identity_path)
         else:
-            return None
+            raise ValueError("No SSH private key specified.")
 
     @validator("tls_cert_data", always = True)
     def validate_tls_cert_data(cls, v, *, values):
