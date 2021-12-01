@@ -10,11 +10,13 @@ over that tunnel is forwarded to the proxied service.
   - [Python installation](#python-installation)
 - [Resilience](#resilience)
 - [Usage](#usage)
-  - [Specifying the Zenith SSHD server](#specifying-the-zenith-sshd-server)
-  - [Specifying the proxied service](#specifying-the-proxied-service)
-  - [Specifying the subdomain](#specifying-the-subdomain)
-  - [Specifying the protocol of the proxied service](#specifying-the-protocol-of-the-proxied-service)
-  - [Specifying authentication parameters](#specifying-authentication-parameters)
+  - [Specifying the SSH identity](#specifying-the-ssh-identity)
+  - [`init` command](#init-command)
+  - [`connect` command](#connect-command)
+    - [Specifying the Zenith SSHD server](#specifying-the-zenith-sshd-server)
+    - [Specifying the proxied service](#specifying-the-proxied-service)
+    - [Specifying the protocol of the proxied service](#specifying-the-protocol-of-the-proxied-service)
+    - [Specifying authentication parameters](#specifying-authentication-parameters)
 
 ## Installation
 
@@ -50,8 +52,8 @@ zenith-client --help
 
 ## Resilience
 
-When using the Zenith client to expose a long-running service, it is important to deploy the Zenith
-client in such a way that it can automatically recover from failures. In general, it should be
+When using the Zenith client to expose a long-running service, it is important to deploy the
+client in a way that means it can automatically recover from failures. In general, it should be
 assumed that the SSH tunnel established between a Zenith client and a Zenith server could fail at
 any time due to issues with the server, the client or the network in-between.
 
@@ -65,35 +67,75 @@ such as `on-failure` for the container.
 
 ## Usage
 
+The Zenith client has two subcommands - `init` and `connect`. The `init` command is run once to
+initialise the client by generating an SSH keypair, if required, and uploading the public key
+to the registrar using the token supplied by the broker. The `connect` command then uses the
+keypair registered by the `init` command to establish a secure tunnel for the proxied service.
+The `connect` command can be run more than once.
+
 The Zenith client can be configured in three ways, in order of precedence:
 
   * Command-line arguments
   * Environment variables
   * Configuration file
 
+Not all options are available via the command line, so environment variables or a config file
+are recommended for most situations.
+
 The location of the configuration file can be specified using either the `--config` command-line
 argument or the `ZENITH_CLIENT_CONFIG` environment variable, with `/etc/zenith/client.yaml`
 used by default if present.
 
 This section describes the most commonly used options. For a full list of the available options see
-`zenith-client --help` or the
-[Zenith client configuration object](../client/zenith/client/config.py).
+`zenith-client [init|connect] --help` or the
+[Zenith client configuration objects](../client/zenith/client/config.py).
 
-### Specifying the Zenith SSHD server
+### Specifying the SSH identity
+
+The `init` and `connect` commands both require access to the same SSH identity, specified as
+a path. The `connect` command requires the identity to exist at the given path before it can run,
+but the `init` command will generate a new keypair at the specified path if one does not exist.
+The path to the SSH identity is specified using the following option:
+
+  * `ssh_identity_path`: The path to the SSH identity to use, e.g. `$HOME/.ssh/id_zenith`.
+    * CLI argument: `--ssh-identity-path`
+    * Environment variable: `ZENITH_CLIENT__SSH_IDENTITY_PATH`
+    * Default: *This option is required.*
+
+### `init` command
+
+The `init` command is responsible for uploading the client's public key to the Zenith registrar.
+To do this, the `init` command must be configured with the URL for the Zenith registrar and
+a token issued by the registrar for a reserved subdomain (via an implementation-specific broker).
+This is done with the following options:
+
+  * `registrar_url`: The URL of the Zenith registrar, e.g. `https://registrar.example.cloud`.
+    * CLI argument: `--registrar-url`
+    * Environment variable: `ZENITH_CLIENT__REGISTRAR_URL`
+    * Default: *This option is required.*
+  * `token`: The token issued by the Zenith registrar.
+    * CLI argument: `--token`
+    * Environment variable: `ZENITH_CLIENT__TOKEN`
+    * Default: *This option is required.*
+
+### `connect` command
+
+#### Specifying the Zenith SSHD server
 
 The Zenith client connects to a Zenith SSHD server to establish a secure tunnel. To do this,
 the client must be configured with the correct address and port for the Zenith SSHD server.
 This is done with the following options:
 
-  * `server_address`: The address of the Zenith server, e.g. `sshd.example.cloud` or `193.154.167.25`.
+  * `server_address`: The address of the Zenith SSHD server, e.g. `sshd.example.cloud` or `193.154.167.25`.
       * CLI argument: `--server-address`
       * Environment variable: `ZENITH_CLIENT__SERVER_ADDRESS`
-  * `server_port`: The port of the Zenith server.
+      * Default: *This option is required.*
+  * `server_port`: The port of the Zenith SSHD server.
       * CLI argument: `--server-port`
       * Environment variable: `ZENITH_CLIENT__SERVER_PORT`
       * Default: `22`
 
-### Specifying the proxied service
+#### Specifying the proxied service
 
 The Zenith client forwards traffic that arrives down the SSH tunnel to another, locally available
 service. To do this, the Zenith client must be configured with an address and a port to which
@@ -108,27 +150,17 @@ traffic should be forwarded. This is done with the following options:
       * Environment variable: `ZENITH_CLIENT__FORWARD_TO_PORT`
       * Default: `8000`
 
-### Specifying the subdomain
-
-Zenith will forward traffic from a subdomain to our client - this subdomain can either be specified
-when creating the tunnel or Zenith will generate one for you.
-
-  * `subdomain`: The subdomain to use, e.g. `v929br0a92ler4rgp1thjvoa9vv21i5l`.
-      * CLI argument: `--subdomain`
-      * Environment variable: `ZENITH_CLIENT__SUBDOMAIN`
-      * Default: random
-
-### Specifying the protocol of the proxied service
+#### Specifying the protocol of the proxied service
 
 By default, Zenith assumes that the services being proxied use the HTTP protocol. If the service
 implements TLS, then Zenith must be told to use HTTPS instead.
 
   * `backend_protocol`: The protocol of the proxied service, one of `http` or `https`.
-      * CLI argument: `--backend-protocol`
+      * CLI argument: *Not available as a CLI argument.*
       * Environment variable: `ZENITH_CLIENT__BACKEND_PROTOCOL`
       * Default: `http`
 
-### Specifying authentication parameters
+#### Specifying authentication parameters
 
 Zenith is able to enforce authentication by calling out to an external auth service. When
 initiating a tunnel, the Zenith client can specify a dictionary of parameters that will be passed
@@ -140,14 +172,14 @@ permitting a request to proceed.
 
 The Zenith client can also opt out of the external auth, even when it is configured at the server.
 This can be useful for services that should be anonymously available or that enforce their
-own alternative authentication.
+own authentication.
 
   * `skip_auth`: Indicates if the external auth should be skipped for this client.
-      * CLI argument: `--skip-auth`
+      * CLI argument: *Not available as a CLI argument.*
       * Environment variable: `ZENITH_CLIENT__SKIP_AUTH`
       * Default: `false`
   * `auth_params`: Indicates if the external auth should be skipped for this client.
-      * CLI argument: `--auth-params`, accepts a JSON-formatted string
+      * CLI argument: *Not available as a CLI argument.*
       * Environment variables of the form `ZENITH_CLIENT__AUTH_PARAMS__{KEY}`, e.g.
         `ZENITH_CLIENT__AUTH_PARAMS__OPENSTACK_PROJECT`
       * Default: `{}`

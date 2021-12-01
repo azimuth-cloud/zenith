@@ -76,7 +76,7 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
     if not req:
         req = ReservationRequest()
     # Try to create the subdomain key with a value of zero
-    # We use compare-and-swap (CAS) semantics with an index of zero, which means the
+    # We use check-and-set (CAS) semantics with an index of zero, which means the
     # operation will only succeed if it creates the key
     # In order to get the modify index back without another query, we need to use a
     # transaction even though there is only one operation

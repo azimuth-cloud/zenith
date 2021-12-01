@@ -21,6 +21,7 @@ traffic can then flow to the proxied service, even if that service is behind NAT
   * Expose services that are behind NAT or a firewall as subdomains of a parent domain.
     * Exposed services only need to be bound locally, i.e. to `localhost`, on an isolated Docker network
       or within the same Podman or Kubernetes pod as the Zenith client.
+  * Limit the clients that are able to connect using a token-based system.
   * Perform TLS termination for proxied services.
   * Enforce external authentication and authorization for proxied services.
   * Uses industry-standard software and protocols:
@@ -41,17 +42,26 @@ Zenith has two logical components, a server and a client, each of which has subc
 leverages the power of Kubernetes on the server-side to do most of the heavy lifting for the dynamic
 proxying.
 
-The Zenith server consists of two main components, both of which are written in
+The Zenith server consists of three main components, all of which are written in
 [Python](https://www.python.org/) and deployed in Kubernetes:
 
+  * A registrar that allows subdomains to be reserved and issues single-use tokens that can
+    be used to associate SSH public keys with those subdomains.
   * A locked-down SSHD server that establishes secure tunnels with the Zenith clients and posts
     the resulting service information into Consul.
   * A sync component that receives updates from Consul and synchronises the corresponding
     `Service`, `Endpoint` and `Ingress` resources in Kubernetes.
 
-The Zenith client is also written in [Python](https://www.python.org/), and it is responsible for
-configuring and starting an SSH connection to the SSHD component of a Zenith server using the
-[OpenSSH client](https://man.openbsd.org/ssh.1).
+The Zenith client is also written in [Python](https://www.python.org/), and it is responsible for:
+
+  * Uploading the SSH public key to the registrar using a previously issued token (the
+    delivery mechanism of the token to the client is out-of-scope for Zenith).
+  * Managing the SSH connection to the SSHD component of a Zenith server using the
+    [OpenSSH client](https://man.openbsd.org/ssh.1).
+
+The reservation of domains and the delivery of tokens to clients are managed by an external "broker"
+that will be different for each use case. For example, [Azimuth](https://github.com/stackhpc/azimuth)
+is able to act as a broker for Zenith clients that are running on machines and clusters it creates.
 
 The architecture of Zenith is described in more detail in [Zenith Architecture](./docs/architecture.md).
 
@@ -103,7 +113,28 @@ A service need only be bound locally in order to be proxied using Zenith - it on
 be reachable by the Zenith client.
 
 In this example, we start an NGINX container on an isolated Docker network and proxy it by
-deploying the Zenith client onto the same network:
+deploying the Zenith client onto the same network.
+
+First, we must get a token from the registrar that we can use to associate the public key -
+we perform the role of the "broker" manually in this case. The registrar's reservation
+endpoint is only available within the Kubernetes cluster, but we can use a Kubernetes
+`port-forward` to access it and issue a token:
+
+```
+$ REGISTRAR_SVC="$(kubectl get svc -l app.kubernetes.io/component=registrar --no-headers | awk '{ print $1 }')"
+
+$ kubectl port-forward svc/$REGISTRAR_SVC 0:80
+Forwarding from 127.0.0.1:51485 -> 8000
+Forwarding from [::1]:51485 -> 8000
+
+$ curl -X POST -s http://localhost:51485/admin/reserve | jq
+{
+  "subdomain": "oa81x2dhnalln02xjcg4h77bp7jr8gm7",
+  "token": "b2E4MXgyZGhuYWxsbjAyeGpjZzRoNzdicDdqcjhnbTcuOTc0LmUyODgwNjFiMzcxOWYyZTI5NmQyYWIxYTgwOTNhMTNjMDlmZThiNzk="
+}
+```
+
+Create a Docker network and launch NGINX onto it:
 
 ```
 $ docker network create zenith-test
@@ -111,48 +142,74 @@ $ docker network create zenith-test
 
 $ docker run --rm --detach --network zenith-test --name nginx nginx
 d8a1f908ec0393b86885d71f4ad1c6f05704892ae2fbc8893368fa8067d2165d
+```
+
+Create a Docker volume to store the SSH identity and run the client initialisation:
+
+```
+$ docker volume create zenith-ssh
+zenith-ssh
 
 $ docker run \
     --rm \
-    --network zenith-test \
+    -v zenith-ssh:/home/zenith/.ssh \
     ghcr.io/stackhpc/zenith-client:main \
-    zenith-client \
+    zenith-client init \
+      --ssh-identity-path /home/zenith/.ssh/id_zenith \
+      --registrar-url ${zenith_registrar_url} \
+      --token b2E4MXgyZGhuYWxsbjAyeGpjZzRoNzdicDdqcjhnbTcuOTc0LmUyODgwNjFiMzcxOWYyZTI5NmQyYWIxYTgwOTNhMTNjMDlmZThiNzk=
+
+[INFO] [INIT] Generating SSH identity at /home/zenith/.ssh/id_zenith
+Generating public/private rsa key pair.
+Your identification has been saved in /home/zenith/.ssh/id_zenith
+Your public key has been saved in /home/zenith/.ssh/id_zenith.pub
+The key fingerprint is:
+SHA256:SwFMYyCOB4jztQ3iG6ap4zj0XDySBuNgBqI133E7Q1g zenith-key
+The key's randomart image is:
++---[RSA 2048]----+
+|+ . .+=oE        |
+|*++.o.+oo        |
+|==o= = +..       |
+|o*= o o +.       |
+|=+ooo   So       |
+|oo.+ + . .       |
+|o + o . .        |
+|=  o             |
+|o+               |
++----[SHA256]-----+
+[INFO] [INIT] Uploading public key to registrar at [registrar URL]
+[INFO] [INIT] Public key SHA256:SwFMYyCOB4jztQ3iG6ap4zj0XDySBuNgBqI133E7Q1g uploaded successfully
+```
+
+Run the client `connect` command using the SSH identity generated in the previous step to
+establish the tunnel:
+
+```
+$ docker run \
+    --rm \
+    --network zenith-test \
+    -v zenith-ssh:/home/zenith/.ssh \
+    ghcr.io/stackhpc/zenith-client:main \
+    zenith-client connect \
+      --ssh-identity-path /home/zenith/.ssh/id_zenith \
       --server-address ${zenith_sshd_address} \
       --server-port ${zenith_sshd_port} \
       --forward-to-host nginx \
       --forward-to-port 80
 
 [INFO] [CLIENT] Switching to uid '1001'
-[INFO] [CLIENT] Generating temporary SSH private key
-Generating public/private rsa key pair.
-Your identification has been saved in /tmp/tmp0_nq34hb/id_rsa
-Your public key has been saved in /tmp/tmp0_nq34hb/id_rsa.pub
-The key fingerprint is:
-SHA256:ZTyIk1S6v++aG87fsyoRT8cJY6gmw+XwwB6NoYyxjUw zenith-key
-The key's randomart image is:
-+---[RSA 2048]----+
-|.E ..+....       |
-|oB .*.o+.o+      |
-|+.+o B=...=+ .   |
-|    = =o.o..+    |
-|     +. S+ .     |
-|       .. .      |
-|        o.       |
-|       o.+ ..    |
-|        BB=.oo   |
-+----[SHA256]-----+
+[INFO] [CLIENT] Writing SSH private key data to temporary file
 [INFO] [CLIENT] Spawning SSH process
 [INFO] [CLIENT] Negotiating tunnel configuration
-Warning: Permanently added '[REDACTED]' (ECDSA) to the list of known hosts.
+Warning: Permanently added '[redacted]:32222' (ECDSA) to the list of known hosts.
+[SERVER] [INFO] Initiating tunnel for subdomain 'oa81x2dhnalln02xjcg4h77bp7jr8gm7'
 [SERVER] [INFO] Waiting for configuration
-eyJhbGxvY2F0ZWRfcG9ydCI6IDQyOTk1LCAic3ViZG9tYWluIjogImE4OWtoZDdramY0YmxvYXBk
-Z2xoMW1qNXRqMnF0dGI5IiwgImJhY2tlbmRfcHJvdG9jb2wiOiAiaHR0cCJ9
+eyJhbGxvY2F0ZWRfcG9ydCI6IDQwOTEzLCAiYmFja2VuZF9wcm90b2NvbCI6ICJodHRwIn0=
 
 END_CONFIGURATION
 [INFO] [CLIENT] Tunnel configured successfully
 [SERVER] [INFO] Received configuration: {
-  "allocated_port": 42995,
-  "subdomain": "a89khd7kjf4bloapdglh1mj5tj2qttb9",
+  "allocated_port": 40913,
   "backend_protocol": "http"
 }
 [SERVER] [INFO] Checking if Consul service already exists for allocated port
@@ -162,11 +219,12 @@ END_CONFIGURATION
 [SERVER] [INFO] Updating service health status in Consul
 [SERVER] [INFO] Service health updated successfully
 [SERVER] [INFO] Updating service health status in Consul
+[SERVER] [INFO] Service health updated successfully
 ...
 ```
 
-The client and server negotiate the tunnel configuration, and the final configuration that
-is decided on is output on stdout, including the subdomain.
+The subdomain that is associated with the SSH key is verified and printed, then the client and
+server negotiate the tunnel configuration.
 
 The NGINX test page will now be available at `http[s]://[subdomain].[zenith_base_domain]`.
 

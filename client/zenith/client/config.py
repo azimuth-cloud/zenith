@@ -20,14 +20,14 @@ def base64_encoded_content(path):
         return base64.b64encode(fh.read()).decode()
 
 
-class BootstrapConfig(Configuration):
+class InitConfig(Configuration):
     """
-    Configuration model for the bootstrap command.
+    Configuration model for the init command.
     """
     class Config:
-        default_path = "/etc/zenith/client-bootstrap.yaml"
-        path_env_var = "ZENITH_CLIENT_BOOTSTRAP_CONFIG"
-        env_prefix = "ZENITH_CLIENT_BOOTSTRAP"
+        default_path = "/etc/zenith/client.yaml"
+        path_env_var = "ZENITH_CLIENT_CONFIG"
+        env_prefix = "ZENITH_CLIENT"
 
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
@@ -48,9 +48,9 @@ class ConnectConfig(Configuration):
     Configuration model for the connect command.
     """
     class Config:
-        default_path = "/etc/zenith/client-connect.yaml"
-        path_env_var = "ZENITH_CLIENT_CONNECT_CONFIG"
-        env_prefix = "ZENITH_CLIENT_CONNECT"
+        default_path = "/etc/zenith/client.yaml"
+        path_env_var = "ZENITH_CLIENT_CONFIG"
+        env_prefix = "ZENITH_CLIENT"
 
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
@@ -59,95 +59,41 @@ class ConnectConfig(Configuration):
     ssh_executable: str = "ssh"
     #: The user to run as, once configuration has been read
     #: Only applies when the script is executing as root
-    run_as_user: typing.Optional[conint(gt = 0)] = Field(
-        None,
-        description = "UID to switch to after reading configuration (when executed as root)."
-    )
+    run_as_user: typing.Optional[conint(gt = 0)] = None
     #: The path to an SSH identity file to use
-    ssh_identity_path: typing.Optional[FilePath] = Field(
-        None,
-        description = "The path to the SSH identity to use."
-    )
+    ssh_identity_path: typing.Optional[FilePath] = None
     #: The SSH private key to use
-    ssh_private_key_data: typing.Optional[str] = Field(
-        None,
-        description = "Base64-encoded SSH private key to use."
-    )
+    ssh_private_key_data: typing.Optional[str] = None
     #: The time to wait for a successful configuration before timing out
-    configure_timeout: int = Field(
-        10,
-        description = "Time to wait for a successful configuration before timing out."
-    )
+    configure_timeout: int = 10
     #: The address of the target Zenith server
-    server_address: str = Field(
-        ...,
-        description = "The address of the target Zenith server."
-    )
+    server_address: str
     #: The port of the target Zenith server
-    server_port: int = Field(
-        22,
-        description = "The port of the target Zenith server."
-    )
+    server_port: int = 22
     #: The address to forward tunnel traffic to
-    forward_to_host: str = Field(
-        "localhost",
-        description = "The address to forward tunnel traffic to."
-    )
+    forward_to_host: str = "localhost"
     #: The port to forward tunnel traffic to
-    forward_to_port: int = Field(
-        8000,
-        description = "The port to forward tunnel traffic to."
-    )
+    forward_to_port: int = 8000
     #: The backend protocol
-    backend_protocol: typing.Literal["http", "https"] = Field(
-        "http",
-        description = "The backend protocol to use."
-    )
+    backend_protocol: typing.Literal["http", "https"] = "http"
     #: The read timeout for the service
-    read_timeout: typing.Optional[conint(gt = 0)] = Field(
-        None,
-        description = "The read timeout to use."
-    )
+    read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the proxy authentication should be skipped
-    skip_auth: bool = Field(
-        False,
-        description = "If set to true, proxy authentication is skipped if enabled."
-    )
+    skip_auth: bool = False
     #: Parameters for the proxy authentication service
-    auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(
-        default_factory = dict,
-        description = "The authentication parameters to use when proxy authentication is enabled."
-    )
+    auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Path to a file containing a TLS certificate chain to use
-    tls_cert_file: typing.Optional[FilePath] = Field(
-        None,
-        description = "Path to a file containing a TLS certificate chain to use."
-    )
+    tls_cert_file: typing.Optional[FilePath] = None
     #: Base64-encoded TLS certificate to use
-    tls_cert_data: typing.Optional[str] = Field(
-        None,
-        description = "Base64-encoded TLS certificate chain to use."
-    )
+    tls_cert_data: typing.Optional[str] = None
     #: Path to a file containing a TLS certificate key to use
-    tls_key_file: typing.Optional[FilePath] = Field(
-        None,
-        description = "Path to a file containing the TLS private key to use."
-    )
+    tls_key_file: typing.Optional[FilePath] = None
     #: Base64-encoded TLS certificate key to use
-    tls_key_data: typing.Optional[str] = Field(
-        None,
-        description = "Base64-encoded TLS private key data."
-    )
+    tls_key_data: typing.Optional[str] = None
     #: Path to a file containing a CA to use to validate TLS client certificates
-    tls_client_ca_file: typing.Optional[FilePath] = Field(
-        None,
-        description = "Path to a file containing the CA for validating TLS client certificates."
-    )
+    tls_client_ca_file: typing.Optional[FilePath] = None
     #: Base64-encoded CA to use to validate TLS client certificates
-    tls_client_ca_data: typing.Optional[str] = Field(
-        None,
-        description = "Base64-encoded CA for validating TLS client certificates."
-    )
+    tls_client_ca_data: typing.Optional[str] = None
 
     @validator("auth_params", pre = True)
     def pre_validate_auth_params(cls, value):
