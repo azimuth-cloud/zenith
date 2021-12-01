@@ -11,7 +11,7 @@ software and protocols.
 - [Proxying a service using the Zenith Client](#proxying-a-service-using-the-zenith-client)
   - [Container image](#container-image)
   - [Python installation](#python-installation)
-  - [Example](#example)
+  - [Example: Proxing NGINX](#example-proxing-nginx)
 
 ## What is Zenith?
 
@@ -85,6 +85,12 @@ For more detail on deploying and configuring a Zenith server, see
 The Zenith client establishes a secure tunnel with a Zenith server and ensures that traffic received
 over that tunnel is forwarded to the proxied service.
 
+The Zenith client has two subcommands - `init` and `connect`. The `init` command is responsible
+for generating an SSH identity (if required) and uploading the public key to the Zenith registrar
+using the token it receives from the broker - this is a one-time operation. The `connect` command
+then uses the SSH identity from `init` to establish a secure tunnel over which traffic can flow
+to the proxied service.
+
 ### Container image
 
 The Zenith client is made available on [GitHub Packages](https://github.com/features/packages)
@@ -107,7 +113,7 @@ pip install git+https://github.com/stackhpc/zenith.git#subdirectory=client
 zenith-client --help
 ```
 
-### Example
+### Example: Proxing NGINX
 
 A service need only be bound locally in order to be proxied using Zenith - it only needs to
 be reachable by the Zenith client.
@@ -115,10 +121,26 @@ be reachable by the Zenith client.
 In this example, we start an NGINX container on an isolated Docker network and proxy it by
 deploying the Zenith client onto the same network.
 
-First, we must get a token from the registrar that we can use to associate the public key -
-we perform the role of the "broker" manually in this case. The registrar's reservation
-endpoint is only available within the Kubernetes cluster, but we can use a Kubernetes
-`port-forward` to access it and issue a token:
+First, we launch an NGINX container onto an isolated Docker network. The container is launched
+in such a way that it becomes a long-running, robust service (using the `--detach` and
+`--restart` flags). Giving the container a name (using `--name`) means that the container can
+be addressed by name by other containers on the same network using DNS, which we utilise when
+connecting the Zenith client later.
+
+```
+$ docker network create zenith-test
+13124561fcf532b37c65a76a648964071c1dcb158d7cf4615c88ffd4e19c20f9
+
+$ docker run --detach --restart unless-stopped --network zenith-test --name nginx nginx
+d8a1f908ec0393b86885d71f4ad1c6f05704892ae2fbc8893368fa8067d2165d
+```
+
+Next, we need to run the Zenith client `init` command. To do this, we need a token from the
+Zenith registrar - this would normally be issued by a broker but in this case we perform the
+role of the broker manually.
+
+The registrar's reservation endpoint is only available within the Kubernetes cluster, but we
+can use `kubectl port-forward` to access it and issue a token:
 
 ```
 $ REGISTRAR_SVC="$(kubectl get svc -l app.kubernetes.io/component=registrar --no-headers | awk '{ print $1 }')"
@@ -134,17 +156,9 @@ $ curl -X POST -s http://localhost:51485/admin/reserve | jq
 }
 ```
 
-Create a Docker network and launch NGINX onto it:
-
-```
-$ docker network create zenith-test
-13124561fcf532b37c65a76a648964071c1dcb158d7cf4615c88ffd4e19c20f9
-
-$ docker run --rm --detach --network zenith-test --name nginx nginx
-d8a1f908ec0393b86885d71f4ad1c6f05704892ae2fbc8893368fa8067d2165d
-```
-
-Create a Docker volume to store the SSH identity and run the client initialisation:
+Now we run the Zenith client `init` command to generate an SSH identity and upload the public
+key to the Zenith registrar. We use a Docker volume to store the SSH identity so it can be passed
+to the `connect` command:
 
 ```
 $ docker volume create zenith-ssh
@@ -181,12 +195,15 @@ The key's randomart image is:
 [INFO] [INIT] Public key SHA256:SwFMYyCOB4jztQ3iG6ap4zj0XDySBuNgBqI133E7Q1g uploaded successfully
 ```
 
-Run the client `connect` command using the SSH identity generated in the previous step to
-establish the tunnel:
+Finally, we launch the Zenith client `connect` command onto the isolated Docker network
+using the SSH identity generated in the previous step to establish the tunnel. As with NGINX,
+we launch the container with the `--detach` and `--restart` flags to establish a long-running,
+robust service that can recover from failures:
 
 ```
 $ docker run \
-    --rm \
+    --detach \
+    --restart unless-stopped \
     --network zenith-test \
     -v zenith-ssh:/home/zenith/.ssh \
     ghcr.io/stackhpc/zenith-client:main \
@@ -196,6 +213,13 @@ $ docker run \
       --server-port ${zenith_sshd_port} \
       --forward-to-host nginx \
       --forward-to-port 80
+acbbe2f337edfb821d504482677318d920c5e16ee144034e2b2104c56b7e4623
+```
+
+We can check the logs from the `connect` command to see that the tunnel established successfully:
+
+```
+$ docker logs acbbe2f337edfb821d504482677318d920c5e16ee144034e2b2104c56b7e4623
 
 [INFO] [CLIENT] Switching to uid '1001'
 [INFO] [CLIENT] Writing SSH private key data to temporary file
