@@ -161,6 +161,8 @@ sshd:
   service:
     type: LoadBalancer
     port: 22
+    # Specify annotations for the service
+    # annotations:
     # Use a fixed node port
     # nodePort: 32222
     # Use a fixed load-balancer IP
