@@ -1,0 +1,34 @@
+{{- if .Values.registrar.enabled -}}
+{{ $ingress := merge .Values.registrar.ingress .Values.common.ingress }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "zenith.componentname" (list . "registrar") }}
+  labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
+  {{- with $ingress.annotations }}
+  annotations: {{ toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if $ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ tpl $ingress.host . | quote }}
+      {{- $defaultSecretName := printf "%s-tls" (include "zenith.componentname" (list . "registrar")) }}
+      secretName: {{ default $defaultSecretName $ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ tpl $ingress.host . | quote }}
+      http:
+        paths:
+          # Only the associate endpoint is made available through ingress
+          - path: /associate
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "zenith.componentname" (list . "registrar") }}
+                port:
+                  name: http
+{{- end }}

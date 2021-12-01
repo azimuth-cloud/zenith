@@ -82,7 +82,6 @@ def configure_tunnel(ssh_proc, config):
             # Build the config object
             tunnel_config = dict(
                 allocated_port = allocated_port,
-                subdomain = config.subdomain,
                 backend_protocol = config.backend_protocol,
             )
             if config.read_timeout:
@@ -126,32 +125,15 @@ def ssh_identity(config):
     Context manager that makes a temporary file to contain the SSH identity, populates it
     (either using the given private key or by generating one) and yields the path.
     """
-    with tempfile.TemporaryDirectory() as key_directory:
-        key_file = os.path.join(key_directory, "id_rsa")
-        if config.ssh_private_key_data:
-            logger.info("[CLIENT] Using supplied SSH private key")
-            # If the private key data was given, use it (it is base64-encoded)
-            with open(key_file, 'wb') as fh:
-                fh.write(base64.b64decode(config.ssh_private_key_data))
-        else:
-            logger.info("[CLIENT] Generating temporary SSH private key")
-            # If no key was given, generate one
-            # Use a 2048-bit RSA key as it represents an acceptable compromise between speed
-            # of generation and security, especially for a disposible key
-            subprocess.check_call([
-                "ssh-keygen",
-                "-t",
-                "rsa",
-                "-b",
-                "2048",
-                "-N",
-                "",
-                "-C",
-                "zenith-key",
-                "-f",
-                key_file
-            ])
-        yield key_file
+    with tempfile.NamedTemporaryFile() as ssh_private_key_file:
+        logger.info("[CLIENT] Writing SSH private key data to temporary file")
+        # If the private key data was given, use it (it is base64-encoded)
+        ssh_private_key_file.write(base64.b64decode(config.ssh_private_key_data))
+        # In order for SSH to see the data, we need to flush it
+        ssh_private_key_file.flush()
+        # Make sure the key file has the correct permissions
+        os.chmod(ssh_private_key_file.name, 0o600)
+        yield ssh_private_key_file.name
 
 
 def create(config):

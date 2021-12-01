@@ -1,0 +1,15 @@
+{{- if .Values.registrar.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zenith.componentname" (list . "registrar") }}
+  labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  selector: {{ include "zenith.componentSelectorLabels" (list . "registrar") | nindent 4 }}
+{{- end }}

@@ -1,0 +1,52 @@
+{{- if .Values.registrar.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zenith.componentname" (list . "registrar") }}
+  labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
+spec:
+  replicas: {{ .Values.registrar.replicaCount }}
+  selector:
+    matchLabels: {{ include "zenith.componentSelectorLabels" (list . "registrar") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{ include "zenith.componentSelectorLabels" (list . "registrar") | nindent 8 }}
+      annotations:
+        # Force the deployment to roll when the config changes
+        checksum/config: {{ include (print $.Template.BasePath "/registrar/secret.yaml") . | sha256sum }}
+        {{- with .Values.registrar.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.registrar.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{ toYaml .Values.registrar.podSecurityContext | nindent 8 }}
+      containers:
+        - name: registrar
+          securityContext: {{ toYaml .Values.registrar.securityContext | nindent 12 }}
+          image: {{ printf "%s:%s" .Values.registrar.image.repository (default .Chart.AppVersion .Values.registrar.image.tag) }}
+          imagePullPolicy: {{ .Values.registrar.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources: {{ toYaml .Values.registrar.resources | nindent 12 }}
+          volumeMounts:
+            - name: etc-zenith
+              mountPath: /etc/zenith
+              readOnly: true
+      {{- with .Values.registrar.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.registrar.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.registrar.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: etc-zenith
+          secret:
+            secretName: {{ include "zenith.componentname" (list . "registrar-conf") }}
+{{- end }}

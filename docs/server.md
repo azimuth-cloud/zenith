@@ -18,12 +18,13 @@ for the vast majority of cases. For more advanced configuration requirements, se
 ## Contents  <!-- omit in toc -->
 
 - [Prerequisites](#prerequisites)
+- [Generating a signing key for the Registrar](#generating-a-signing-key-for-the-registrar)
 - [Installing and upgrading Zenith](#installing-and-upgrading-zenith)
 - [Specifying the IngressClass](#specifying-the-ingressclass)
 - [Exposing SSHD](#exposing-sshd)
   - [Using a LoadBalancer service](#using-a-loadbalancer-service)
   - [Using a NodePort service](#using-a-nodeport-service)
-- [Scaling SSHD](#scaling-sshd)
+- [Scaling the SSHD and registrar services](#scaling-the-sshd-and-registrar-services)
 - [Transport Layer Security (TLS)](#transport-layer-security-tls)
   - [Using a pre-existing wildcard certificate](#using-a-pre-existing-wildcard-certificate)
   - [Using a wildcard certificate managed by cert-manager](#using-a-wildcard-certificate-managed-by-cert-manager)
@@ -47,12 +48,30 @@ manage this for you.
 For example, if Zenith is given the base domain `apps.example.cloud` then a wildcard DNS
 entry must exist for `*.apps.example.cloud` that points to the Kubernetes Ingress Controller,
 and services will be exposed as `subdomain1.apps.example.cloud`, `subdomain2.example.cloud`,
-etc.
+etc. The registrar will be exposed as `registrar.apps.example.cloud`.
 
 If you wish to use [cert-manager](https://cert-manager.io/) to automatically request and
 renew TLS certificates for Zenith services, it must be installed before you deploy Zenith.
 You will also need to [configure an issuer](https://cert-manager.io/docs/configuration/)
 for Zenith to consume. Zenith will not manage this for you.
+
+In the default configuration, Consul also assumes that you have a default
+[Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/) configured
+on your Kubernetes cluster that it can use for data volumes. If this is not the case,
+or if you have multiple storage classes available and need to specify a particular one,
+see [Customising the Consul deployment](#customising-the-consul-deployment).
+
+## Generating a signing key for the Registrar
+
+As mentioned in [Zenith Architecture](./architecture.md), the Zenith Registrar uses an HMAC
+to ensure the data integrity and authenticity of the tokens that it issues without requiring
+a database. To do this it requires a key that, if compromised, would allow an attacker to
+construct a valid token for any subdomain that they like. As such, the signing key should
+be kept secure and be long (at least 32-bytes is recommended) and random, e.g.:
+
+```sh
+openssl rand -hex 32
+```
 
 ## Installing and upgrading Zenith
 
@@ -61,15 +80,18 @@ The following is a minimal Helm values file for a Zenith deployment:
 ```yaml
 # values.yaml
 
-sync:
+common:
+  ingress:
+    # Services will be made available as [subdomain].apps.example.cloud
+    baseDomain: apps.example.cloud
+    # TLS is disabled (services will use HTTP only)
+    tls:
+      enabled: false
+
+registrar:
   config:
-    kubernetes:
-      ingress:
-        # Services will be made available as [subdomain].apps.example.cloud
-        baseDomain: apps.example.cloud
-        # TLS is disabled (services will use HTTP only)
-        tls:
-          enabled: false
+    # The subdomain signing key
+    subdomainTokenSigningKey: "<secure signing key>"
 ```
 
 Zenith can then be deployed using the following commands:
@@ -92,8 +114,9 @@ at the `EXTERNAL-IP` field.
 To change the configuration of your Zenith server, modify `values.yaml` and re-run the
 `helm upgrade` command. To upgrade Zenith, re-run the `helm upgrade` command specifying the
 version that you wish to upgrade to. In both cases, the update should happen with near-zero
-downtime (the sync component is terminated before the next iteration is started in order to
-avoid races). Any existing Zenith client connections will be terminated, but if the clients
+downtime - the SSHD and registrar deployments are configured to allow a rolling upgrade,
+however the sync component is terminated before the next iteration is started in order to
+avoid races. Any existing Zenith client connections will be terminated, but if the clients
 are configured to restart automatically then they should re-connect to an updated SSHD
 instance automatically.
 
@@ -103,20 +126,19 @@ Many of the options for `values.yaml` are described in the rest of this document
 
 Zenith must be told what
 [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class)
-to use for the `Ingress` resources that it creates. This is specified with the following:
+to use for the `Ingress` resources that it creates for services and for the registrar. This
+is specified with the following:
 
 ```yaml
-sync:
-  config:
-    kubernetes:
-      ingress:
-        className: public
+common:
+  ingress:
+    className: public
 ```
 
 The default value is `nginx`, which is the name of the ingress class created when the
 NGINX Ingress Controller is installed with the official Helm chart using the default
 values. You can see the ingress classes available on your cluster using
-`kubectl get ingressclass` (most will only have one!).
+`kubectl get ingressclass` (most will only have one).
 
 ## Exposing SSHD
 
@@ -190,11 +212,15 @@ sshd:
     nodePort: 32222
 ```
 
-## Scaling SSHD
+## Scaling the SSHD and registrar services
 
-Each Zenith SSHD instance can only support a limited number of connections (small number
-of 1000s), if only because each connection requires a unique port for the remote port
-forwarding.
+The Zenith SSHD and registrar services support scaling the number of instances of each
+using `sshd.replicaCount` and `registrar.replicaCount` respectively. The default for
+both is `1`.
+
+This is particularly important for SSHD because each SSHD instance can only support a
+limited number of connections (small number of 1000s) because each connection requires
+a unique port for the remote port forwarding.
 
 The Zenith SSHD service can be scaled up or down by setting the number of replicas:
 
@@ -210,11 +236,18 @@ each client should be configured to restart when the connection is broken and wi
 assigned to a new instance when it reconnects. If a service is provided by a single client
 this will result in a short disruption, but the system should self-heal quickly.
 
+Similarly, the registrar service can be scaled as follows:
+
+```yaml
+registrar:
+  replicaCount: 3
+```
+
 ## Transport Layer Security (TLS)
 
 Zenith can perform TLS termination on behalf of the proxied services which, combined with the
 use of SSH tunnels, ensures that traffic is encrypted for the entire journey between the end
-user and the proxied service.
+user and the proxied service even if the service itself does not use TLS.
 
 This can be configured by:
 
@@ -243,12 +276,10 @@ kubectl create secret tls zenith-wildcard-tls --cert=path/to/cert/file --key=pat
 Then configure Zenith to use that secret for the `Ingress` resources it creates:
 
 ```yaml
-sync:
-  config:
-    kubernetes:
-      ingress:
-        tls:
-          secretName: zenith-wildcard-tls
+common:
+  ingress:
+    tls:
+      secretName: zenith-wildcard-tls
 ```
 
 > **WARNING**
@@ -292,12 +323,10 @@ wildcard certificate, then keeping it renewed from then on. Zenith can then be c
 to use this secret in the same way as for a manually-issued certificate:
 
 ```yaml
-sync:
-  config:
-    kubernetes:
-      ingress:
-        tls:
-          secretName: zenith-wildcard-tls
+common:
+  ingress:
+    tls:
+      secretName: zenith-wildcard-tls
 ```
 
 ### Using per-subdomain certificates managed by cert-manager
@@ -309,12 +338,10 @@ instruct cert-manager to dynamically request a TLS certificate for the `Ingress`
 To configure annotations for the `Ingress` resources created by Zenith, use the following:
 
 ```yaml
-sync:
-  config:
-    kubernetes:
-      ingress:
-        annotations:
-          cert-manager.io/cluster-issuer: name-of-issuer
+common:
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: name-of-issuer
 ```
 
 This mechanism can be used to consume certificates issued by Let's Encrypt using the
@@ -337,7 +364,7 @@ replacing the portal interface with their own.
 To configure reserved subdomains, use the following configuration:
 
 ```yaml
-sshd:
+registrar:
   config:
     reservedSubdomains: [portal, metrics]
 ```
@@ -389,7 +416,8 @@ sync:
         auth:
           url: ...
           signinUrl: https://auth.apps.example.cloud/login
-          # The URL parameter to contain the original URL when the user is redirected (default "next")
+          # The URL parameter that will contain the original URL
+          # when the user is redirected (default "next")
           nextUrlParam: next_url
 ```
 
@@ -408,6 +436,12 @@ sync:
 sshd:
   image:
     repository: internal.repo/zenith/zenith-sshd
+    # The tag defaults to the appVersion of the chart
+    tag: <valid tag>
+
+registrar:
+  image:
+    repository: internal.repo/zenith/zenith-registrar
     # The tag defaults to the appVersion of the chart
     tag: <valid tag>
 ```
@@ -443,6 +477,15 @@ sshd:
     limits:
       cpu: 1000m
       memory: 1Gi
+
+registrar:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 64Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
 ```
 
 Alternatively, you can use the

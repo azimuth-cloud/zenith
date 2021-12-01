@@ -1,4 +1,22 @@
-{{- if .Values.sync.enabled }}
+{{- define "zenith.sync.defaults" -}}
+consul:
+  address: {{ tpl .Values.common.consul.address . | quote }}
+  port: {{ .Values.common.consul.port }}
+  serviceTag: {{ .Values.common.consul.serviceTag | quote }}
+  tlsKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
+kubernetes:
+  ingress:
+    baseDomain: {{ .Values.common.ingress.baseDomain | quote }}
+    className: {{ .Values.common.ingress.className | quote }}
+    annotations: {{ .Values.common.ingress.annotations | toYaml | nindent 6 }}
+    tls:
+      enabled: {{ .Values.common.ingress.tls.enabled }}
+      {{- with .Values.common.ingress.tls.secretName }}
+      secretName: {{ . | quote }}
+      {{- end }}
+{{- end }}
+
+{{- if .Values.sync.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,11 +24,11 @@ metadata:
   labels: {{ include "zenith.componentLabels" (list . "sync-conf") | nindent 4 }}
 data:
   sync.yaml: |
-    {{- $fromGlobals := dict "kubernetes" (dict "ingress" (default dict .Values.global.ingress)) }}
-    {{- $config := tpl (toYaml .Values.sync.config) . | fromYaml | mergeOverwrite $fromGlobals }}
-    {{- if $config.kubernetes.ingress.baseDomain }}
-    {{- toYaml $config | nindent 4 }}
-    {{- else }}
-    {{- fail "sync.config.kubernetes.ingress.baseDomain is required" }}
-    {{- end }}
+    {{-
+      include "zenith.sync.defaults" . |
+        fromYaml |
+        merge .Values.sync.config |
+        toYaml |
+        nindent 4
+    }}
 {{- end }}

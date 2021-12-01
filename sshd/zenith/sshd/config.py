@@ -39,7 +39,7 @@ class SSHDConfig(Configuration):
     #: The number of times that posting a heartbeat to Consul can fail before a tunnel is closed
     consul_heartbeat_failures: int = 3
     #: The prefix to use for Consul keys
-    consul_key_prefix: str = "zenith"
+    consul_key_prefix: str = "zenith-services"
     #: The host to use when registering services with Consul
     service_host: str = Field(default_factory = default_service_host)
     #: The tag to use when registering services with Consul
@@ -55,8 +55,8 @@ class SSHDConfig(Configuration):
     #: The prefix to use for metadata items containing authentication parameters
     auth_param_metadata_prefix: str = "auth-"
 
-    #: A list of subdomains that are reserved and cannot be used for Zenith services
-    reserved_subdomains: typing.List[str] = Field(default_factory = list)
+    #: The URL of the Zenith registrar service
+    registrar_url: str
 
     #: The SSHD executable location
     sshd_executable: FilePath = "/usr/sbin/sshd"

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import base64
 import contextlib
 import dataclasses
@@ -13,7 +11,7 @@ import uuid
 
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-from pydantic import BaseModel, Field, conint, constr, root_validator, validator
+from pydantic import BaseModel, Extra, Field, conint, constr, root_validator, validator
 import requests
 
 
@@ -30,14 +28,11 @@ class ClientConfig(BaseModel):
     """
     Object for validating the client configuration.
     """
+    class Config:
+        extra = Extra.forbid
+
     #: The port for the service (the tunnel port)
     allocated_port: int
-    #: The subdomain to use
-    #: Subdomains must be at most 63 characters long, can only contain alphanumeric characters
-    #: and hyphens, and cannot start or end with a hyphen
-    #: In addition, Kubernetes service names must start with a letter and be lower case
-    #: See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
-    subdomain: constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
     #: The backend protocol
     backend_protocol: typing.Literal["http", "https"] = "http"
     #: The read timeout for the service (in seconds)
@@ -184,15 +179,6 @@ def get_tunnel_config(timeout_secs):
     )
 
 
-def check_subdomain_reserved(server_config, subdomain):
-    """
-    Checks that the subdomain requested for the tunnel is not reserved.
-    """
-    if subdomain in server_config.reserved_subdomains:
-        print(f"[SERVER] [ERROR] '{subdomain}' is a reserved subdomain")
-        sys.exit(1)
-
-
 def consul_check_service_host_and_port(server_config, tunnel):
     """
     Checks that there is not already an existing service with the same host and port.
@@ -221,7 +207,7 @@ def consul_check_service_host_and_port(server_config, tunnel):
         print("[SERVER] [INFO] No existing service found")
 
 
-def consul_register_service(server_config, tunnel):
+def consul_register_service(server_config, tunnel, subdomain):
     """
     Registers the service with Consul.
     """
@@ -266,11 +252,11 @@ def consul_register_service(server_config, tunnel):
             # Use the tunnel ID as the unique id
             "ID": tunnel.id,
             # Use the specified subdomain as the service name
-            "Name": tunnel.config.subdomain,
+            "Name": subdomain,
             # Use the service host and port as the address and port in Consul
             "Address": server_config.service_host,
             "Port": tunnel.config.allocated_port,
-            # Tag the service as a tunnel proxy subdomain
+            # Tag the service as a Zenith service
             "Tags": [server_config.service_tag],
             # Associate any required metadata
             "Meta": metadata,
@@ -356,20 +342,22 @@ def register_signal_handlers(server_config, tunnel):
     signal.signal(signal.SIGTERM, signal_handler)
 
 
-def run(server_config):
+def run(server_config, subdomain):
     """
     This function is called when a user connects over SSH, and is responsible for
     registering the mapping of a subdomain to the port for a reverse SSH tunnel
     with Consul.
 
-    The client specifies the bound port and subdomain using stdin.
+    The subdomain is determined by the SSH public key that the client connected with.
+
+    The client specifies the bound port, and other tunnel configuration, using stdin.
 
     We would prefer to detect the bound port for the tunnel on this side but
     doing this reliably might be impossible, and is certainly very difficult
     and probably requires root.
 
-     To get round this, the client reads the tunnel's dynamically-allocated port
-    from stderr and pushes it back via stdin along with the subdomain.
+    To get round this, the client reads the tunnel's dynamically-allocated port
+    from stderr and pushes it back via stdin along with other configuration.
 
     This obviously places a lot of trust in a client to specify the SSH
     connection correctly, and also to specify the actual port it was allocated
@@ -385,27 +373,31 @@ def run(server_config):
          port for a service more difficult to guess and so harder to connect
          to for nefarious purposes.
 
-      3. Encourage clients to use subdomains that are hard to guess.
-         This makes it more difficult for a nefarious client to discover a valid
-         domain and bind to it.
+      3. Subdomains are bound to pre-registered SSH keys. A client can only connect
+         to SSHD using a pre-registered SSH key, and the subdomain they can use
+         is bound to that SSH key. The public key(s) for a subdomain are bound
+         using a single-use token that is issued by the Zenith registrar. This
+         prevents a potentially malicious client from connecting at all unless
+         they have an SSH key bound to a domain, and prevents them from binding to
+         a domain other than the one they were allocated.
 
-      4. Only allow reverse port-forwarding, not regular port-forwarding. This
+      3. Only allow reverse port-forwarding, not regular port-forwarding. This
          prevents a nefarious client from setting up a regular port-foward to
          the bound port for another service and sending traffic directly to it,
          bypassing the proxy and any associated authentication.
 
       5. Only allow a domain to be bound to a port that is listening. This
-         prevents a nefarious client from binding a known domain to a port that
+         prevents a nefarious client from binding their domain to a port that
          is not yet in use in the hope of intercepting traffic in the future.
 
-      6. Only allow one domain to be bound to each tunnel. This prevents a
-         nefarious client from binding an additional domain that is known to
-         them to an existing tunnel in order to intercept traffic.
+      6. Only allow one domain to be bound to each port. This prevents a nefarious
+         client from binding their subdomain to an existing tunnel in order to
+         intercept traffic.
     """
+    print(f"[SERVER] [INFO] Initiating tunnel for subdomain '{subdomain}'")
     tunnel = get_tunnel_config(server_config.configure_timeout)
-    check_subdomain_reserved(server_config, tunnel.config.subdomain)
     consul_check_service_host_and_port(server_config, tunnel)
-    consul_register_service(server_config, tunnel)
+    consul_register_service(server_config, tunnel, subdomain)
     register_signal_handlers(server_config, tunnel)
     # We need to send a regular heartbeat to Consul
     failures = 0
