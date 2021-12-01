@@ -4,9 +4,10 @@ consul:
   # Whether or not to deploy a Consul instance
   enabled: true
 
-# Common configuration
-common:
-  # Ingress configuration
+# The ingress configuration can also from from globals
+# This is mainly to reduce duplication when integrating with Azimuth
+# In the future, other consumers could adopt the same conventions to reduce duplication when defining ingress
+globals:
   ingress:
     # The base domain to use for services exposed by Zenith
     # Proxied services will be made available at <subdomain>.<base domain>
@@ -21,6 +22,12 @@ common:
       enabled: true
       # The name of a secret containing a wildcard certificate
       secretName:
+
+# Common configuration
+common:
+  # Ingress configuration
+  # This overrides globals.ingress, and can be overridden by component-specific settings
+  ingress: {}
   # Consul configuration
   consul:
     # The address of the Consul server
@@ -204,7 +211,7 @@ registrar:
     # The subdomain that will be reserved for the registrar
     subdomain: registrar
     # The host for the ingress resource
-    host: "{{ .Values.registrar.ingress.subdomain }}.{{ .Values.common.ingress.baseDomain }}"
+    # host:
     # The annotations for the ingress resource
     # annotations:
     # The class name for the ingress resource

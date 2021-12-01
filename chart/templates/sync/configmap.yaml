@@ -1,4 +1,5 @@
 {{- define "zenith.sync.defaults" -}}
+{{- $ingress := merge .Values.common.ingress .Values.global.ingress }}
 consul:
   address: {{ tpl .Values.common.consul.address . | quote }}
   port: {{ .Values.common.consul.port }}
@@ -6,12 +7,12 @@ consul:
   tlsKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
 kubernetes:
   ingress:
-    baseDomain: {{ .Values.common.ingress.baseDomain | quote }}
-    className: {{ .Values.common.ingress.className | quote }}
-    annotations: {{ .Values.common.ingress.annotations | toYaml | nindent 6 }}
+    baseDomain: {{ $ingress.baseDomain | quote }}
+    className: {{ $ingress.className | quote }}
+    annotations: {{ $ingress.annotations | toYaml | nindent 6 }}
     tls:
-      enabled: {{ .Values.common.ingress.tls.enabled }}
-      {{- with .Values.common.ingress.tls.secretName }}
+      enabled: {{ $ingress.tls.enabled }}
+      {{- with $ingress.tls.secretName }}
       secretName: {{ . | quote }}
       {{- end }}
 {{- end }}
