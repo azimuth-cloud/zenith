@@ -1,6 +1,6 @@
 {{- if .Values.registrar.enabled -}}
 {{- $ingress := merge .Values.registrar.ingress .Values.common.ingress .Values.global.ingress }}
-{{- $defaultHost := printf "%s.%s" $ingress.subdomain $ingress.baseDomain }}
+{{- $defaultHost := printf "%s.%s" (tpl $ingress.subdomain .) $ingress.baseDomain }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
