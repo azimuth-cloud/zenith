@@ -29,4 +29,4 @@ COPY . /opt/zenith/client
 RUN pip3 install --no-deps -e /opt/zenith/client
 
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
-CMD ["zenith-client"]
+CMD ["zenith-client", "connect"]
