@@ -91,6 +91,9 @@ using the token it receives from the broker - this is a one-time operation. The 
 then uses the SSH identity from `init` to establish a secure tunnel over which traffic can flow
 to the proxied service.
 
+For detailed information on configuring the Zenith client, see
+[Configuring the Zenith client](./docs/client.md).
+
 ### Container image
 
 The Zenith client is made available on [GitHub Packages](https://github.com/features/packages)
@@ -251,5 +254,3 @@ The subdomain that is associated with the SSH key is verified and printed, then 
 server negotiate the tunnel configuration.
 
 The NGINX test page will now be available at `http[s]://[subdomain].[zenith_base_domain]`.
-
-For more detail on configuring the Zenith client, see [Configuring the Zenith client](./docs/client.md).
