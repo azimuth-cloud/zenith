@@ -16,7 +16,7 @@ data:
     {{-
       include "zenith.sshd.defaults" . |
         fromYaml |
-        merge .Values.sshd.config |
+        merge (tpl (toYaml .Values.sshd.config) . | fromYaml) |
         toYaml |
         nindent 4
     }}

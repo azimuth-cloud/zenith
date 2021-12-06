@@ -28,7 +28,7 @@ data:
     {{-
       include "zenith.sync.defaults" . |
         fromYaml |
-        merge .Values.sync.config |
+        merge (tpl (toYaml .Values.sync.config) . | fromYaml) |
         toYaml |
         nindent 4
     }}
