@@ -7,7 +7,7 @@ consul:
 # The ingress configuration can also from from globals
 # This is mainly to reduce duplication when integrating with Azimuth
 # In the future, other consumers could adopt the same conventions to reduce duplication when defining ingress
-globals:
+global:
   ingress:
     # The base domain to use for services exposed by Zenith
     # Proxied services will be made available at <subdomain>.<base domain>
