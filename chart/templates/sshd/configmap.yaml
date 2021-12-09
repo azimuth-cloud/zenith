@@ -14,9 +14,9 @@ metadata:
 data:
   sshd.yaml: |
     {{-
-      include "zenith.sshd.defaults" . |
+      tpl (toYaml .Values.sshd.config) . |
         fromYaml |
-        merge (tpl (toYaml .Values.sshd.config) . | fromYaml) |
+        mergeOverwrite (include "zenith.sshd.defaults" . | fromYaml) |
         toYaml |
         nindent 4
     }}

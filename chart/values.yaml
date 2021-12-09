@@ -26,7 +26,7 @@ global:
 # Common configuration
 common:
   # Ingress configuration
-  # This overrides globals.ingress, and can be overridden by component-specific settings
+  # This overrides global.ingress, and can be overridden by component-specific settings
   ingress: {}
   # Consul configuration
   consul:

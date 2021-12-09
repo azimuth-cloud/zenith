@@ -1,14 +1,15 @@
-anyio==3.3.4
+anyio==3.4.0
 certifi==2021.10.8
-charset-normalizer==2.0.7
+charset-normalizer==2.0.9
 click==8.0.3
 -e git+https://github.com/stackhpc/configomatic.git@234014e7e8948266ba56499ef3ad031e33b80007#egg=configomatic
+-e git+https://github.com/stackhpc/easykube.git@19ae12aed8c67dbec4c83fbd331e13699be3b62f#egg=easykube
 h11==0.12.0
-httpcore==0.13.7
-httpx==0.20.0
+httpcore==0.14.3
+httpx==0.21.1
 idna==3.3
 pydantic==1.8.2
 PyYAML==6.0
 rfc3986==1.5.0
 sniffio==1.2.0
-typing-extensions==3.10.0.2
+typing-extensions==4.0.1

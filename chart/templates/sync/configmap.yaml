@@ -1,5 +1,5 @@
 {{- define "zenith.sync.defaults" -}}
-{{- $ingress := merge .Values.common.ingress .Values.global.ingress }}
+{{- $ingress := mergeOverwrite .Values.global.ingress .Values.common.ingress }}
 consul:
   address: {{ tpl .Values.common.consul.address . | quote }}
   port: {{ .Values.common.consul.port }}
@@ -26,9 +26,9 @@ metadata:
 data:
   sync.yaml: |
     {{-
-      include "zenith.sync.defaults" . |
+      tpl (toYaml .Values.sync.config) . |
         fromYaml |
-        merge (tpl (toYaml .Values.sync.config) . | fromYaml) |
+        mergeOverwrite (include "zenith.sync.defaults" . | fromYaml) |
         toYaml |
         nindent 4
     }}
