@@ -136,12 +136,16 @@ class KubernetesConfig(Section):
     """
     Model for the Kubernetes configuration section.
     """
+    #: The namespace that the sync component is running in
+    self_namespace: str
     #: The namespace to create Zenith service resources in
-    namespace: str = "zenith-services"
+    target_namespace: str = "zenith-services"
     #: The label used to indicate a managed resource
     created_by_label: str = "app.kubernetes.io/created-by"
     #: The label used to indicate the corresponding Zenith service for a resource
     service_name_label: str = "zenith.stackhpc.com/service-name"
+    #: The annotation used to record that a secret is a mirror of another secret
+    tls_mirror_annotation: str = "zenith.stackhpc.com/mirrors"
     #: The ingress configuration
     ingress: IngressConfig
 

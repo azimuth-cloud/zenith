@@ -91,7 +91,7 @@ class ServiceReconciler:
             # Apply controller-specific modifications for client certificate handling
             ingress_modifier.configure_tls_client_certificates(
                 ingress,
-                self.config.namespace,
+                self.config.target_namespace,
                 client_ca_secret
             )
 
@@ -247,13 +247,9 @@ class ServiceReconciler:
         """
         Run the reconciler against services from the given service source.
         """
-        async with Client.from_environment(default_namespace = self.config.namespace) as client:
-            self._log(
-                "info",
-                "Initialised Kubernetes client [server: %s, default_namespace: %s]",
-                client.base_url,
-                client.default_namespace
-            )
+        self._log("info", f"Reconciling services [namespace: {self.config.target_namespace}]")
+        client = Client.from_environment(default_namespace = self.config.target_namespace)
+        async with client:
             # Before we process the service, retrieve information about the ingress class
             ingress_class = await IngressClass(client).fetch(self.config.ingress.class_name)
             # Load the ingress modifier that handles the controller
@@ -284,3 +280,88 @@ class ServiceReconciler:
                     await self._remove_service(client, event.service.name)
                 else:
                     await self._reconcile_service(client, event.service, ingress_modifier)
+
+
+class TLSSecretMirror:
+    """
+    Mirrors the wildcard secret from the sync namespace to the target namespace for services.
+    """
+    def __init__(self, config):
+        self.config = config
+        self._logger = logging.getLogger(__name__)
+
+    async def _update_mirror(self, client, source_object):
+        """
+        Updates the mirror secret in the target namespace.
+        """
+        self._logger.info(
+            "Updating mirrored TLS secret '%s' in namespace '%s'",
+            self.config.ingress.tls.secret_name,
+            self.config.target_namespace
+        )
+        await Secret(client).create_or_patch(
+            self.config.ingress.tls.secret_name,
+            {
+                "metadata": {
+                    "labels": {
+                        self.config.created_by_label: "zenith-sync",
+                    },
+                    "annotations": {
+                        self.config.tls_mirror_annotation: "{}/{}".format(
+                            source_object["metadata"]["namespace"],
+                            source_object["metadata"]["name"]
+                        ),
+                    }
+                },
+                "type": source_object["type"],
+                "data": source_object["data"],
+            },
+            namespace = self.config.target_namespace
+        )
+
+    async def _delete_mirror(self, client):
+        """
+        Deletes the mirror secret in the target namespace.
+        """
+        self._logger.info(
+            "Deleting mirrored TLS secret '%s' in namespace '%s'",
+            self.config.ingress.tls.secret_name,
+            self.config.target_namespace
+        )
+        await Secret(client).delete(
+            self.config.ingress.tls.secret_name,
+            namespace = self.config.target_namespace
+        )
+
+    async def run(self):
+        """
+        Run the TLS secret mirror.
+        """
+        if self.config.ingress.tls.enabled and self.config.ingress.tls.secret_name:
+            client = Client.from_environment()
+            async with client:
+                self._logger.info(
+                    "Mirroring TLS secret [secret: %s, from: %s, to: %s]",
+                    self.config.ingress.tls.secret_name,
+                    self.config.self_namespace,
+                    self.config.target_namespace
+                )
+                # Watch the named secret in the release namespace for changes
+                initial_state, events = await Secret(client).watch_one(
+                    self.config.ingress.tls.secret_name,
+                    namespace = self.config.self_namespace
+                )
+                # Mirror the changes to the target namespace
+                if initial_state:
+                    await self._update_mirror(client, initial_state)
+                else:
+                    await self._delete_mirror(client)
+                async for event in events:
+                    if event["type"] != "DELETED":
+                        await self._update_mirror(client, event["object"])
+                    else:
+                        await self._delete_mirror(client)
+        else:
+            self._logger.info("Mirroring of wildcard TLS secret is not required")
+            while True:
+                await asyncio.sleep(86400)

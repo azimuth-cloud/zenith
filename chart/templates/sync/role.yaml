@@ -5,7 +5,7 @@ metadata:
   name: {{ include "zenith.componentname" (list . "sync") }}
   labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
   # Create the role in the target namespace for services
-  namespace: {{ .Values.sync.config.kubernetes.namespace }}
+  namespace: {{ .Values.sync.config.kubernetes.targetNamespace }}
 rules:
   # We need full access to eps, secrets, services and ingresses in the target namespace
   - apiGroups: [""]

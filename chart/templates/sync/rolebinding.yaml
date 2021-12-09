@@ -5,7 +5,7 @@ metadata:
   name: {{ include "zenith.componentname" (list . "sync") }}
   labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
   # Create the rolebinding in the target namespace for services
-  namespace: {{ .Values.sync.config.kubernetes.namespace }}
+  namespace: {{ .Values.sync.config.kubernetes.targetNamespace }}
 subjects:
   # Target the service account we created in the release namespace
   - kind: ServiceAccount

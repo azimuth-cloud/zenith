@@ -31,6 +31,12 @@ spec:
           securityContext: {{ toYaml .Values.sync.securityContext | nindent 12 }}
           image: {{ printf "%s:%s" .Values.sync.image.repository (default .Chart.AppVersion .Values.sync.image.tag) }}
           imagePullPolicy: {{ .Values.sync.image.pullPolicy }}
+          # Tell the sync process which namespace it is running in
+          env:
+            - name: ZENITH_SYNC__KUBERNETES__SELF_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           resources: {{ toYaml .Values.sync.resources | nindent 12 }}
           volumeMounts:
             - name: etc-zenith
