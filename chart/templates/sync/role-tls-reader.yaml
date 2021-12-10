@@ -1,0 +1,20 @@
+{{- if .Values.sync.enabled }}
+{{- $global := .Values.global.ingress }}
+{{- $common := .Values.common.ingress }}
+{{- $sync := .Values.sync.config.kubernetes.ingress }}
+{{- $ingress := mergeOverwrite $global $common $sync }}
+{{- if and $ingress.tls.enabled $ingress.tls.secretName }}
+# This role allows the holder to read the TLS secret in the release namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "zenith.componentname" (list . "sync") }}-tls-reader
+  labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
+rules:
+  # We only need access to the named secret
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: [{{ $ingress.tls.secretName }}]
+    verbs: ["list", "get"]
+{{- end }}
+{{- end }}

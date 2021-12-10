@@ -1,0 +1,23 @@
+{{- if .Values.sync.enabled }}
+{{- $global := .Values.global.ingress }}
+{{- $common := .Values.common.ingress }}
+{{- $sync := .Values.sync.config.kubernetes.ingress }}
+{{- $ingress := mergeOverwrite $global $common $sync }}
+{{- if and $ingress.tls.enabled $ingress.tls.secretName }}
+# This role binding allows the sync service account to access the TLS secret
+# in the release namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "zenith.componentname" (list . "sync") }}-tls-reader
+  labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    namespace: {{ .Release.Namespace }}
+    name: {{ include "zenith.componentname" (list . "sync") }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "zenith.componentname" (list . "sync") }}-tls-reader
+{{- end }}
+{{- end }}
