@@ -1,7 +1,7 @@
 {{- if .Values.sync.enabled }}
-{{- $global := .Values.global.ingress }}
-{{- $common := .Values.common.ingress }}
-{{- $sync := .Values.sync.config.kubernetes.ingress }}
+{{- $global := deepCopy .Values.global.ingress }}
+{{- $common := deepCopy .Values.common.ingress }}
+{{- $sync := deepCopy .Values.sync.config.kubernetes.ingress }}
 {{- $ingress := mergeOverwrite $global $common $sync }}
 {{- if and $ingress.tls.enabled $ingress.tls.secretName }}
 # This role allows the holder to read the TLS secret in the release namespace

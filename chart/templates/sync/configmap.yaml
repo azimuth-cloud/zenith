@@ -1,5 +1,7 @@
 {{- define "zenith.sync.defaults" -}}
-{{- $ingress := mergeOverwrite .Values.global.ingress .Values.common.ingress }}
+{{- $global := deepCopy .Values.global.ingress }}
+{{- $common := deepCopy .Values.common.ingress }}
+{{- $ingress := mergeOverwrite $global $common }}
 consul:
   address: {{ tpl .Values.common.consul.address . | quote }}
   port: {{ .Values.common.consul.port }}

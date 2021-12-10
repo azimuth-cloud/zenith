@@ -1,5 +1,8 @@
 {{- if .Values.registrar.enabled -}}
-{{- $ingress := mergeOverwrite .Values.global.ingress .Values.common.ingress .Values.registrar.ingress }}
+{{- $global := deepCopy .Values.global.ingress }}
+{{- $common := deepCopy .Values.common.ingress }}
+{{- $registrar := deepCopy .Values.registrar.ingress }}
+{{- $ingress := mergeOverwrite $global $common $registrar }}
 {{- $defaultHost := printf "%s.%s" (tpl $ingress.subdomain .) $ingress.baseDomain }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
