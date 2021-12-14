@@ -510,3 +510,15 @@ consul:
   server:
     replicas: 1
 ```
+
+If your
+[Kubernetes network plugin](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+does not support `hostPort`, you may also need to configure the Consul agents to use the host
+networking:
+
+```yaml
+consul:
+  client:
+    dnsPolicy: ClusterFirstWithHostNet
+    hostNetwork: true
+```
