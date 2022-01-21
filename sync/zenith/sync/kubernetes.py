@@ -248,8 +248,7 @@ class ServiceReconciler:
         Run the reconciler against services from the given service source.
         """
         self._log("info", f"Reconciling services [namespace: {self.config.target_namespace}]")
-        client = Client.from_environment(default_namespace = self.config.target_namespace)
-        async with client:
+        async with Client.from_environment(default_namespace = self.config.target_namespace) as client:
             # Before we process the service, retrieve information about the ingress class
             ingress_class = await IngressClass(client).fetch(self.config.ingress.class_name)
             # Load the ingress modifier that handles the controller
@@ -311,7 +310,7 @@ class TLSSecretMirror:
                             source_object["metadata"]["namespace"],
                             source_object["metadata"]["name"]
                         ),
-                    }
+                    },
                 },
                 "type": source_object["type"],
                 "data": source_object["data"],
@@ -338,8 +337,7 @@ class TLSSecretMirror:
         Run the TLS secret mirror.
         """
         if self.config.ingress.tls.enabled and self.config.ingress.tls.secret_name:
-            client = Client.from_environment()
-            async with client:
+            async with Client.from_environment() as client:
                 self._logger.info(
                     "Mirroring TLS secret [secret: %s, from: %s, to: %s]",
                     self.config.ingress.tls.secret_name,
