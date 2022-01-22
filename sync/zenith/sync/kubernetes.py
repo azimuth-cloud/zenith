@@ -302,7 +302,6 @@ class TLSSecretMirror:
             self.config.ingress.tls.secret_name,
             {
                 "metadata": {
-                    "name": self.config.ingress.tls.secret_name,
                     "labels": {
                         self.config.created_by_label: "zenith-sync",
                     },
