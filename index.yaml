@@ -3,7 +3,7 @@ entries:
   zenith-server:
   - apiVersion: v2
     appVersion: 26026b1
-    created: "2022-01-22T22:19:05.746306519Z"
+    created: "2022-01-24T15:08:06.961081794Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -18,7 +18,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.68
   - apiVersion: v2
     appVersion: c081eda
-    created: "2022-01-22T22:19:05.737820717Z"
+    created: "2022-01-24T15:08:06.954292901Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -33,7 +33,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.67
   - apiVersion: v2
     appVersion: 4dc74d4
-    created: "2022-01-22T22:19:05.730016163Z"
+    created: "2022-01-24T15:08:06.947620609Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -48,7 +48,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.66
   - apiVersion: v2
     appVersion: 5b25e37
-    created: "2022-01-22T22:19:05.719592624Z"
+    created: "2022-01-24T15:08:06.941030618Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -63,7 +63,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.65
   - apiVersion: v2
     appVersion: 4799e6c
-    created: "2022-01-22T22:19:05.711462147Z"
+    created: "2022-01-24T15:08:06.934463827Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -78,7 +78,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.64
   - apiVersion: v2
     appVersion: 08984cd
-    created: "2022-01-22T22:19:05.702798732Z"
+    created: "2022-01-24T15:08:06.92741783Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -93,7 +93,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.63
   - apiVersion: v2
     appVersion: dea12d1
-    created: "2022-01-22T22:19:05.693703187Z"
+    created: "2022-01-24T15:08:06.921105843Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -108,7 +108,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.62
   - apiVersion: v2
     appVersion: 16f38a9
-    created: "2022-01-22T22:19:05.685739222Z"
+    created: "2022-01-24T15:08:06.914149548Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -123,7 +123,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.61
   - apiVersion: v2
     appVersion: 8291a0d
-    created: "2022-01-22T22:19:05.677001902Z"
+    created: "2022-01-24T15:08:06.907855361Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -138,7 +138,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.98
   - apiVersion: v2
     appVersion: 5b99811
-    created: "2022-01-22T22:19:05.669031437Z"
+    created: "2022-01-24T15:08:06.900412558Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -153,7 +153,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.97
   - apiVersion: v2
     appVersion: fba4e35
-    created: "2022-01-22T22:19:05.659197439Z"
+    created: "2022-01-24T15:08:06.893469063Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -168,7 +168,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.96
   - apiVersion: v2
     appVersion: 4b4e36a
-    created: "2022-01-22T22:19:05.65075234Z"
+    created: "2022-01-24T15:08:06.886192162Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -183,7 +183,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.95
   - apiVersion: v2
     appVersion: bebb4a6
-    created: "2022-01-22T22:19:05.639090013Z"
+    created: "2022-01-24T15:08:06.879647672Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -198,7 +198,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.94
   - apiVersion: v2
     appVersion: 3b98d81
-    created: "2022-01-22T22:19:05.629282317Z"
+    created: "2022-01-24T15:08:06.873019181Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -213,7 +213,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.93
   - apiVersion: v2
     appVersion: 456f106
-    created: "2022-01-22T22:19:05.621510166Z"
+    created: "2022-01-24T15:08:06.865823482Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -228,7 +228,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.92
   - apiVersion: v2
     appVersion: 3a75659
-    created: "2022-01-22T22:19:05.612976661Z"
+    created: "2022-01-24T15:08:06.859321792Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -243,7 +243,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.91
   - apiVersion: v2
     appVersion: a394768
-    created: "2022-01-22T22:19:05.605228311Z"
+    created: "2022-01-24T15:08:06.851954391Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -258,7 +258,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.59
   - apiVersion: v2
     appVersion: 3c7fdeb
-    created: "2022-01-22T22:19:05.596393384Z"
+    created: "2022-01-24T15:08:06.845299199Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -273,7 +273,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.57
   - apiVersion: v2
     appVersion: 7dd8e1e
-    created: "2022-01-22T22:19:05.588521426Z"
+    created: "2022-01-24T15:08:06.8380984Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -288,7 +288,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.54
   - apiVersion: v2
     appVersion: 83f9996
-    created: "2022-01-22T22:19:05.579044253Z"
+    created: "2022-01-24T15:08:06.831124104Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -303,7 +303,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.49
   - apiVersion: v2
     appVersion: cdd0a7d
-    created: "2022-01-22T22:19:05.562388372Z"
+    created: "2022-01-24T15:08:06.824801316Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -318,7 +318,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.48
   - apiVersion: v2
     appVersion: "5930918"
-    created: "2022-01-22T22:19:05.554703427Z"
+    created: "2022-01-24T15:08:06.817862921Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -333,7 +333,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.47
   - apiVersion: v2
     appVersion: 9a0f8ab
-    created: "2022-01-22T22:19:05.546343534Z"
+    created: "2022-01-24T15:08:06.811451932Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -348,7 +348,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.46
   - apiVersion: v2
     appVersion: b4ed27e
-    created: "2022-01-22T22:19:05.538649488Z"
+    created: "2022-01-24T15:08:06.803879228Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -363,7 +363,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.45
   - apiVersion: v2
     appVersion: 2f8be5d
-    created: "2022-01-22T22:19:05.53008468Z"
+    created: "2022-01-24T15:08:06.797418439Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -378,7 +378,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.44
   - apiVersion: v2
     appVersion: 936118c
-    created: "2022-01-22T22:19:05.521866497Z"
+    created: "2022-01-24T15:08:06.789887035Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -393,7 +393,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.43
   - apiVersion: v2
     appVersion: fcec357
-    created: "2022-01-22T22:19:05.512925463Z"
+    created: "2022-01-24T15:08:06.783222343Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -408,7 +408,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.42
   - apiVersion: v2
     appVersion: bc8c0b7
-    created: "2022-01-22T22:19:05.504808887Z"
+    created: "2022-01-24T15:08:06.77645045Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -423,7 +423,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.41
   - apiVersion: v2
     appVersion: 76ab2b2
-    created: "2022-01-22T22:19:05.496620406Z"
+    created: "2022-01-24T15:08:06.769252651Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -438,7 +438,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.40
   - apiVersion: v2
     appVersion: afccfe4
-    created: "2022-01-22T22:19:05.487804081Z"
+    created: "2022-01-24T15:08:06.762805062Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -452,8 +452,23 @@ entries:
     - zenith-server-0.1.0-dev.0.reserved-subdomain.88.tgz
     version: 0.1.0-dev.0.reserved-subdomain.88
   - apiVersion: v2
+    appVersion: 9bce450
+    created: "2022-01-24T15:08:06.665011915Z"
+    dependencies:
+    - condition: consul.enabled
+      name: consul
+      repository: https://helm.releases.hashicorp.com
+      version: ~0.35.0
+    description: Helm chart for deploying a Zenith server on Kubernetes
+    digest: dcbb8ccc8dc5be44e006bec501cda5d9c21cc9de137deae86606668d98b3dc7a
+    name: zenith-server
+    type: application
+    urls:
+    - zenith-server-0.1.0-dev.0.main.120.tgz
+    version: 0.1.0-dev.0.main.120
+  - apiVersion: v2
     appVersion: 5d80817
-    created: "2022-01-22T22:19:05.364629943Z"
+    created: "2022-01-24T15:08:06.658412224Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -468,7 +483,7 @@ entries:
     version: 0.1.0-dev.0.main.119
   - apiVersion: v2
     appVersion: 1534c3f
-    created: "2022-01-22T22:19:05.355552199Z"
+    created: "2022-01-24T15:08:06.650837119Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -483,7 +498,7 @@ entries:
     version: 0.1.0-dev.0.main.118
   - apiVersion: v2
     appVersion: 2cf50cc
-    created: "2022-01-22T22:19:05.347562333Z"
+    created: "2022-01-24T15:08:06.643501418Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -498,7 +513,7 @@ entries:
     version: 0.1.0-dev.0.main.117
   - apiVersion: v2
     appVersion: 5fcea96
-    created: "2022-01-22T22:19:05.338406683Z"
+    created: "2022-01-24T15:08:06.636831726Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -513,7 +528,7 @@ entries:
     version: 0.1.0-dev.0.main.116
   - apiVersion: v2
     appVersion: 60d67ab
-    created: "2022-01-22T22:19:05.329751069Z"
+    created: "2022-01-24T15:08:06.629278722Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -528,7 +543,7 @@ entries:
     version: 0.1.0-dev.0.main.115
   - apiVersion: v2
     appVersion: 5ddd603
-    created: "2022-01-22T22:19:05.32115866Z"
+    created: "2022-01-24T15:08:06.622691131Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -543,7 +558,7 @@ entries:
     version: 0.1.0-dev.0.main.114
   - apiVersion: v2
     appVersion: 87a5a43
-    created: "2022-01-22T22:19:05.310898832Z"
+    created: "2022-01-24T15:08:06.614976125Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -558,7 +573,7 @@ entries:
     version: 0.1.0-dev.0.main.113
   - apiVersion: v2
     appVersion: 3216b13
-    created: "2022-01-22T22:19:05.301315052Z"
+    created: "2022-01-24T15:08:06.607999429Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -573,7 +588,7 @@ entries:
     version: 0.1.0-dev.0.main.112
   - apiVersion: v2
     appVersion: f9a335c
-    created: "2022-01-22T22:19:05.292094998Z"
+    created: "2022-01-24T15:08:06.60083013Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -588,7 +603,7 @@ entries:
     version: 0.1.0-dev.0.main.111
   - apiVersion: v2
     appVersion: 027cfa0
-    created: "2022-01-22T22:19:05.282917547Z"
+    created: "2022-01-24T15:08:06.593481329Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -603,7 +618,7 @@ entries:
     version: 0.1.0-dev.0.main.110
   - apiVersion: v2
     appVersion: "8359812"
-    created: "2022-01-22T22:19:05.274939381Z"
+    created: "2022-01-24T15:08:06.586707335Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -618,7 +633,7 @@ entries:
     version: 0.1.0-dev.0.main.109
   - apiVersion: v2
     appVersion: efa3973
-    created: "2022-01-22T22:19:05.265389203Z"
+    created: "2022-01-24T15:08:06.57907243Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -633,7 +648,7 @@ entries:
     version: 0.1.0-dev.0.main.108
   - apiVersion: v2
     appVersion: dee2b30
-    created: "2022-01-22T22:19:05.255111874Z"
+    created: "2022-01-24T15:08:06.57182053Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -648,7 +663,7 @@ entries:
     version: 0.1.0-dev.0.main.107
   - apiVersion: v2
     appVersion: 6137ce3
-    created: "2022-01-22T22:19:05.246925894Z"
+    created: "2022-01-24T15:08:06.564963636Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -663,7 +678,7 @@ entries:
     version: 0.1.0-dev.0.main.106
   - apiVersion: v2
     appVersion: 2d00350
-    created: "2022-01-22T22:19:05.238009161Z"
+    created: "2022-01-24T15:08:06.557656435Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -678,7 +693,7 @@ entries:
     version: 0.1.0-dev.0.main.105
   - apiVersion: v2
     appVersion: 883756a
-    created: "2022-01-22T22:19:05.229926588Z"
+    created: "2022-01-24T15:08:06.551080945Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -693,7 +708,7 @@ entries:
     version: 0.1.0-dev.0.main.104
   - apiVersion: v2
     appVersion: 88b7ac7
-    created: "2022-01-22T22:19:05.220949351Z"
+    created: "2022-01-24T15:08:06.543569641Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -708,7 +723,7 @@ entries:
     version: 0.1.0-dev.0.main.103
   - apiVersion: v2
     appVersion: 4c29f97
-    created: "2022-01-22T22:19:05.212921681Z"
+    created: "2022-01-24T15:08:06.536457843Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -723,7 +738,7 @@ entries:
     version: 0.1.0-dev.0.main.102
   - apiVersion: v2
     appVersion: fd4237b
-    created: "2022-01-22T22:19:05.197227668Z"
+    created: "2022-01-24T15:08:06.529796851Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -738,7 +753,7 @@ entries:
     version: 0.1.0-dev.0.main.101
   - apiVersion: v2
     appVersion: 044c742
-    created: "2022-01-22T22:19:05.188886076Z"
+    created: "2022-01-24T15:08:06.522643153Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -753,7 +768,7 @@ entries:
     version: 0.1.0-dev.0.main.100
   - apiVersion: v2
     appVersion: 4f2065d
-    created: "2022-01-22T22:19:05.480261646Z"
+    created: "2022-01-24T15:08:06.75536126Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -768,7 +783,7 @@ entries:
     version: 0.1.0-dev.0.main.99
   - apiVersion: v2
     appVersion: 6fb5192
-    created: "2022-01-22T22:19:05.470712369Z"
+    created: "2022-01-24T15:08:06.748007658Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -783,7 +798,7 @@ entries:
     version: 0.1.0-dev.0.main.90
   - apiVersion: v2
     appVersion: d4e06f0
-    created: "2022-01-22T22:19:05.460688458Z"
+    created: "2022-01-24T15:08:06.741449868Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -798,7 +813,7 @@ entries:
     version: 0.1.0-dev.0.main.88
   - apiVersion: v2
     appVersion: c5e830e
-    created: "2022-01-22T22:19:05.453079918Z"
+    created: "2022-01-24T15:08:06.734151267Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -813,7 +828,7 @@ entries:
     version: 0.1.0-dev.0.main.77
   - apiVersion: v2
     appVersion: 0fe9044
-    created: "2022-01-22T22:19:05.443984473Z"
+    created: "2022-01-24T15:08:06.72780828Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -828,7 +843,7 @@ entries:
     version: 0.1.0-dev.0.main.76
   - apiVersion: v2
     appVersion: 99ff401
-    created: "2022-01-22T22:19:05.436213621Z"
+    created: "2022-01-24T15:08:06.720602381Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -843,7 +858,7 @@ entries:
     version: 0.1.0-dev.0.main.75
   - apiVersion: v2
     appVersion: 41ec78b
-    created: "2022-01-22T22:19:05.426622041Z"
+    created: "2022-01-24T15:08:06.713784587Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -858,7 +873,7 @@ entries:
     version: 0.1.0-dev.0.main.74
   - apiVersion: v2
     appVersion: 1b522c7
-    created: "2022-01-22T22:19:05.418307551Z"
+    created: "2022-01-24T15:08:06.707443799Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -873,7 +888,7 @@ entries:
     version: 0.1.0-dev.0.main.73
   - apiVersion: v2
     appVersion: f9d9cdc
-    created: "2022-01-22T22:19:05.410503498Z"
+    created: "2022-01-24T15:08:06.700595105Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -888,7 +903,7 @@ entries:
     version: 0.1.0-dev.0.main.72
   - apiVersion: v2
     appVersion: 3321ae0
-    created: "2022-01-22T22:19:05.401743876Z"
+    created: "2022-01-24T15:08:06.694178816Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -903,7 +918,7 @@ entries:
     version: 0.1.0-dev.0.main.71
   - apiVersion: v2
     appVersion: d20764f
-    created: "2022-01-22T22:19:05.393947523Z"
+    created: "2022-01-24T15:08:06.686951317Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -918,7 +933,7 @@ entries:
     version: 0.1.0-dev.0.main.70
   - apiVersion: v2
     appVersion: 8f9b591
-    created: "2022-01-22T22:19:05.384671065Z"
+    created: "2022-01-24T15:08:06.680588929Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -933,7 +948,7 @@ entries:
     version: 0.1.0-dev.0.main.69
   - apiVersion: v2
     appVersion: 35ed837
-    created: "2022-01-22T22:19:05.376452782Z"
+    created: "2022-01-24T15:08:06.673253428Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -948,7 +963,7 @@ entries:
     version: 0.1.0-dev.0.main.60
   - apiVersion: v2
     appVersion: fb88e0e
-    created: "2022-01-22T22:19:05.367382439Z"
+    created: "2022-01-24T15:08:06.66612253Z"
     description: Helm chart for deploying a Zenith server on Kubernetes
     digest: f8eaaf3772b2b68c62f00be0ad747d3fb36535696bd9f261b0784e45ae03700c
     name: zenith-server
@@ -958,7 +973,7 @@ entries:
     version: 0.1.0-dev.0.main.38
   - apiVersion: v2
     appVersion: cd70ddf
-    created: "2022-01-22T22:19:05.366729292Z"
+    created: "2022-01-24T15:08:06.665564322Z"
     description: Helm chart for deploying a Zenith server on Kubernetes
     digest: 89a11005fc7f35d83b3d9a9aeb8e0dbdbfb39b6290a040f1ece5604abb406b38
     name: zenith-server
@@ -968,7 +983,7 @@ entries:
     version: 0.1.0-dev.0.main.37
   - apiVersion: v2
     appVersion: "2299276"
-    created: "2022-01-22T22:19:05.178101611Z"
+    created: "2022-01-24T15:08:06.516099163Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -983,7 +998,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.87
   - apiVersion: v2
     appVersion: 471f881
-    created: "2022-01-22T22:19:05.16863444Z"
+    created: "2022-01-24T15:08:06.508825863Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -998,7 +1013,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.85
   - apiVersion: v2
     appVersion: e5a9dae
-    created: "2022-01-22T22:19:05.16087989Z"
+    created: "2022-01-24T15:08:06.501799669Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1013,7 +1028,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.84
   - apiVersion: v2
     appVersion: b7d564c
-    created: "2022-01-22T22:19:05.152528697Z"
+    created: "2022-01-24T15:08:06.494478871Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1028,7 +1043,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.83
   - apiVersion: v2
     appVersion: dfa6dd9
-    created: "2022-01-22T22:19:05.137524533Z"
+    created: "2022-01-24T15:08:06.487862183Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1043,7 +1058,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.82
   - apiVersion: v2
     appVersion: 90c0e00
-    created: "2022-01-22T22:19:05.127410816Z"
+    created: "2022-01-24T15:08:06.481251694Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1058,7 +1073,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.81
   - apiVersion: v2
     appVersion: e8b6ea1
-    created: "2022-01-22T22:19:05.117072182Z"
+    created: "2022-01-24T15:08:06.474082498Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1073,7 +1088,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.80
   - apiVersion: v2
     appVersion: dd04f53
-    created: "2022-01-22T22:19:05.107842027Z"
+    created: "2022-01-24T15:08:06.46751811Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1088,7 +1103,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.79
   - apiVersion: v2
     appVersion: 0c1e66f
-    created: "2022-01-22T22:19:05.099596442Z"
+    created: "2022-01-24T15:08:06.459721506Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1101,4 +1116,4 @@ entries:
     urls:
     - zenith-server-0.1.0-dev.0.docs-update.78.tgz
     version: 0.1.0-dev.0.docs-update.78
-generated: "2022-01-22T22:19:05.0905349Z"
+generated: "2022-01-24T15:08:06.451911102Z"
