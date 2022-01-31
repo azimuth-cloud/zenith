@@ -62,7 +62,7 @@ sync:
     kubernetes:
     #   # The namespace to create resources in for Zenith services
       targetNamespace: zenith-services
-    #   ingress:
+      ingress: {}
     #     # The base domain to use for services exposed by Zenith
     #     baseDomain:
     #     # The ingress class to use
