@@ -143,10 +143,13 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
         response.raise_for_status()
         # The response should be JSON with a single response
         modify_index = response.json()["Results"][0]["KV"]["ModifyIndex"]
+    # The FQDN is the requests subdomain combined with the configured base domain
+    fqdn = f"{req.subdomain}.{settings.base_domain}"
     if req.public_keys:
         # When the request contained public keys, return the fingerprints
         return Reservation(
             subdomain = req.subdomain,
+            fqdn = fqdn,
             # Return non-URL-safe fingerprints so they can be compared with the output of OpenSSH
             fingerprints = [fingerprint(pubkey) for pubkey in req.public_keys]
         )
@@ -155,7 +158,7 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
         token_data = f"{req.subdomain}.{modify_index}"
         signature = generate_signature(token_data)
         token = base64.urlsafe_b64encode(f"{token_data}.{signature}".encode()).decode()
-        return Reservation(subdomain = req.subdomain, token = token)
+        return Reservation(subdomain = req.subdomain, fqdn = fqdn, token = token)
 
 
 @app.post(

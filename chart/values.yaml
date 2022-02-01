@@ -194,6 +194,8 @@ registrar:
     # reserveToken:
     # The shared token that is permitted to verify SSH public keys
     # verifyToken:
+    # The base domain used for Zenith services
+    baseDomain: "{{ pluck \"baseDomain\" .Values.common.ingress .Values.global.ingress | first }}"
     # A list of subdomains that are reserved and cannot be used for Zenith services
     reservedSubdomains: []
     # The set of allowed SSH key types
