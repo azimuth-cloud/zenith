@@ -91,14 +91,15 @@ sync:
     repository: ghcr.io/stackhpc/zenith-sync
     pullPolicy: IfNotPresent
     tag: ""  # Defaults to appVersion if not given
+  # Customise pod-level security context for sync pods
+  podSecurityContext:
+    runAsNonRoot: true
   # Customise container-level security context for sync pods
   securityContext:
-    # By default, require that the container runs as a non-root user with
-    # a read-only root filesystem
+    allowPrivilegeEscalation: false
     capabilities:
       drop: [ALL]
     readOnlyRootFilesystem: true
-    runAsNonRoot: true
   # Resources for sync containers
   resources: {}
   # Configuration for the kubectl proxy container
@@ -112,8 +113,6 @@ sync:
   imagePullSecrets: []
   # Customise annotations for sync pods
   podAnnotations: {}
-  # Customise pod-level security context for sync pods
-  podSecurityContext: {}
   # Customise node selector for sync pods
   nodeSelector: {}
   # Customise tolerations for sync pods
@@ -153,15 +152,14 @@ sshd:
   # Customise annotations for SSHD pods
   podAnnotations: {}
   # Customise pod-level security context for SSHD pods
-  podSecurityContext: {}
+  podSecurityContext:
+    runAsNonRoot: true
   # Customise container-level security context for SSHD pods
   securityContext:
-    # By default, require that the container runs as a non-root user with
-    # a read-only root filesystem
+    allowPrivilegeEscalation: false
     capabilities:
       drop: [ALL]
     readOnlyRootFilesystem: true
-    runAsNonRoot: true
   # The service definition for SSHD
   # Because SSH is a TCP service, it cannot be exposed with an Ingress
   # Instead, it must be exposed with a NodePort or LoadBalancer service
@@ -234,16 +232,15 @@ registrar:
   replicaCount: 1
   # Customise annotations for pods
   podAnnotations: {}
-  # Customise pod-level security context
-  podSecurityContext: {}
-  # Customise container-level security context
+  # Customise pod-level security context for registrar pods
+  podSecurityContext:
+    runAsNonRoot: true
+  # Customise container-level security context for registrar pods
   securityContext:
-    # By default, require that the container runs as a non-root user with
-    # a read-only root filesystem
+    allowPrivilegeEscalation: false
     capabilities:
       drop: [ALL]
     readOnlyRootFilesystem: true
-    runAsNonRoot: true
   # Resources for containers
   resources: {}
   # Customise node selector for pods

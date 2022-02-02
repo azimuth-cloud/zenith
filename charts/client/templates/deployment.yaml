@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zenith.fullname" . }}
+  labels: {{ include "zenith.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: {{ include "zenith.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{ include "zenith.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{ toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: client
+          securityContext: {{ toYaml .Values.securityContext | nindent 12 }}
+          image: {{ printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources: {{ toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: etc-zenith
+              mountPath: /etc/zenith
+              readOnly: true
+      volumes:
+        - name: etc-zenith
+          projected:
+            sources:
+              - secret:
+                  name: {{ include "zenith.fullname" . }}
+              - secret:
+                  name: {{ .Values.sshKeypairSecret.name | required "sshKeypairSecret.name is required" }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
