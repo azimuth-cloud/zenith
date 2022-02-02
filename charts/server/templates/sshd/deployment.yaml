@@ -13,7 +13,7 @@ spec:
       labels: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 8 }}
       annotations:
         # Force the deployment to roll when the config changes
-        checksum/config: {{ include (print $.Template.BasePath "/sshd/configmap.yaml") . | sha256sum }}
+        zenith.stackhpc.com/config-hash: {{ include (print $.Template.BasePath "/sshd/configmap.yaml") . | sha256sum }}
         {{- with .Values.sshd.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

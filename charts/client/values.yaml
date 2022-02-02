@@ -1,8 +1,6 @@
-# The name of a secret containing an SSH keypair
-# The SSH keypair must already be associated with a Zenith subdomain
-sshKeypairSecret:
-  name:
-  keyFile: id_ed25519
+# The base64-encoded SSH private key data for the client
+# The SSH key should already be associated with a Zenith subdomain
+sshPrivateKeyData:
 
 # Configuration for the Zenith server
 server:
