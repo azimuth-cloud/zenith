@@ -49,6 +49,10 @@ spec:
             - name: etc-nginx-confd
               mountPath: /etc/nginx/conf.d
               readOnly: true
+            - name: var-cache-nginx
+              mountPath: /var/cache/nginx
+            - name: var-run-nginx
+              mountPath: /var/run/nginx
         {{- end }}
       volumes:
         - name: etc-zenith
@@ -58,8 +62,13 @@ spec:
           secret:
             secretName: {{ include "zenith.fullname" . }}-etc-nginx-confd
         - name: tmp
-          emptyDir:
-            medium: Memory
+          emptyDir: {}
+        {{- if .Values.mitmProxy.enabled }}
+        - name: var-cache-nginx
+          emptyDir: {}
+        - name: var-run-nginx
+          emptyDir: {}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
