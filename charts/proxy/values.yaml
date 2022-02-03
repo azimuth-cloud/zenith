@@ -38,6 +38,7 @@ replicaCount: 1
 # Pod-level security context
 podSecurityContext:
   runAsNonRoot: true
+  runAsUser: 1001
 
 # Container-level security context
 securityContext:
