@@ -36,6 +36,14 @@ mitmProxy:
   # The port that the proxy is listening on
   # It should listen to localhost only on plain http
   port: 8080
+  # The authentication parameters to inject
+  authInject:
+    # Currently only serviceaccount is supported
+    type: ""
+    # Options for service account authentication
+    serviceAccount:
+      # The cluster role to bind the service account to
+      clusterRoleName: cluster-admin
   # The image to use for the proxy container
   image:
     repository: ghcr.io/stackhpc/zenith-proxy

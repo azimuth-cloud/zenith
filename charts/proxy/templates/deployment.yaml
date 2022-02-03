@@ -13,12 +13,14 @@ spec:
       annotations:
         # Force the deployment to roll when the config changes
         zenith.stackhpc.com/secret-etc-zenith-hash: {{ include (print $.Template.BasePath "/secret-etc-zenith.yaml") . | sha256sum }}
-        zenith.stackhpc.com/secret-etc-nginx-confd-hash: {{ include (print $.Template.BasePath "/secret-etc-nginx-confd.yaml") . | sha256sum }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
       securityContext: {{ toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and .Values.mitmProxy.enabled (eq .Values.mitmProxy.authInject.type "serviceaccount") }}
+      serviceAccountName: {{ include "zenith.fullname" . }}
+      {{- end }}
       containers:
         - name: zenith-client
           securityContext: {{ toYaml .Values.securityContext | nindent 12 }}
@@ -44,11 +46,29 @@ spec:
               (default .Chart.AppVersion .Values.mitmProxy.image.tag)
           }}
           imagePullPolicy: {{ .Values.mitmProxy.image.pullPolicy }}
+          env:
+            - name: ZENITH_PROXY_LISTEN_PORT
+              value: {{ .Values.mitmProxy.port | quote }}
+            {{- with .Values.upstream.readTimeout }}
+            - name: ZENITH_PROXY_READ_TIMEOUT
+              value: {{ . | quote }}
+            {{- end }}
+            - name: ZENITH_PROXY_UPSTREAM_SCHEME
+              value: {{ .Values.upstream.scheme }}
+            - name: ZENITH_PROXY_UPSTREAM_HOST
+              value: {{ .Values.upstream.host }}
+            - name: ZENITH_PROXY_UPSTREAM_PORT
+              value: {{ .Values.upstream.port | quote }}
+            {{- with .Values.mitmProxy.authInject }}
+            {{- if eq .type "serviceaccount" }}
+            - name: ZENITH_PROXY_AUTH_INJECT
+              value: bearer
+            - name: ZENITH_PROXY_AUTH_BEARER_TOKEN_FILE
+              value: /var/run/secrets/kubernetes.io/serviceaccount/token
+            {{- end }}
+            {{- end }}
           resources: {{ toYaml .Values.mitmProxy.resources | nindent 12 }}
           volumeMounts:
-            - name: etc-nginx-confd
-              mountPath: /etc/nginx/conf.d
-              readOnly: true
             - name: var-cache-nginx
               mountPath: /var/cache/nginx
             - name: var-run-nginx
@@ -58,9 +78,6 @@ spec:
         - name: etc-zenith
           secret:
             secretName: {{ include "zenith.fullname" . }}-etc-zenith
-        - name: etc-nginx-confd
-          secret:
-            secretName: {{ include "zenith.fullname" . }}-etc-nginx-confd
         - name: tmp
           emptyDir: {}
         {{- if .Values.mitmProxy.enabled }}
