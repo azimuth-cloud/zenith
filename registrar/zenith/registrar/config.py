@@ -59,7 +59,7 @@ class RegistrarConfig(Configuration):
     #: The port of the Consul server
     consul_port: int = 8500
     #: The prefix to use for Consul keys
-    consul_key_prefix: str = "zenith-registrar"
+    consul_key_prefix: str = "zenith"
 
     @property
     def consul_url(self):

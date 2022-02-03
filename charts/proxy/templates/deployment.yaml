@@ -12,28 +12,51 @@ spec:
       labels: {{ include "zenith.selectorLabels" . | nindent 8 }}
       annotations:
         # Force the deployment to roll when the config changes
-        zenith.stackhpc.com/config-hash: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        zenith.stackhpc.com/secret-etc-zenith-hash: {{ include (print $.Template.BasePath "/secret-etc-zenith.yaml") . | sha256sum }}
+        zenith.stackhpc.com/secret-etc-nginx-confd-hash: {{ include (print $.Template.BasePath "/secret-etc-nginx-confd.yaml") . | sha256sum }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
       securityContext: {{ toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: client
+        - name: zenith-client
           securityContext: {{ toYaml .Values.securityContext | nindent 12 }}
-          image: {{ printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          resources: {{ toYaml .Values.resources | nindent 12 }}
+          image: {{
+            printf "%s:%s"
+              .Values.zenithClient.image.repository
+              (default .Chart.AppVersion .Values.zenithClient.image.tag)
+          }}
+          imagePullPolicy: {{ .Values.zenithClient.image.pullPolicy }}
+          resources: {{ toYaml .Values.zenithClient.resources | nindent 12 }}
           volumeMounts:
             - name: etc-zenith
               mountPath: /etc/zenith
               readOnly: true
             - name: tmp
               mountPath: /tmp
+        {{- if .Values.mitmProxy.enabled }}
+        - name: mitm-proxy
+          securityContext: {{ toYaml .Values.securityContext | nindent 12 }}
+          image: {{
+            printf "%s:%s"
+              .Values.mitmProxy.image.repository
+              (default .Chart.AppVersion .Values.mitmProxy.image.tag)
+          }}
+          imagePullPolicy: {{ .Values.mitmProxy.image.pullPolicy }}
+          resources: {{ toYaml .Values.mitmProxy.resources | nindent 12 }}
+          volumeMounts:
+            - name: etc-nginx-confd
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+        {{- end }}
       volumes:
         - name: etc-zenith
           secret:
-            secretName: {{ include "zenith.fullname" . }}
+            secretName: {{ include "zenith.fullname" . }}-etc-zenith
+        - name: etc-nginx-confd
+          secret:
+            secretName: {{ include "zenith.fullname" . }}-etc-nginx-confd
         - name: tmp
           emptyDir:
             medium: Memory
