@@ -28,10 +28,15 @@ spec:
             - name: etc-zenith
               mountPath: /etc/zenith
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: etc-zenith
           secret:
             secretName: {{ include "zenith.fullname" . }}
+        - name: tmp
+          emptyDir:
+            medium: Memory
       {{- with .Values.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
