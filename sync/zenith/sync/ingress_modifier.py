@@ -58,8 +58,10 @@ class NginxIngressModifier(IngressModifier):
     """
     Ingress modifier for the Nginx Ingress Controller.
     """
+    # By default, don't buffer responses and allow any size of client body
     DEFAULT_ANNOTATIONS = {
         "nginx.ingress.kubernetes.io/proxy-buffering": "off",
+        "nginx.ingress.kubernetes.io/proxy-body-size": "0",
     }
     BACKEND_PROTOCOL_ANNOTATION = "nginx.ingress.kubernetes.io/backend-protocol"
     READ_TIMEOUT_ANNOTATION = "nginx.ingress.kubernetes.io/proxy-read-timeout"
