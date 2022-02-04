@@ -60,7 +60,32 @@ spec:
             - name: ZENITH_PROXY_UPSTREAM_PORT
               value: {{ .Values.upstream.port | quote }}
             {{- with .Values.mitmProxy.authInject }}
-            {{- if eq .type "serviceaccount" }}
+            {{- if eq .type "basic" }}
+            - name: ZENITH_PROXY_AUTH_INJECT
+              value: basic
+            - name: ZENITH_PROXY_AUTH_BASIC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .basic.secretName | required "mitmProxy.authInject.basic.secretName is required" }}
+                  key: {{ .basic.usernameKey }}
+            - name: ZENITH_PROXY_AUTH_BASIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .basic.secretName }}
+                  key: {{ .basic.passwordKey }}
+            {{- else if eq .type "bearer" }}
+            - name: ZENITH_PROXY_AUTH_INJECT
+              value: bearer
+            - name: ZENITH_PROXY_AUTH_BEARER_HEADER
+              value: {{ .bearer.headerName | quote }}
+            - name: ZENITH_PROXY_AUTH_BEARER_PREFIX
+              value: {{ .bearer.headerPrefix | quote }}
+            - name: ZENITH_PROXY_AUTH_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .bearer.secretName | required "mitmProxy.authInject.bearer.secretName is required" }}
+                  key: {{ .bearer.tokenKey }}
+            {{- else if eq .type "serviceaccount" }}
             - name: ZENITH_PROXY_AUTH_INJECT
               value: bearer
             - name: ZENITH_PROXY_AUTH_BEARER_TOKEN_FILE

@@ -38,8 +38,26 @@ mitmProxy:
   port: 8080
   # The authentication parameters to inject
   authInject:
-    # Currently only serviceaccount is supported
-    type: ""
+    # Can be basic, bearer, serviceaccount or none
+    type: none
+    # Options for basic authentication
+    basic:
+      # The name of the secret containing basic auth credentials
+      secretName:
+      # The key of the username within the secret
+      usernameKey: username
+      # The key of the password within the secret
+      passwordKey: password
+    # Options for bearer token authentication
+    bearer:
+      # The name of the secret containing the bearer token
+      secretName:
+      # The key of the bearer token within the secret
+      tokenKey: token
+      # The name of the header to use for the token
+      headerName: Authorization
+      # The prefix to add to the header value
+      headerPrefix: Bearer
     # Options for service account authentication
     serviceAccount:
       # The cluster role to bind the service account to
