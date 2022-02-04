@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: kube-system
+  name: {{ include "zenith.fullname" . }}
+  labels: {{ include "zenith.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets: {{ toYaml . | nindent 8 }}
+  {{- end }}
+  containers:
+    - name: zenith-client
+      image: {{
+        printf "%s:%s"
+          .Values.zenithClient.image.repository
+          (default .Chart.AppVersion .Values.zenithClient.image.tag)
+      }}
+      imagePullPolicy: {{ .Values.zenithClient.image.pullPolicy }}
+      env:
+        - name: ZENITH_CLIENT_CONFIG
+          value: /etc/zenith/client-apiserver.yaml
+      volumeMounts:
+        - name: etc-zenith
+          mountPath: /etc/zenith
+          readOnly: true
+        - name: k8s-certs
+          mountPath: /etc/kubernetes/pki
+          readOnly: true
+    - name: mitm-proxy
+      image: {{
+        printf "%s:%s"
+          .Values.mitmProxy.image.repository
+          (default .Chart.AppVersion .Values.mitmProxy.image.tag)
+      }}
+      imagePullPolicy: {{ .Values.mitmProxy.image.pullPolicy }}
+      env:
+        - name: ZENITH_PROXY_AUTH_INJECT
+          value: kubeapiserver
+        # Use a long read timeout so that watches work
+        - name: ZENITH_PROXY_READ_TIMEOUT
+          value: "31536000"
+        # Proxy traffic to the API server running on this host
+        - name: ZENITH_PROXY_UPSTREAM_SCHEME
+          value: https
+        - name: ZENITH_PROXY_UPSTREAM_HOST
+          value: "127.0.0.1"
+        - name: ZENITH_PROXY_UPSTREAM_PORT
+          value: "6443"
+        # Use the front-proxy certificate to authenticate the proxy so that our
+        # user and group headers are accepted
+        - name: ZENITH_PROXY_CLIENT_CERTIFICATE_PATH
+          value: /etc/kubernetes/pki/front-proxy-client.crt
+        - name: ZENITH_PROXY_CLIENT_CERTIFICATE_KEY_PATH
+          value: /etc/kubernetes/pki/front-proxy-client.key
+      volumeMounts:
+        - name: k8s-certs
+          mountPath: /etc/kubernetes/pki
+          readOnly: true
+  dnsPolicy: ClusterFirstWithHostNet
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+    - name: etc-zenith
+      hostPath:
+        path: /etc/zenith
+        type: DirectoryOrCreate
+    - name: k8s-certs
+      hostPath:
+        path: /etc/kubernetes/pki
+        type: DirectoryOrCreate

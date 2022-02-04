@@ -12,7 +12,7 @@ spec:
       labels: {{ include "zenith.selectorLabels" . | nindent 8 }}
       annotations:
         # Force the deployment to roll when the config changes
-        zenith.stackhpc.com/secret-etc-zenith-hash: {{ include (print $.Template.BasePath "/secret-etc-zenith.yaml") . | sha256sum }}
+        zenith.stackhpc.com/secret-hash: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
@@ -102,7 +102,7 @@ spec:
       volumes:
         - name: etc-zenith
           secret:
-            secretName: {{ include "zenith.fullname" . }}-etc-zenith
+            secretName: {{ include "zenith.fullname" . }}
         - name: tmp
           emptyDir: {}
         {{- if .Values.mitmProxy.enabled }}

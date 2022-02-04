@@ -24,7 +24,5 @@ COPY --from=gomplate /gomplate /usr/bin/gomplate
 COPY ./bin /usr/bin/
 COPY ./etc /etc/
 
-# The Nginx user has UID 101
-USER 101
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["/usr/bin/nginx-start"]
