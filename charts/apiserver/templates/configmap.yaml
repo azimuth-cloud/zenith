@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zenith.fullname" . }}
+data:
+  client-apiserver.yaml: |
+    {{- with .Values.zenithClient }}
+    ssh_private_key_data: {{ .sshPrivateKeyData | required "zenithClient.sshPrivateKeyData is required" | quote }}
+    server_address: {{ .server.host | required "zenithClient.server.host is required" }}
+    server_port: {{ .server.port }}
+    {{- end }}
+    # Skip any authentication configured at the Zenith proxy
+    skip_auth: true
+
+    # Forward traffic to the MITM in the same pod
+    forward_to_host: 127.0.0.1
+    forward_to_port: {{ .Values.mitmProxy.port }}
+    backend_protocol: http
+    # Use a long read timeout so that watches work
+    read_timeout: 31536000
+
+    # Instruct the Zenith proxy to use the generated API server certificate for TLS,
+    # regardless of the TLS settings at the proxy
+    tls_cert_file: /etc/kubernetes/pki/apiserver.crt
+    tls_key_file: /etc/kubernetes/pki/apiserver.key
+
+    # Instruct the Zenith proxy to validate client TLS certificates against the Kubernetes CA
+    tls_client_ca_file: /etc/kubernetes/pki/ca.crt

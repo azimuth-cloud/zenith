@@ -4,8 +4,7 @@ import hashlib
 import hmac
 import typing as t
 
-from fastapi import FastAPI, Depends, Request, HTTPException
-from fastapi.security import HTTPBearer
+from fastapi import FastAPI, Request, HTTPException
 
 from httpx import AsyncClient
 
@@ -69,22 +68,61 @@ def fingerprint_urlsafe(ssh_pubkey: str) -> str:
 )
 async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest] = None):
     """
-    Reserve a subdomain and return a single-use URL that can be used to associate public keys.
+    Reserve a subdomain for use with an application.
 
     If no subdomain is given, a random subdomain is reserved and returned.
+
+    If a set of SSH public keys is given, they are associated with the subdomain and the
+    fingerprints are returned. No token is returned in this case.
+
+    If no SSH public keys are given, a single-use token is returned that can be used to
+    associate public keys with the subdomain.
     """
     if not req:
         req = ReservationRequest()
-    # Try to create the subdomain key with a value of zero
-    # We use check-and-set (CAS) semantics with an index of zero, which means the
-    # operation will only succeed if it creates the key
-    # In order to get the modify index back without another query, we need to use a
-    # transaction even though there is only one operation
-    # The associate operation will then use the modify index to do a CAS operation
-    # to change the value from 0 to 1
-    # In this way, we can implement reservation + single use tokens
-    async with AsyncClient(base_url = settings.consul_url) as client:
-        response = await client.put("/v1/txn", json = [
+    # Work out what Consul operations we want to perform
+    # We perform the operations within a Consul transaction to ensure atomicity
+    # We use a check-and-set (CAS) operation with an index of zero for the subdomain record,
+    # which means the operation will only succeed if it creates the key - this means a
+    # subdomain can only be reserved once
+    if req.public_keys:
+        # If public keys are given, create the subdomain record with a value of 1
+        # and create/update the public key associations at the same time
+        # No token is returned
+        operations = [
+            {
+                "KV": {
+                    "Verb": "cas",
+                    "Index": 0,
+                    "Key": f"{settings.consul_key_prefix}/subdomains/{req.subdomain}",
+                    "Value": base64.b64encode(b"1").decode(),
+                },
+            },
+        ] + [
+            {
+                "KV": {
+                    # Use regular set operations to update the public key records, as we
+                    # don't care about splatting existing records (a well-behaved client
+                    # should generate a new keypair for each subdomain anyway)
+                    "Verb": "set",
+                    # Use a URL-safe fingerprint as the key, otherwise the "/" characters form a
+                    # nested structure that we don't want
+                    "Key": f"{settings.consul_key_prefix}/pubkeys/{fingerprint_urlsafe(pubkey)}",
+                    # The value is the subdomain, which can be looked up by key later
+                    "Value": base64.b64encode(req.subdomain.encode()).decode(),
+                }
+            }
+            for pubkey in req.public_keys
+        ]
+    else:
+        # If no public keys are given, create the subdomain record with a value of 0
+        # A token will be returned that contains the subdomain and the Consul modify index,
+        # signed with a secret to ensure data integrity
+        # The associate operation will then use the subdomain and modify index from the token
+        # it receives to perform another CAS operation which changes the value of the
+        # subdomain record from 0 to 1, registering the public keys at the same time
+        # This operation will only succeed on the first attempt, making the tokens single use
+        operations = [
             {
                 "KV": {
                     "Verb": "cas",
@@ -93,7 +131,9 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
                     "Value": base64.b64encode(b"0").decode(),
                 },
             },
-        ])
+        ]
+    async with AsyncClient(base_url = settings.consul_url) as client:
+        response = await client.put("/v1/txn", json = operations)
         # If the subdomain already exists, the response will be a 409
         if response.status_code == 409:
             raise HTTPException(
@@ -103,11 +143,22 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
         response.raise_for_status()
         # The response should be JSON with a single response
         modify_index = response.json()["Results"][0]["KV"]["ModifyIndex"]
-    # Generate a signed token that contains the subdomain and the modify index
-    token_data = f"{req.subdomain}.{modify_index}"
-    signature = generate_signature(token_data)
-    token = base64.urlsafe_b64encode(f"{token_data}.{signature}".encode()).decode()
-    return Reservation(subdomain = req.subdomain, token = token)
+    # The FQDN is the requests subdomain combined with the configured base domain
+    fqdn = f"{req.subdomain}.{settings.base_domain}"
+    if req.public_keys:
+        # When the request contained public keys, return the fingerprints
+        return Reservation(
+            subdomain = req.subdomain,
+            fqdn = fqdn,
+            # Return non-URL-safe fingerprints so they can be compared with the output of OpenSSH
+            fingerprints = [fingerprint(pubkey) for pubkey in req.public_keys]
+        )
+    else:
+        # If no keys were given, return a signed token containing the subdomain and modify index
+        token_data = f"{req.subdomain}.{modify_index}"
+        signature = generate_signature(token_data)
+        token = base64.urlsafe_b64encode(f"{token_data}.{signature}".encode()).decode()
+        return Reservation(subdomain = req.subdomain, fqdn = fqdn, token = token)
 
 
 @app.post(
@@ -150,7 +201,10 @@ async def verify_subdomain(req: VerificationRequest):
             "model": Error,
         },
         409: {
-            "description": "The given token has already been used.",
+            "description": (
+                "The given token has already been used or does not "
+                "correspond to a reservation."
+            ),
             "model": Error,
         },
     }
@@ -181,7 +235,7 @@ async def associate_public_keys(req: PublicKeyAssociationRequest):
         response = await client.put("/v1/txn", json = [
             {
                 "KV": {
-                    # Use check-and-set (cas) semantics to update the value of the subdomain
+                    # Use a check-and-set (cas) operation to update the value of the subdomain
                     # key from zero to one
                     # By passing the modify index from the token, we can be sure that we are
                     # the first operation to do this, or the whole transaction will fail
@@ -195,7 +249,7 @@ async def associate_public_keys(req: PublicKeyAssociationRequest):
         ] + [
             {
                 "KV": {
-                    # Use regular set semantics here, as we don't care about splatting existing
+                    # Use regular set operations here, as we don't care about splatting existing
                     # pubkey records (it shouldn't happen with a well-behaved client anyway)
                     "Verb": "set",
                     # Use a URL-safe fingerprint as the key, otherwise the "/" characters form a

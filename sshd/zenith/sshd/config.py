@@ -39,7 +39,7 @@ class SSHDConfig(Configuration):
     #: The number of times that posting a heartbeat to Consul can fail before a tunnel is closed
     consul_heartbeat_failures: int = 3
     #: The prefix to use for Consul keys
-    consul_key_prefix: str = "zenith-services"
+    consul_key_prefix: str = "zenith/services"
     #: The host to use when registering services with Consul
     service_host: str = Field(default_factory = default_service_host)
     #: The tag to use when registering services with Consul

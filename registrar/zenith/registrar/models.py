@@ -19,43 +19,6 @@ from .config import settings, SSHPublicKeyType
 Subdomain = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
 
 
-def default_subdomain():
-    """
-    Returns a random subdomain consisting of 32 alphanumeric characters.
-    """
-    # Domains must start with a letter
-    chars = [secrets.choice(string.ascii_lowercase)]
-    chars.extend(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(31))
-    return "".join(chars)
-
-
-class ReservationRequest(BaseModel):
-    """
-    Model for a request to reserve a subdomain.
-    """
-    #: The subdomain to reserve
-    subdomain: Subdomain = Field(default_factory = default_subdomain)
-
-    @validator("subdomain")
-    def validate_subdomain(cls, v):
-        """
-        Validates that the subdomain is not one of the reserved subdomains.
-        """
-        if v in settings.reserved_subdomains:
-            raise ValueError(f"'{v}' is a reserved subdomain")
-        return v
-
-
-class Reservation(BaseModel):
-    """
-    Model for a successful reservation.
-    """
-    #: The subdomain that was reserved
-    subdomain: Subdomain
-    #: The token to use to associate public keys with the subdomain
-    token: str
-
-
 class SSHPublicKey(str):
     """
     Custom type for an SSH public key.
@@ -91,6 +54,50 @@ class SSHPublicKey(str):
             raise ValueError(message)
         # The key is valid! Hooray!
         return cls(v)
+
+
+def default_subdomain():
+    """
+    Returns a random subdomain consisting of 63 alphanumeric characters that will also be
+    a valid Kubernetes service name.
+    """
+    # Domains must start with a letter
+    chars = [secrets.choice(string.ascii_lowercase)]
+    chars.extend(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(62))
+    return "".join(chars)
+
+
+class ReservationRequest(BaseModel):
+    """
+    Model for a request to reserve a subdomain.
+    """
+    #: The subdomain to reserve
+    subdomain: Subdomain = Field(default_factory = default_subdomain)
+    #: The public keys to associate with the subdomain
+    public_keys: t.Optional[conset(SSHPublicKey, min_items = 1)] = None
+
+    @validator("subdomain")
+    def validate_subdomain(cls, v):
+        """
+        Validates that the subdomain is not one of the reserved subdomains.
+        """
+        if v in settings.reserved_subdomains:
+            raise ValueError(f"'{v}' is a reserved subdomain")
+        return v
+
+
+class Reservation(BaseModel):
+    """
+    Model for a successful reservation.
+    """
+    #: The subdomain that was reserved
+    subdomain: Subdomain
+    #: The FQDN for the subdomain that was reserved
+    fqdn: constr(min_length = 1)
+    #: The token to use to associate public keys with the subdomain if no keys were given
+    token: t.Optional[str] = None
+    #: The fingerprints of any keys that were registered
+    fingerprints: t.List[str] = Field(default_factory = list)
 
 
 class VerificationRequest(BaseModel):

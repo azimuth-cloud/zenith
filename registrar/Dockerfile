@@ -19,7 +19,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install uvicorn to run the ASGI process
-RUN pip install --no-cache-dir "uvicorn==0.15.0"
+RUN pip install --no-cache-dir "uvicorn==0.17.1"
 
 # Installing dependencies separately ensures better use of the build cache
 COPY requirements.txt /opt/zenith/registrar/

@@ -19,7 +19,7 @@ class ConsulConfig(Section):
     #: The tag to use to filter out Zenith services
     service_tag: str = "zenith-service"
     #: The prefix to use when looking for TLS configurations in the KV store
-    tls_key_prefix: str = "zenith-services"
+    tls_key_prefix: str = "zenith/services"
 
     @property
     def url(self):

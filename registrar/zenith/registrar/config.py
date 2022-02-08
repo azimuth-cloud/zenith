@@ -1,7 +1,7 @@
 import enum
 import typing as t
 
-from pydantic import Field, conbytes, conint, conset
+from pydantic import Field, conbytes, conint, conset, constr
 
 from configomatic import Configuration
 
@@ -31,6 +31,8 @@ class RegistrarConfig(Configuration):
     #: The key that is used to sign the subdomain tokens
     subdomain_token_signing_key: conbytes(strip_whitespace = True, min_length = 32)
 
+    #: The base domain that Zenith services are proxied under
+    base_domain: constr(min_length = 1)
     #: A list of subdomains that are reserved and cannot be used for Zenith services
     reserved_subdomains: t.List[str] = Field(default_factory = list)
 
@@ -57,7 +59,7 @@ class RegistrarConfig(Configuration):
     #: The port of the Consul server
     consul_port: int = 8500
     #: The prefix to use for Consul keys
-    consul_key_prefix: str = "zenith-registrar"
+    consul_key_prefix: str = "zenith"
 
     @property
     def consul_url(self):

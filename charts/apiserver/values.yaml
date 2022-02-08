@@ -1,0 +1,26 @@
+# Configuration for the Zenith client
+zenithClient:
+  # The base64-encoded SSH private key data for the client
+  # The SSH key should already be associated with a Zenith subdomain
+  sshPrivateKeyData:
+  # Configuration for the Zenith server
+  server:
+    host:
+    port: 22
+  # The image to use for the Zenith client container
+  image:
+    repository: ghcr.io/stackhpc/zenith-client
+    pullPolicy: IfNotPresent
+    tag: ""  # Defaults to appVersion if not given
+
+mitmProxy:
+  # The port that the proxy is listening on
+  # It should listen to localhost only on plain http
+  port: 8080
+  # The image to use for the proxy container
+  image:
+    repository: ghcr.io/stackhpc/zenith-proxy
+    pullPolicy: IfNotPresent
+    tag: ""  # Defaults to appVersion if not given
+
+imagePullSecrets: []
