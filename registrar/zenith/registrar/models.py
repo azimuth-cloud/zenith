@@ -1,5 +1,3 @@
-import secrets
-import string
 import typing as t
 
 from cryptography.exceptions import UnsupportedAlgorithm
@@ -14,7 +12,7 @@ from .config import settings, SSHPublicKeyType
 #: Subdomains must be at most 63 characters long, can only contain alphanumeric characters
 #: and hyphens, and cannot start or end with a hyphen
 #: In addition, this will eventually become a Kubernetes service name and Kubernetes service
-#: names must start with a letter and be lower case
+#: names must start with a letter and be lowercase
 #: See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
 Subdomain = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
 
@@ -56,23 +54,12 @@ class SSHPublicKey(str):
         return cls(v)
 
 
-def default_subdomain():
-    """
-    Returns a random subdomain consisting of 63 alphanumeric characters that will also be
-    a valid Kubernetes service name.
-    """
-    # Domains must start with a letter
-    chars = [secrets.choice(string.ascii_lowercase)]
-    chars.extend(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(62))
-    return "".join(chars)
-
-
 class ReservationRequest(BaseModel):
     """
     Model for a request to reserve a subdomain.
     """
     #: The subdomain to reserve
-    subdomain: Subdomain = Field(default_factory = default_subdomain)
+    subdomain: t.Optional[Subdomain] = None
     #: The public keys to associate with the subdomain
     public_keys: t.Optional[conset(SSHPublicKey, min_items = 1)] = None
 

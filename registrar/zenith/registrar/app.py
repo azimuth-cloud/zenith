@@ -2,6 +2,8 @@ import binascii
 import base64
 import hashlib
 import hmac
+import secrets
+import string
 import typing as t
 
 from fastapi import FastAPI, Request, HTTPException
@@ -22,6 +24,31 @@ from .models import (
 
 #: The FastAPI application
 app = FastAPI()
+
+
+def generate_random_subdomain():
+    """
+    Returns a random subdomain consisting of alphanumeric characters.
+
+    The subdomain must be a valid Kubernetes service name, so must be at most 63 characters long,
+    consist of lowercase letters, numbers and hyphens (-) only, and start with a letter.
+
+    In additional, the FQDN (i.e. subdomain + base domain) must be at most 64 characters to fit
+    in the CN of an SSL certificate when ACME issuing is used. Given that the base domain must be
+    at least one character, plus a dot to separate the subdomain, this means that when a subdomain
+    passes this test it automatically passes the length test for a Kubernetes service.
+    """
+    return "".join(
+        # Domains must start with a letter
+        [secrets.choice(string.ascii_lowercase)] +
+        [
+            # The rest of the characters are numbers or letters
+            secrets.choice(string.ascii_lowercase + string.digits)
+            # We want to use all the available randomness in the subdomain
+            # 62 = FQDN max length (64) - joining dot (1) - first character (1)
+            for _ in range(62 - len(settings.base_domain))
+        ]
+    )
 
 
 def generate_signature(message: str) -> str:
@@ -80,85 +107,108 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
     """
     if not req:
         req = ReservationRequest()
-    # Work out what Consul operations we want to perform
-    # We perform the operations within a Consul transaction to ensure atomicity
-    # We use a check-and-set (CAS) operation with an index of zero for the subdomain record,
-    # which means the operation will only succeed if it creates the key - this means a
-    # subdomain can only be reserved once
-    if req.public_keys:
-        # If public keys are given, create the subdomain record with a value of 1
-        # and create/update the public key associations at the same time
-        # No token is returned
-        operations = [
-            {
-                "KV": {
-                    "Verb": "cas",
-                    "Index": 0,
-                    "Key": f"{settings.consul_key_prefix}/subdomains/{req.subdomain}",
-                    "Value": base64.b64encode(b"1").decode(),
+    # Begin with the maximum number of attempts
+    remaining_attempts = settings.generate_domain_max_attempts
+    while remaining_attempts > 0:
+        # As soon as we enter the loop, the remaining attempts decrease
+        remaining_attempts = remaining_attempts - 1
+        # Work out the subdomain that we will attempt to use
+        subdomain = req.subdomain if req.subdomain is not None else generate_random_subdomain()
+        # Work out what Consul operations we want to perform
+        # We perform the operations within a Consul transaction to ensure atomicity
+        # We use a check-and-set (CAS) operation with an index of zero for the subdomain record,
+        # which means the operation will only succeed if it creates the key - this means a
+        # subdomain can only be reserved once
+        if req.public_keys:
+            # If public keys are given, create the subdomain record with a value of 1
+            # and create/update the public key associations at the same time
+            # No token is returned
+            operations = [
+                {
+                    "KV": {
+                        "Verb": "cas",
+                        "Index": 0,
+                        "Key": f"{settings.consul_key_prefix}/subdomains/{subdomain}",
+                        "Value": base64.b64encode(b"1").decode(),
+                    },
                 },
-            },
-        ] + [
-            {
-                "KV": {
-                    # Use regular set operations to update the public key records, as we
-                    # don't care about splatting existing records (a well-behaved client
-                    # should generate a new keypair for each subdomain anyway)
-                    "Verb": "set",
-                    # Use a URL-safe fingerprint as the key, otherwise the "/" characters form a
-                    # nested structure that we don't want
-                    "Key": f"{settings.consul_key_prefix}/pubkeys/{fingerprint_urlsafe(pubkey)}",
-                    # The value is the subdomain, which can be looked up by key later
-                    "Value": base64.b64encode(req.subdomain.encode()).decode(),
+            ] + [
+                {
+                    "KV": {
+                        # Use regular set operations to update the public key records, as we
+                        # don't care about splatting existing records (a well-behaved client
+                        # should generate a new keypair for each subdomain anyway)
+                        "Verb": "set",
+                        # Use a URL-safe fingerprint as the key, otherwise the "/" characters form a
+                        # nested structure that we don't want
+                        "Key": f"{settings.consul_key_prefix}/pubkeys/{fingerprint_urlsafe(pubkey)}",
+                        # The value is the subdomain, which can be looked up by key later
+                        "Value": base64.b64encode(subdomain.encode()).decode(),
+                    }
                 }
-            }
-            for pubkey in req.public_keys
-        ]
-    else:
-        # If no public keys are given, create the subdomain record with a value of 0
-        # A token will be returned that contains the subdomain and the Consul modify index,
-        # signed with a secret to ensure data integrity
-        # The associate operation will then use the subdomain and modify index from the token
-        # it receives to perform another CAS operation which changes the value of the
-        # subdomain record from 0 to 1, registering the public keys at the same time
-        # This operation will only succeed on the first attempt, making the tokens single use
-        operations = [
-            {
-                "KV": {
-                    "Verb": "cas",
-                    "Index": 0,
-                    "Key": f"{settings.consul_key_prefix}/subdomains/{req.subdomain}",
-                    "Value": base64.b64encode(b"0").decode(),
+                for pubkey in req.public_keys
+            ]
+        else:
+            # If no public keys are given, create the subdomain record with a value of 0
+            # A token will be returned that contains the subdomain and the Consul modify index,
+            # signed with a secret to ensure data integrity
+            # The associate operation will then use the subdomain and modify index from the token
+            # it receives to perform another CAS operation which changes the value of the
+            # subdomain record from 0 to 1, registering the public keys at the same time
+            # This operation will only succeed on the first attempt, making the tokens single use
+            operations = [
+                {
+                    "KV": {
+                        "Verb": "cas",
+                        "Index": 0,
+                        "Key": f"{settings.consul_key_prefix}/subdomains/{subdomain}",
+                        "Value": base64.b64encode(b"0").decode(),
+                    },
                 },
-            },
-        ]
-    async with AsyncClient(base_url = settings.consul_url) as client:
-        response = await client.put("/v1/txn", json = operations)
-        # If the subdomain already exists, the response will be a 409
-        if response.status_code == 409:
-            raise HTTPException(
-                status_code = 409,
-                detail = "The subdomain has already been reserved."
+            ]
+        async with AsyncClient(base_url = settings.consul_url) as client:
+            response = await client.put("/v1/txn", json = operations)
+            # If the subdomain already exists, the response will be a 409
+            # How we react to this depends on whether the request specified a subdomain or
+            # if we generated one
+            if response.status_code == 409:
+                if req.subdomain is not None:
+                    raise HTTPException(
+                        status_code = 409,
+                        detail = "The requested subdomain has already been reserved."
+                    )
+                else:
+                    continue
+            response.raise_for_status()
+            # If we get to here, the domain was registered successfully and we should break out
+            # after extracting the modify index
+            # The response should be JSON with a single response
+            modify_index = response.json()["Results"][0]["KV"]["ModifyIndex"]
+            break
+    else:
+        # No subdomain allocated after maximum number of attempts
+        raise HTTPException(
+            status_code = 409,
+            detail = "Unable to allocate a subdomain after {} attempts.".format(
+                settings.generate_domain_max_attempts
             )
-        response.raise_for_status()
-        # The response should be JSON with a single response
-        modify_index = response.json()["Results"][0]["KV"]["ModifyIndex"]
+        )
     # The FQDN is the requests subdomain combined with the configured base domain
-    fqdn = f"{req.subdomain}.{settings.base_domain}"
+    fqdn = f"{subdomain}.{settings.base_domain}"
     if req.public_keys:
         # When the request contained public keys, return the fingerprints
         return Reservation(
-            subdomain = req.subdomain,
+            subdomain = subdomain,
             fqdn = fqdn,
             # Return non-URL-safe fingerprints so they can be compared with the output of OpenSSH
             fingerprints = [fingerprint(pubkey) for pubkey in req.public_keys]
         )
     else:
         # If no keys were given, return a signed token containing the subdomain and modify index
-        token_data = f"{req.subdomain}.{modify_index}"
+        token_data = f"{subdomain}.{modify_index}"
         signature = generate_signature(token_data)
         token = base64.urlsafe_b64encode(f"{token_data}.{signature}".encode()).decode()
-        return Reservation(subdomain = req.subdomain, fqdn = fqdn, token = token)
+        return Reservation(subdomain = subdomain, fqdn = fqdn, token = token)
 
 
 @app.post(

@@ -32,9 +32,16 @@ class RegistrarConfig(Configuration):
     subdomain_token_signing_key: conbytes(strip_whitespace = True, min_length = 32)
 
     #: The base domain that Zenith services are proxied under
-    base_domain: constr(min_length = 1)
+    #: The FQDN (i.e. subdomain + base domain) for each service must be at most 64 characters
+    # to fit in the CN of an SSL certificate when ACME issuing is used
+    #: Because we want to have at least 16 characters of randomness to use for subdomains,
+    #: we limit the base domain to 47 characters (16 for subdomain plus a joining dot)
+    base_domain: constr(min_length = 1, max_length = 47)
     #: A list of subdomains that are reserved and cannot be used for Zenith services
     reserved_subdomains: t.List[str] = Field(default_factory = list)
+
+    #: The maximum number of attempts to find an available domain when generating
+    generate_domain_max_attempts: conint(gt = 0) = 3
 
     #: The set of allowed SSH key types
     ssh_allowed_key_types: conset(SSHPublicKeyType, min_items = 1) = Field(
