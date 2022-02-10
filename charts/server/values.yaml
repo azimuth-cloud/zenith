@@ -37,9 +37,9 @@ common:
     # The tag to use for identifying Zenith services in Consul
     serviceTag: "zenith-service"
     # The prefix to use for additional service information for Zenith services in Consul KV
-    serviceKeyPrefix: "zenith-services"
+    serviceKeyPrefix: "zenith/services"
     # The prefix to use for registrar information in Consul KV
-    registrarKeyPrefix: "zenith-registrar"
+    registrarKeyPrefix: "zenith"
 
 sync:
   enabled: true
