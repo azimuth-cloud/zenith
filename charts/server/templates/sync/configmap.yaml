@@ -17,6 +17,7 @@ kubernetes:
       {{- with $ingress.tls.secretName }}
       secretName: {{ . | quote }}
       {{- end }}
+      annotations: {{ $ingress.tls.annotations | toYaml | nindent 8 }}
 {{- end }}
 
 {{- if .Values.sync.enabled -}}

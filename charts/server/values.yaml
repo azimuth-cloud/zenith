@@ -14,7 +14,7 @@ global:
     baseDomain:
     # The ingress class to use
     className: nginx
-    # The common annotations for ingress resources
+    # The common annotations for all ingress resources
     annotations: {}
     # The TLS configuration
     tls:
@@ -22,6 +22,8 @@ global:
       enabled: true
       # The name of a secret containing a wildcard certificate
       secretName:
+      # TLS-specific annotations for ingress resources
+      annotations: {}
 
 # Common configuration
 common:
@@ -46,7 +48,7 @@ sync:
   # Configuration for the sync component
   # Defaults are taken from the common configuration where appropriate
   config:
-    # # The Consul configuration
+    # The Consul configuration
     # consul:
     #   # The address of the Consul server
     #   address:
@@ -58,34 +60,36 @@ sync:
     #   tlsKeyPrefix:
     #   # The timeout to use with Consul blocking queries
     #   blockingQueryTimeout:
-    # # The Kubernetes configuration
+    # The Kubernetes configuration
     kubernetes:
-    #   # The namespace to create resources in for Zenith services
+      # The namespace to create resources in for Zenith services
       targetNamespace: zenith-services
       ingress: {}
-    #     # The base domain to use for services exposed by Zenith
-    #     baseDomain:
-    #     # The ingress class to use
-    #     className:
-    #     # The annotations to use - these are merged with the common annotations
-    #     annotations:
-    #     # The TLS configuration
-    #     tls:
-    #       # Indicates if TLS should be enabled (default true)
-    #       enabled:
-    #       # The name of a secret containing a wildcard certificate
-    #       secretName:
-    #     # The external auth configuration
-    #     auth:
-    #       # The URL for verifying incoming requests
-    #       url:
-    #       # The URL to redirect to when the verify URL returns a 401
-    #       # If not set, the 401 will just be returned
-    #       signinUrl:
-    #       # The URL parameter to contain the original URL when redirecting to the signin URL
-    #       nextUrlParam: next
-    #       # List of headers from the authentication response to add to the upstream request
-    #       upstreamHeaders: []
+        # # The base domain to use for services exposed by Zenith
+        # baseDomain:
+        # # The ingress class to use
+        # className:
+        # # The annotations to use - these are merged with the common annotations
+        # annotations:
+        # # The TLS configuration
+        # tls:
+        #   # Indicates if TLS should be enabled (default true)
+        #   enabled:
+        #   # The name of a secret containing a wildcard certificate
+        #   secretName:
+        #   # TLS-specific annotations
+        #   annotations:
+        # # The external auth configuration
+        # auth:
+        #   # The URL for verifying incoming requests
+        #   url:
+        #   # The URL to redirect to when the verify URL returns a 401
+        #   # If not set, the 401 will just be returned
+        #   signinUrl:
+        #   # The URL parameter to contain the original URL when redirecting to the signin URL
+        #   nextUrlParam: next
+        #   # List of headers from the authentication response to add to the upstream request
+        #   upstreamHeaders: []
   # The image to use for the sync component
   image:
     repository: ghcr.io/stackhpc/zenith-sync

@@ -9,7 +9,9 @@ kind: Ingress
 metadata:
   name: {{ include "zenith.componentname" (list . "registrar") }}
   labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
-  {{- with $ingress.annotations }}
+  {{- $tlsAnnotations := $ingress.tls.enabled | ternary $ingress.tls.annotations dict }}
+  {{- $annotations := mergeOverwrite $ingress.annotations $tlsAnnotations }}
+  {{- with $annotations }}
   annotations: {{ toYaml . | nindent 4 }}
   {{- end }}
 spec:

@@ -65,6 +65,8 @@ class ServiceReconciler:
             # If TLS is enabled, set a secret name even if the secret doesn't exist
             # cert-manager can be enabled using annotations
             tls_secret_name = self.config.ingress.tls.secret_name or f"tls-{service.name}"
+            # Apply any TLS-specific annotations
+            ingress["metadata"]["annotations"].update(self.config.ingress.tls.annotations)
         # Configure the TLS section
         if tls_secret_name:
             ingress["spec"]["tls"] = [

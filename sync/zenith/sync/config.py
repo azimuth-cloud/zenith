@@ -110,6 +110,8 @@ class TLSConfig(Section):
     enabled: bool = True
     #: The name of a secret containing a wildcard certificate
     secret_name: t.Optional[str] = None
+    #: Annotations to add to ingress resources that are TLS-specific
+    annotations: t.Dict[str, str] = Field(default_factory = dict)
 
 
 class IngressConfig(Section):
@@ -120,7 +122,7 @@ class IngressConfig(Section):
     base_domain: DomainName
     #: The ingress class to use when creating ingress resources
     class_name: str = "nginx"
-    #: The annotations to add to the ingress resources
+    #: Annotations to add to all ingress resources
     annotations: t.Dict[str, str] = Field(default_factory = dict)
     #: The metadata key to use for the backend protocol
     backend_protocol_metadata_key: str = "backend-protocol"
