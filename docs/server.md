@@ -340,8 +340,9 @@ To configure annotations for the `Ingress` resources created by Zenith, use the 
 ```yaml
 common:
   ingress:
-    annotations:
-      cert-manager.io/cluster-issuer: name-of-issuer
+    tls:
+      annotations:
+        cert-manager.io/cluster-issuer: name-of-issuer
 ```
 
 This mechanism can be used to consume certificates issued by Let's Encrypt using the
