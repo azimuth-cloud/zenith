@@ -18,6 +18,10 @@ data:
     backend_protocol: http
     # Use a long read timeout so that watches work
     read_timeout: 31536000
+    # Use readyz as the liveness path
+    liveness_path: /readyz
+    liveness_period: {{ .Values.zenithClient.livenessCheck.period }}
+    liveness_failures: {{ .Values.zenithClient.livenessCheck.failures }}
 
     # Instruct the Zenith proxy to use the generated API server certificate for TLS,
     # regardless of the TLS settings at the proxy
