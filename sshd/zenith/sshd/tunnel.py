@@ -23,6 +23,9 @@ AuthParamsKey = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
 #: Must fit in an HTTP header, so limited to 1024 unicode characters (4KB)
 AuthParamsValue = constr(max_length = 1024)
 
+#: Type for an RFC3986 compliant URL path component
+UrlPath = constr(regex = r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
+
 
 class ClientConfig(BaseModel):
     """
@@ -47,6 +50,12 @@ class ClientConfig(BaseModel):
     tls_key: typing.Optional[str] = None
     #: Base64-encoded CA for validating TLS client certificates, if required
     tls_client_ca: typing.Optional[str] = None
+    #: An optional liveness path
+    liveness_path: typing.Optional[UrlPath] = None
+    #: The period for liveness checks in seconds
+    liveness_period: conint(gt = 0) = 10
+    #: The number of liveness checks that can fail before the tunnel is considered unhealthy
+    liveness_failures: conint(gt = 0) = 3
 
     @root_validator()
     def validate(cls, values):
@@ -245,6 +254,14 @@ def consul_register_service(server_config, tunnel, subdomain):
             f"{server_config.auth_param_metadata_prefix}{key}": value
             for key, value in tunnel.config.auth_params.items()
         })
+    # Work out the TTL to use
+    # This is the length of time after which a service will be moved into the critical state
+    # if we stop posting status updates
+    # We use twice the heartbeat duration, which depends on the configured liveness check
+    if tunnel.config.liveness_path:
+        consul_service_ttl = tunnel.config.liveness_period * 2
+    else:
+        consul_service_ttl = server_config.consul_heartbeat_interval * 2
     # Post the service information to consul
     response = requests.put(
         f"{server_config.consul_url}/v1/agent/service/register",
@@ -268,10 +285,10 @@ def consul_register_service(server_config, tunnel, subdomain):
                 # Use a TTL health check
                 # This will move into the critical state, removing the service from
                 # the proxy, if we do not post a status update within the TTL
-                "TTL": server_config.consul_service_ttl,
-                # This deregisters the service once it has been critical for 5 minutes
+                "TTL": f"{consul_service_ttl}s",
+                # This deregisters the service once it has been critical for the specified interval
                 # We can probably assume the service will not come back up
-                "DeregisterCriticalServiceAfter": server_config.consul_deregister_interval,
+                "DeregisterCriticalServiceAfter": f"{server_config.consul_deregister_interval}s",
             },
         }
     )
@@ -304,26 +321,79 @@ def consul_deregister_service(server_config, tunnel):
     ))
 
 
-def consul_heartbeat(server_config, tunnel, failures):
+class LivenessCheckFailed(Exception):
     """
-    Updates the health check for the service to the pass state.
+    Exception that is raised when a liveness check failed.
     """
-    print("[SERVER] [INFO] Updating service health status in Consul")
+
+
+def liveness_check(tunnel):
+    """
+    Executes a liveness check for the tunnel and raises an exception with a message on failure.
+    """
+    proto = tunnel.config.backend_protocol
+    port = tunnel.config.allocated_port
+    path = tunnel.config.liveness_path
+    liveness_url = f"{proto}://127.0.0.1:{port}{path}"
+    print(f"[SERVER] [INFO] Executing liveness check using {liveness_url}")
+    try:
+        # It is not our job to verify SSL certificates - that is for the eventual destination,
+        # e.g. a user's browser, to decide
+        response = requests.get(liveness_url, verify = False)
+    except Exception as exc:
+        raise LivenessCheckFailed(repr(exc))
+    else:
+        if response.status_code >= 500:
+            raise LivenessCheckFailed(repr(response))
+
+
+def consul_heartbeat(
+    server_config,
+    tunnel,
+    consul_failures,
+    liveness_failures,
+    liveness_succeeded_once
+):
+    """
+    Updates the health check for the service depending on a query to the liveness endpoint.
+    """
+    status = "passing"
+    if tunnel.config.liveness_path:
+        try:
+            liveness_check(tunnel)
+        except LivenessCheckFailed as exc:
+            print(f"[SERVER] [WARN] Liveness check failed: {exc}", file = sys.stderr)
+            liveness_failures = liveness_failures + 1
+        else:
+            # When the check passes, reset the failure count
+            liveness_failures = 0
+            liveness_succeeded_once = True
+        if liveness_failures >= tunnel.config.liveness_failures:
+            status = "critical"
+        elif liveness_failures > 0:
+            # We want services to stay in the critical state until they succeed at least once
+            status = "warning" if liveness_succeeded_once else "critical"
+    print(f"[SERVER] [INFO] Updating service health status to '{status}' in Consul")
     # Post the service information to consul
-    url = f"{server_config.consul_url}/v1/agent/check/pass/{tunnel.id}"
-    response = requests.put(url, params = { "note": "Tunnel active" })
+    response = requests.put(
+        f"{server_config.consul_url}/v1/agent/check/update/{tunnel.id}",
+        json = { "Status": status }
+    )
     if 200 <= response.status_code < 300:
         print("[SERVER] [INFO] Service health updated successfully")
-        # Reset the failures on success
-        return 0
+        # Reset the Consul failures on success
+        return 0, liveness_failures, liveness_succeeded_once
     else:
         # If we failed to update the health status, emit a warning
         print("[SERVER] [WARNING] Failed to update service health", file = sys.stderr)
     # Increment the failures if less than the limit
-    if failures < server_config.consul_heartbeat_failures:
-        return failures + 1
+    if consul_failures < server_config.consul_heartbeat_failures:
+        return consul_failures + 1, liveness_failures, liveness_succeeded_once
     # Otherwise, exit the process with an error status
-    print("[SERVER] [ERROR] Maximum permitted number of failures reached", file = sys.stderr)
+    print(
+        f"[SERVER] [ERROR] Failed to post status to Consul after {consul_failures} attempts",
+        file = sys.stderr
+    )
     sys.exit(1)
 
 
@@ -357,7 +427,7 @@ def run(server_config, subdomain):
     and probably requires root.
 
     To get round this, the client reads the tunnel's dynamically-allocated port
-    from stderr and pushes it back via stdin along with other configuration.
+    from stderr and pushes it back via stdin along with other configuration.
 
     This obviously places a lot of trust in a client to specify the SSH
     connection correctly, and also to specify the actual port it was allocated
@@ -387,10 +457,10 @@ def run(server_config, subdomain):
          bypassing the proxy and any associated authentication.
 
       5. Only allow a domain to be bound to a port that is listening. This
-         prevents a nefarious client from binding their domain to a port that
+         prevents a nefarious client from binding their domain to a port that
          is not yet in use in the hope of intercepting traffic in the future.
 
-      6. Only allow one domain to be bound to each port. This prevents a nefarious
+      6. Only allow one domain to be bound to each port. This prevents a nefarious
          client from binding their subdomain to an existing tunnel in order to
          intercept traffic.
     """
@@ -400,7 +470,20 @@ def run(server_config, subdomain):
     consul_register_service(server_config, tunnel, subdomain)
     register_signal_handlers(server_config, tunnel)
     # We need to send a regular heartbeat to Consul
-    failures = 0
+    # The heartbeat interval depends on whether a liveness check is configured
+    if tunnel.config.liveness_path:
+        heartbeat_interval = tunnel.config.liveness_period
+    else:
+        heartbeat_interval = server_config.consul_heartbeat_interval
+    consul_failures = 0
+    liveness_failures = 0
+    liveness_succeeded_once = False
     while True:
-        failures = consul_heartbeat(server_config, tunnel, failures)
-        time.sleep(server_config.consul_heartbeat_interval)
+        consul_failures, liveness_failures, liveness_succeeded_once = consul_heartbeat(
+            server_config,
+            tunnel,
+            consul_failures,
+            liveness_failures,
+            liveness_succeeded_once
+        )
+        time.sleep(heartbeat_interval)

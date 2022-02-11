@@ -1,7 +1,7 @@
 import socket
 import typing
 
-from pydantic import DirectoryPath, FilePath, Field
+from pydantic import DirectoryPath, FilePath, Field, conint
 
 from configomatic import Configuration, LoggingConfiguration
 
@@ -29,13 +29,12 @@ class SSHDConfig(Configuration):
     #: The address of the Consul server
     consul_address: str = "127.0.0.1"
     #: The port of the Consul server
-    consul_port: int = 8500
-    #: The TTL for the services created in Consul
-    consul_service_ttl: str = "10s"
+    consul_port: conint(gt = 0) = 8500
     #: The heartbeat interval for services created in Consul
-    consul_heartbeat_interval: int = 2
+    #: This is only used if no liveness check is configured for the tunnel
+    consul_heartbeat_interval: conint(gt = 0) = 10
     #: The interval after which a service in Consul will be deregistered
-    consul_deregister_interval: str = "5m"
+    consul_deregister_interval: conint(gt = 0) = 600
     #: The number of times that posting a heartbeat to Consul can fail before a tunnel is closed
     consul_heartbeat_failures: int = 3
     #: The prefix to use for Consul keys

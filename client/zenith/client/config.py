@@ -11,6 +11,9 @@ from configomatic import Configuration, LoggingConfiguration
 AuthParamsKey = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
 AuthParamsValue = constr(max_length = 1024)
 
+#: Type for an RFC3986 compliant URL path component
+UrlPath = constr(regex = r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
+
 
 def base64_encoded_content(path):
     """
@@ -76,6 +79,12 @@ class ConnectConfig(Configuration):
     forward_to_port: int = 8000
     #: The backend protocol
     backend_protocol: typing.Literal["http", "https"] = "http"
+    #: An optional liveness path for the upstream service
+    liveness_path: typing.Optional[UrlPath] = None
+    #: The period for upstream liveness checks in seconds
+    liveness_period: conint(gt = 0) = 10
+    #: The number of liveness checks that can fail before the tunnel is considered unhealthy
+    liveness_failures: conint(gt = 0) = 3
     #: The read timeout for the service
     read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the proxy authentication should be skipped
