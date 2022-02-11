@@ -100,7 +100,8 @@ class ServiceWatcher:
                     port = instance["Service"]["Port"]
                 )
                 for instance in instances
-                if all(c["Status"] == "passing" for c in instance["Checks"])
+                # Allow instances in the warning state as a grace period for health checks
+                if all(c["Status"] in {"passing", "warning"} for c in instance["Checks"])
             ],
             # Merge the TLS configuration associated with each instance
             tls = { k: v for tls_config in tls_configs for k, v in tls_config.items() }

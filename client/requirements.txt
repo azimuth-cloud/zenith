@@ -1,10 +1,10 @@
 certifi==2021.10.8
-charset-normalizer==2.0.8
+charset-normalizer==2.0.11
 click==8.0.3
-configomatic @ git+https://github.com/stackhpc/configomatic.git@234014e7e8948266ba56499ef3ad031e33b80007#egg=configomatic
+configomatic @ git+https://github.com/stackhpc/configomatic.git@3a7e88693e8f44530ac4f1f5ee3d64977cf3784d#egg=configomatic
 idna==3.3
-pydantic==1.8.2
+pydantic==1.9.0
 PyYAML==6.0
-requests==2.26.0
-typing-extensions==4.0.0
-urllib3==1.26.7
+requests==2.27.1
+typing_extensions==4.0.1
+urllib3==1.26.8

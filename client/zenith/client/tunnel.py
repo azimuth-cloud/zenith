@@ -97,6 +97,12 @@ def configure_tunnel(ssh_proc, config):
                 )
             if config.tls_client_ca_file:
                 tunnel_config.update(tls_client_ca = config.tls_client_ca_data)
+            if config.liveness_path:
+                tunnel_config.update(
+                    liveness_path = config.liveness_path,
+                    liveness_period = config.liveness_period,
+                    liveness_failures = config.liveness_failures
+                )
             # The server will ask for the config when it is ready
             wait_for_marker(ssh_proc.stdout, "SEND_CONFIGURATION")
             # Dump the configuration as JSON and encode it as base64 with line breaks

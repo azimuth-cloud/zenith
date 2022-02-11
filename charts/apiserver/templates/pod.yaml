@@ -10,24 +10,6 @@ spec:
   {{- with .Values.imagePullSecrets }}
   imagePullSecrets: {{ toYaml . | nindent 8 }}
   {{- end }}
-  initContainers:
-    - name: zenith-wait
-      image: {{
-        printf "%s:%s"
-          .Values.mitmProxy.image.repository
-          (default .Chart.AppVersion .Values.mitmProxy.image.tag)
-      }}
-      imagePullPolicy: {{ .Values.mitmProxy.image.pullPolicy }}
-      args:
-        - bash
-        - -c
-        - |
-            set -e
-            APISERVER_ADDRESS="${APISERVER_ADDRESS:-https://127.0.0.1:6443}"
-            echo "[INFO] Using API server address - ${APISERVER_ADDRESS}"
-            until curl -kfsSL ${APISERVER_ADDRESS}/readyz; do
-                sleep 2
-            done
   containers:
     - name: zenith-client
       image: {{

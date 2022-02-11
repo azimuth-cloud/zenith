@@ -131,8 +131,6 @@ sshd:
     # consulAddress:
     # The port of the Consul agent
     # consulPort:
-    # The TTL for the services created in Consul
-    # consulServiceTtl:
     # The heartbeat interval for services created in Consul
     # consulHeartbeatInterval:
     # The interval after which a service in Consul will be deregistered
