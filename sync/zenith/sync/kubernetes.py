@@ -2,11 +2,14 @@ import asyncio
 import importlib.metadata
 import logging
 
-from easykube import Client
-from easykube.resources import IngressClass, Endpoints, Ingress, Secret, Service
+from easykube import Configuration, resources as k8s
 
 from .model import EventKind
 from .ingress_modifier import INGRESS_MODIFIERS_ENTRY_POINT_GROUP
+
+
+# Initialise the easykube config from the environment
+ekconfig = Configuration.from_environment()
 
 
 class ServiceReconciler:
@@ -48,7 +51,7 @@ class ServiceReconciler:
             # If the service pushed a TLS certificate, use it even if auto-TLS is disabled
             tls_secret_name = f"tls-{service.name}"
             # Make a secret with the certificate in to pass to the ingress
-            await Secret(client).create_or_patch(
+            await k8s.Secret(client).create_or_patch(
                 tls_secret_name,
                 self._adopt(
                     service,
@@ -79,7 +82,7 @@ class ServiceReconciler:
         if "tls-client-ca" in service.tls:
             # First, make a secret containing the CA certificate
             client_ca_secret = f"tls-client-ca-{service.name}"
-            await Secret(client).create_or_patch(
+            await k8s.Secret(client).create_or_patch(
                 client_ca_secret,
                 self._adopt(
                     service,
@@ -133,7 +136,7 @@ class ServiceReconciler:
         endpoints = ", ".join(f"{ep.address}:{ep.port}" for ep in service.endpoints)
         self._log("info", f"Reconciling {service.name} [{endpoints}]")
         # First create or update the corresponding service
-        await Service(client).create_or_patch(
+        await k8s.Service(client).create_or_patch(
             service.name,
             self._adopt(
                 service,
@@ -151,7 +154,7 @@ class ServiceReconciler:
             )
         )
         # Then create or update the endpoints object
-        await Endpoints(client).create_or_patch(
+        await k8s.Endpoints(client).create_or_patch(
             service.name,
             self._adopt(
                 service,
@@ -228,7 +231,7 @@ class ServiceReconciler:
         # Apply any auth configuration
         self._apply_auth(service, ingress, ingress_modifier)
         # Create or update the ingress
-        await Ingress(client).create_or_patch(service.name, self._adopt(service, ingress))
+        await k8s.Ingress(client).create_or_patch(service.name, self._adopt(service, ingress))
 
     async def _remove_service(self, client, name):
         """
@@ -236,23 +239,23 @@ class ServiceReconciler:
         """
         self._log("info", f"Removing {name}")
         # We have to delete the corresponding endpoints, service and ingress objects
-        await Ingress(client).delete(name)
-        await Endpoints(client).delete(name)
-        await Service(client).delete(name)
+        await k8s.Ingress(client).delete(name)
+        await k8s.Endpoints(client).delete(name)
+        await k8s.Service(client).delete(name)
         # Also delete any secrets created for the service
         # This will leave behind secrets created by cert-manager, which is fine because
         # it means that if a reconnection occurs for the same domain it will be a
         # renewal which doesn't count towards the rate limit
-        await Secret(client).delete_all(labels = self._labels(name))
+        await k8s.Secret(client).delete_all(labels = self._labels(name))
 
     async def run(self, source):
         """
         Run the reconciler against services from the given service source.
         """
         self._log("info", f"Reconciling services [namespace: {self.config.target_namespace}]")
-        async with Client.from_environment(default_namespace = self.config.target_namespace) as client:
+        async with ekconfig.async_client(default_namespace = self.config.target_namespace) as client:
             # Before we process the service, retrieve information about the ingress class
-            ingress_class = await IngressClass(client).fetch(self.config.ingress.class_name)
+            ingress_class = await k8s.IngressClass(client).fetch(self.config.ingress.class_name)
             # Load the ingress modifier that handles the controller
             entry_points = importlib.metadata.entry_points()[INGRESS_MODIFIERS_ENTRY_POINT_GROUP]
             ingress_modifier = next(
@@ -265,7 +268,7 @@ class ServiceReconciler:
             # We also remove any services that exist that are not part of the initial set
             # The returned value from the list operation is an async generator, which we must resolve
             existing_services = set()
-            async for service in Service(client).list():
+            async for service in k8s.Service(client).list():
                 existing_services.add(service["metadata"]["name"])
             tasks = [
                 self._reconcile_service(client, service, ingress_modifier)
@@ -300,7 +303,7 @@ class TLSSecretMirror:
             self.config.ingress.tls.secret_name,
             self.config.target_namespace
         )
-        await Secret(client).create_or_patch(
+        await k8s.Secret(client).create_or_patch(
             self.config.ingress.tls.secret_name,
             {
                 "metadata": {
@@ -329,7 +332,7 @@ class TLSSecretMirror:
             self.config.ingress.tls.secret_name,
             self.config.target_namespace
         )
-        await Secret(client).delete(
+        await k8s.Secret(client).delete(
             self.config.ingress.tls.secret_name,
             namespace = self.config.target_namespace
         )
@@ -339,7 +342,7 @@ class TLSSecretMirror:
         Run the TLS secret mirror.
         """
         if self.config.ingress.tls.enabled and self.config.ingress.tls.secret_name:
-            async with Client.from_environment() as client:
+            async with ekconfig.async_client() as client:
                 self._logger.info(
                     "Mirroring TLS secret [secret: %s, from: %s, to: %s]",
                     self.config.ingress.tls.secret_name,
@@ -347,7 +350,7 @@ class TLSSecretMirror:
                     self.config.target_namespace
                 )
                 # Watch the named secret in the release namespace for changes
-                initial_state, events = await Secret(client).watch_one(
+                initial_state, events = await k8s.Secret(client).watch_one(
                     self.config.ingress.tls.secret_name,
                     namespace = self.config.self_namespace
                 )

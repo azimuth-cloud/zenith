@@ -95,6 +95,7 @@ sync:
     repository: ghcr.io/stackhpc/zenith-sync
     pullPolicy: IfNotPresent
     tag: ""  # Defaults to appVersion if not given
+  imagePullSecrets: []
   # Customise pod-level security context for sync pods
   podSecurityContext:
     runAsNonRoot: true
@@ -106,15 +107,6 @@ sync:
     readOnlyRootFilesystem: true
   # Resources for sync containers
   resources: {}
-  # Configuration for the kubectl proxy container
-  kubectlProxy:
-    image:
-      repository: bitnami/kubectl
-      pullPolicy: IfNotPresent
-      tag: ""  # Defaults to the Kubernetes version if not given
-    securityContext: {}
-    resources: {}
-  imagePullSecrets: []
   # Customise annotations for sync pods
   podAnnotations: {}
   # Customise node selector for sync pods

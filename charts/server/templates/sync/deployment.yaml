@@ -42,15 +42,6 @@ spec:
             - name: etc-zenith
               mountPath: /etc/zenith
               readOnly: true
-        # The sync container requires kubectl proxy to access the API server
-        - name: kubectl-proxy
-          securityContext: {{ toYaml .Values.sync.kubectlProxy.securityContext | nindent 12 }}
-          {{- $vn := semver .Capabilities.KubeVersion.Version }}
-          {{- $defaultTag := printf "%d.%d.%d" $vn.Major $vn.Minor $vn.Patch }}
-          image: {{ printf "%s:%s" .Values.sync.kubectlProxy.image.repository (default $defaultTag .Values.sync.kubectlProxy.image.tag) }}
-          imagePullPolicy: {{ .Values.sync.kubectlProxy.image.pullPolicy }}
-          args: [proxy]
-          resources: {{ toYaml .Values.sync.kubectlProxy.resources | nindent 12 }}
       {{- with .Values.sync.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
