@@ -2,6 +2,10 @@
 
 set -e
 
+if [ -z "$ZENITH_PROXY_RESOLVER" ]; then
+    export ZENITH_PROXY_RESOLVER="$(grep nameserver /etc/resolv.conf  | awk '{print $2}')"
+fi
+
 # Template the Nginx configuration file into a writable directory
 gomplate --file /etc/nginx/nginx.conf --out /var/run/nginx/nginx.conf
 # Run Nginx using that configuration file
