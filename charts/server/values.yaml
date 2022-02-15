@@ -88,8 +88,13 @@ sync:
         #   signinUrl:
         #   # The URL parameter to contain the original URL when redirecting to the signin URL
         #   nextUrlParam: next
+        #   # Dictionary of headers to set for authentication requests
+        #   # These will override headers from the incoming request, which would otherwise be forwarded
+        #   # In particular, you may need to override the accepts header to suit the content types served
+        #   # by the external authentication service
+        #   requestHeaders: {}
         #   # List of headers from the authentication response to add to the upstream request
-        #   upstreamHeaders: []
+        #   responseHeaders: []
   # The image to use for the sync component
   image:
     repository: ghcr.io/stackhpc/zenith-sync

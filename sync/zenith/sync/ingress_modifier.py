@@ -43,9 +43,9 @@ class IngressModifier:
         # The parameter that the original URL should go in when redirecting to the signin URL
         next_url_param,
         # Dictionary of headers to pass to the authentication service
-        auth_headers,
+        request_headers,
         # List of headers to copy from the authentication response to the upstream request
-        upstream_headers
+        response_headers
     ):
         """
         Applies any configuration required to enable the specified authentication for the
@@ -98,8 +98,8 @@ class NginxIngressModifier(IngressModifier):
         auth_url,
         signin_url,
         next_url_param,
-        auth_headers,
-        upstream_headers
+        request_headers,
+        response_headers
     ):
         annotations = ingress["metadata"]["annotations"]
         annotations[self.AUTH_URL_ANNOTATION] = auth_url
@@ -108,11 +108,11 @@ class NginxIngressModifier(IngressModifier):
                 self.AUTH_SIGNIN_ANNOTATION: signin_url,
                 self.AUTH_SIGNIN_REDIRECT_PARAM_ANNOTATION: next_url_param,
             })
-        if auth_headers:
-            # Use a custom snippet to set the auth headers
+        if request_headers:
+            # Use a custom snippet to set the request headers
             annotations[self.AUTH_SNIPPET_ANNOTATION] = "\n".join([
                 f"proxy_set_header {name} {value};"
-                for name, value in auth_headers.items()
+                for name, value in request_headers.items()
             ])
-        if upstream_headers:
-            annotations[self.AUTH_RESPONSE_HEADERS_ANNOTATION] = ",".join(upstream_headers)
+        if response_headers:
+            annotations[self.AUTH_RESPONSE_HEADERS_ANNOTATION] = ",".join(response_headers)

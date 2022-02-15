@@ -92,8 +92,13 @@ class AuthConfig(Section):
     signin_url: t.Optional[AnyHttpUrl] = None
     #: The URL parameter to contain the original URL when redirecting to the signin URL
     next_url_param: str = "next"
+    #: Dictionary of headers to set for authentication requests
+    #: These will override headers from the incoming request, which would otherwise be forwarded
+    #: In particular, you may need to override the accepts header to suit the content types served
+    #: by the external authentication service
+    request_headers: t.Dict[str, str] = Field(default_factory = dict)
     #: List of headers from the authentication response to add to the upstream request
-    upstream_headers: t.List[str] = Field(default_factory = list)
+    response_headers: t.List[str] = Field(default_factory = list)
     #: The metadata item to look for to indicate that auth should be skipped
     skip_auth_metadata_key: str = "skip-auth"
     #: The prefix to filter for metadata items containing authentication parameters

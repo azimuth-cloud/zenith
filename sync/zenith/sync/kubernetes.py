@@ -114,18 +114,22 @@ class ServiceReconciler:
         if skip_auth == "1":
             return
         # Apply the auth configuration, which may be ingress-controller specific
+        # Determine what headers to set/override on the auth request
+        #   Start with the fixed defaults
+        request_headers = dict(self.config.ingress.auth.request_headers)
+        #   Then set additional headers from the auth params in the service metadata
+        request_headers.update({
+            f"{self.config.ingress.auth.param_header_prefix}{name}": value
+            for name, value in service.metadata.items()
+            if name.startswith(self.config.ingress.auth.param_metadata_prefix)
+        })
         ingress_modifier.configure_authentication(
             ingress,
             self.config.ingress.auth.url,
             self.config.ingress.auth.signin_url,
             self.config.ingress.auth.next_url_param,
-            # Derive the headers from the auth params in the service metadata
-            {
-                f"{self.config.ingress.auth.param_header_prefix}{name}": value
-                for name, value in service.metadata.items()
-                if name.startswith(self.config.ingress.auth.param_metadata_prefix)
-            },
-            self.config.ingress.auth.upstream_headers
+            request_headers,
+            self.config.ingress.auth.response_headers
         )
 
 
