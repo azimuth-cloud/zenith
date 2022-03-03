@@ -44,6 +44,8 @@ class InitConfig(Configuration):
     registrar_url: AnyHttpUrl
     #: The Zenith registrar token to use to associate the public key
     token: constr(min_length = 1)
+    #: Indicates whether to verify the TLS certificate of the registrar
+    verify_ssl: bool = True
 
 
 class ConnectConfig(Configuration):

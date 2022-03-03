@@ -41,7 +41,11 @@ def run(config):
     ssh_pubkey = ensure_ssh_identity(config)
     logger.info(f"[INIT] Uploading public key to registrar at {config.registrar_url}")
     data = { "token": config.token, "public_keys": [ssh_pubkey] }
-    response = requests.post(config.registrar_url + "/associate", json = data)
+    response = requests.post(
+        config.registrar_url + "/associate",
+        json = data,
+        verify = config.verify_ssl
+    )
     if 200 <= response.status_code < 300:
         fingerprint = response.json()["fingerprints"][0]
         logger.info(f"[INIT] Public key SHA256:{fingerprint} uploaded successfully")
