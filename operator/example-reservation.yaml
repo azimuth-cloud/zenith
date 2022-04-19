@@ -1,0 +1,4 @@
+apiVersion: zenith.stackhpc.com/v1alpha1
+kind: Reservation
+metadata:
+  generateName: reservation-
