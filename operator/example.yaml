@@ -1,0 +1,47 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echoserver
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: echoserver
+  template:
+    metadata:
+      labels:
+        app: echoserver
+    spec:
+      containers:
+        - name: echoserver
+          image: gcr.io/google_containers/echoserver:1.0
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echoserver
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: echoserver
+---
+apiVersion: zenith.stackhpc.com/v1alpha1
+kind: Reservation
+metadata:
+  name: echoserver
+---
+apiVersion: zenith.stackhpc.com/v1alpha1
+kind: Client
+metadata:
+  name: echoserver
+spec:
+  reservationName: echoserver
+  upstream:
+    serviceName: echoserver

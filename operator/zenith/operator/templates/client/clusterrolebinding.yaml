@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: zenith-client:{{ namespace }}:{{ name }}
+  labels:
+    app.kubernetes.io/managed-by: zenith-operator
+    {{ settings.api_group }}/client: {{ name }}
+subjects:
+  # Target the service account in the release namespace
+  - kind: ServiceAccount
+    namespace: {{ namespace }}
+    name: {{ name }}-zenith-client
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ client.spec.mitm_proxy.auth_inject.service_account.cluster_role_name }}

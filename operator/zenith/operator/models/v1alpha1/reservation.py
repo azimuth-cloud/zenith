@@ -9,11 +9,11 @@ class ReservationSpec(BaseModel):
     """
     Model for the spec of a reservation.
     """
-    ssh_keypair_secret_name: t.Optional[constr(regex = r"^[a-z0-9-]+$")] = Field(
+    credential_secret_name: t.Optional[constr(regex = r"^[a-z0-9-]+$")] = Field(
         None,
         description = (
             "The name of the secret to use for the SSH keypair for the reservation. "
-            "If not given, the name of the reservation will be used with the suffix '-ssh'. "
+            "If not given, a secret name will be derived from the reservation name. "
             "If the secret already exists, the existing keypair will be used. "
             "If the secret does not exist, a keypair will be generated and put in the secret."
         )
@@ -38,7 +38,7 @@ class ReservationStatus(BaseModel):
         extra = Extra.allow
     
     phase: ReservationPhase = Field(
-        ReservationPhase.UNKNOWN.value,
+        ReservationPhase.UNKNOWN,
         description = "The phase of the reservation."
     )
     subdomain: t.Optional[str] = Field(

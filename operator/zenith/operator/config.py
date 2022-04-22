@@ -62,13 +62,18 @@ class Configuration(BaseConfiguration):
 
     #: The API group of the cluster CRDs
     api_group: constr(min_length = 1) = "zenith.stackhpc.com"
-    #: The prefix to use for operator annotations
-    annotation_prefix: constr(min_length = 1) = "zenith.stackhpc.com"
     #: The secret type to use for secrets containing Zenith credentials
     credential_secret_type: constr(min_length = 1) = None
 
+    #: The base domain used for cluster services
+    cluster_service_domain: constr(regex = r"^[a-z0-9.-]+$") = "svc.cluster.local"
+
     #: The admin URL for the Zenith registrar
     registrar_admin_url: AnyHttpUrl
+    #: The host for the Zenith SSHD service
+    sshd_host: constr(min_length = 1)
+    #: The port for the Zenith SSHD service
+    sshd_port: conint(gt = 0) = 22
 
     # #: The webhook configuration
     webhook: WebhookConfiguration = Field(default_factory = WebhookConfiguration)

@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ name }}-zenith-client
+  namespace: {{ namespace }}
+  labels:
+    app.kubernetes.io/managed-by: zenith-operator
+    {{ settings.api_group }}/client: {{ name }}
+spec:
+  replicas: {{ client.spec.replica_count }}
+  selector:
+    matchLabels:
+      {{ settings.api_group }}/client: {{ name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: zenith-operator
+        {{ settings.api_group }}/client: {{ name }}
+    spec:
+      {% if client.spec.image_pull_secrets %}
+      imagePullSecrets:
+        {{ client.spec.image_pull_secrets | toyaml | indent(8) }}
+      {% endif %}
+      securityContext:
+        {{ client.spec.pod_security_context | toyaml | indent(8) }}
+{% if client.spec.mitm_proxy.enabled and client.spec.mitm_proxy.auth_inject.type == "ServiceAccount" %}
+      serviceAccountName: {{ name }}-zenith-client
+{% endif %}
+      containers:
+        - name: zenith-client
+          securityContext:
+            {{ client.spec.security_context | toyaml | indent(12) }}
+          image: {{ "{}:{}".format(client.spec.image.repository, client.spec.image.tag) }}
+          imagePullPolicy: {{ client.spec.image.pull_policy }}
+          resources:
+            {{ client.spec.resources | toyaml | indent(12) }}
+          volumeMounts:
+            - name: etc-zenith
+              mountPath: /etc/zenith
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+{% if client.spec.mitm_proxy.enabled %}
+        - name: mitm-proxy
+          securityContext:
+            {{ client.spec.security_context | toyaml | indent(12) }}
+          image: {{
+            "{}:{}".format(
+              client.spec.mitm_proxy.image.repository,
+              client.spec.mitm_proxy.image.tag
+            )
+          }}
+          imagePullPolicy: {{ client.spec.mitm_proxy.image.pull_policy }}
+          env:
+            - name: ZENITH_PROXY_LISTEN_PORT
+              value: "{{ client.spec.mitm_proxy.port }}"
+{% if client.spec.upstream.read_timeout %}
+            - name: ZENITH_PROXY_READ_TIMEOUT
+              value: "{{ client.spec.upstream.read_timeout }}"
+{% endif %}
+            - name: ZENITH_PROXY_UPSTREAM_SCHEME
+              value: {{ client.spec.upstream.scheme }}
+            - name: ZENITH_PROXY_UPSTREAM_HOST
+              value: {{ upstream_host }}
+            - name: ZENITH_PROXY_UPSTREAM_PORT
+              value: "{{ upstream_port }}"
+{% if client.spec.mitm_proxy.auth_inject.type == "Basic" %}
+            - name: ZENITH_PROXY_AUTH_INJECT
+              value: basic
+            - name: ZENITH_PROXY_AUTH_BASIC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ client.spec.mitm_proxy.auth_inject.basic.secret_name }}
+                  key: {{ client.spec.mitm_proxy.auth_inject.basic.username_key }}
+            - name: ZENITH_PROXY_AUTH_BASIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ client.spec.mitm_proxy.auth_inject.basic.secret_name }}
+                  key: {{ client.spec.mitm_proxy.auth_inject.basic.password_key }}
+{% elif client.spec.mitm_proxy.auth_inject.type == "Bearer" %}
+            - name: ZENITH_PROXY_AUTH_INJECT
+              value: bearer
+            - name: ZENITH_PROXY_AUTH_BEARER_HEADER
+              value: "{{ client.spec.mitm_proxy.auth_inject.bearer.header_name }}"
+            - name: ZENITH_PROXY_AUTH_BEARER_PREFIX
+              value: "{{ client.spec.mitm_proxy.auth_inject.bearer.header_prefix }}"
+            - name: ZENITH_PROXY_AUTH_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ client.spec.mitm_proxy.auth_inject.bearer.secret_name }}
+                  key: {{ client.spec.mitm_proxy.auth_inject.bearer.token_key }}
+{% elif client.spec.mitm_proxy.auth_inject.type == "ServiceAccount" %}
+            - name: ZENITH_PROXY_AUTH_INJECT
+              value: bearer
+            - name: ZENITH_PROXY_AUTH_BEARER_TOKEN_FILE
+              value: /var/run/secrets/kubernetes.io/serviceaccount/token
+{% endif %}
+          resources:
+            {{ client.spec.mitm_proxy.resources | toyaml | indent(12) }}
+          volumeMounts:
+            - name: var-cache-nginx
+              mountPath: /var/cache/nginx
+            - name: var-run-nginx
+              mountPath: /var/run/nginx
+{% endif %}
+      volumes:
+        - name: etc-zenith
+          secret:
+            secretName: {{ name }}-zenith-client
+        - name: tmp
+          emptyDir: {}
+{% if client.spec.mitm_proxy.enabled %}
+        - name: var-cache-nginx
+          emptyDir: {}
+        - name: var-run-nginx
+          emptyDir: {}
+{% endif %}
+{% if client.spec.node_selector %}
+      nodeSelector:
+        {{ client.spec.node_selector | toyaml | indent(8) }}
+{% endif %}
+{% if client.spec.affinity %}
+      affinity:
+        {{ client.spec.affinity | toyaml | indent(8) }}
+{% endif %}
+{% if client.spec.tolerations %}
+      tolerations:
+        {{ client.spec.tolerations | toyaml | indent(8) }}
+{% endif %}

@@ -10,6 +10,9 @@ class Enum(enum.Enum):
     """
     Enum that does not include a title in the JSON-Schema.
     """
+    def __str__(self):
+        return str(self.value)
+
     @classmethod
     def __modify_schema__(cls, field_schema):
         field_schema.pop("title", None)
@@ -23,6 +26,35 @@ class Dict(typing.Dict):
     @classmethod
     def __modify_schema__(cls, field_schema):
         field_schema["x-kubernetes-preserve-unknown-fields"] = True
+
+
+class IntOrString(str):
+    """
+    Type for a value that can be specified as an integer or a string.
+
+    The value will resolve to a string and the generated schema will include the
+    Kubernetes custom schema attribute 'x-kubernetes-int-or-string'.
+    """
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.pop("type", None)
+        field_schema.update({
+            "x-kubernetes-int-or-string": True,
+            "anyOf": [
+                { "type": "integer" },
+                { "type": "string" },
+            ],
+        })
+
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not isinstance(v, (str, int)):
+            raise TypeError("int or string required")
+        return str(v)
 
 
 def resolve_refs(schema, definitions):
@@ -70,6 +102,16 @@ class BaseModel(Section):
             # When extra fields are allowed, stop Kubernetes pruning them
             if model.__config__.extra == Extra.allow:
                 schema["x-kubernetes-preserve-unknown-fields"] = True
+
+    def dict(self, **kwargs):
+        # Unless otherwise specified, we want by_alias = True
+        kwargs.setdefault("by_alias", True)
+        return super().dict(**kwargs)
+
+    def json(self, **kwargs):
+        # Unless otherwise specified, we want by_alias = True
+        kwargs.setdefault("by_alias", True)
+        return super().json(**kwargs)
 
     @classmethod
     def schema(cls, *args, **kwargs):

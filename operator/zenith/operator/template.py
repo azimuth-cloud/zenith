@@ -1,8 +1,20 @@
 import jinja2
+import json
 import yaml
+
+from pydantic.json import pydantic_encoder
 
 from .config import settings
 from . import models, utils
+
+
+def toyaml(obj):
+    """
+    Filter for converting an object to YAML that is able to handle Pydantic models.
+    """
+    # In order to benefit from the Pydantic encoder we need to go via JSON
+    obj_json = json.dumps(obj, default = pydantic_encoder)
+    return yaml.safe_dump(json.loads(obj_json))
 
 
 class Loader:
@@ -17,7 +29,7 @@ class Loader:
         self.env.filters.update(
             mergeconcat = utils.mergeconcat,
             fromyaml = yaml.safe_load,
-            toyaml = yaml.safe_dump
+            toyaml = toyaml
         )
 
     def loads(self, template, **params):
@@ -28,8 +40,8 @@ class Loader:
 
     def load(self, template, **params):
         """
-        Render the specified template with the given params, load the result as YAML and
-        return the resulting object.
+        Render the specified template with the given params, load the result as a YAML document
+        and return the resulting object.
         """
         return yaml.safe_load(self.loads(template, **params))
 
