@@ -17,7 +17,11 @@ spec:
         # Force the deployment to roll when the config changes
         zenith.stackhpc.com/config-hash: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
+      {{- if .Values.kubeconfigSecret.name }}
+      automountServiceAccountToken: false
+      {{- else }}
       serviceAccountName: {{ include "zenith-operator.fullname" . }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
@@ -28,10 +32,20 @@ spec:
           image: {{ printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources: {{ toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.kubeconfigSecret.name }}
+          env:
+            - name: KUBECONFIG
+              value: /etc/kube/config
+          {{- end }}
           volumeMounts:
             - name: etc-zenith
               mountPath: /etc/zenith
               readOnly: true
+            {{- if .Values.kubeconfigSecret.name }}
+            - name: kubeconfig
+              mountPath: /etc/kube
+              readOnly: true
+            {{- end }}
             - name: tmp
               mountPath: /tmp
       {{- with .Values.nodeSelector }}
@@ -47,5 +61,13 @@ spec:
         - name: etc-zenith
           secret:
             secretName: {{ include "zenith-operator.fullname" . }}
+        {{- if .Values.kubeconfigSecret.name }}
+        - name: kubeconfig
+          secret:
+            secretName: {{ .Values.kubeconfigSecret.name }}
+            items:
+              - key: {{ .Values.kubeconfigSecret.key }}
+                path: config
+        {{- end }}
         - name: tmp
           emptyDir: {}
