@@ -1,7 +1,0 @@
-apiVersion: v2
-name: zenith-proxy
-description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
-type: application
-# The version and appVersion are updated by the chart build script
-version: 0.1.0
-appVersion: main
