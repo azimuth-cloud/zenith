@@ -24,7 +24,7 @@ spec:
         - name: Phase
           type: string
           jsonPath: .status.phase
-        - name: Upstream
+        - name: Upstream Service
           type: string
           jsonPath: .spec.upstream.serviceName
         - name: MITM Enabled

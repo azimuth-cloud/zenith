@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "zenith-operator.fullname" . }}
+  labels: {{ include "zenith-operator.labels" . | nindent 4 }}
+subjects:
+  # Target the service account in the release namespace
+  - kind: ServiceAccount
+    namespace: {{ .Release.Namespace }}
+    name: {{ include "zenith-operator.fullname" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.clusterRoleName }}
