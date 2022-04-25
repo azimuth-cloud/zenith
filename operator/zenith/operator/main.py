@@ -25,6 +25,7 @@ from easykube import (
 from .config import settings
 from .models import v1alpha1 as api
 from .template import default_loader
+from .utils import mergeconcat
 
 
 # Create an easykube client from the environment
@@ -261,7 +262,9 @@ async def client_changed(name, namespace, body, **kwargs):
         ssh_private_key_data = private_key_b64,
         upstream_host = upstream_host,
         upstream_port = upstream_port,
-        client = client
+        client = client,
+        # Merge any client-specific auth parameters with the defaults
+        auth_params = mergeconcat(settings.default_auth_params, client.spec.auth.params)
     )
     # Decide whether we need the service account and cluster role and delete if not
     service_account = default_loader.load("client/serviceaccount.yaml", **params)

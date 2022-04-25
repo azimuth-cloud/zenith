@@ -30,5 +30,8 @@ class Configuration(BaseConfiguration):
     #: The port for the Zenith SSHD service
     sshd_port: conint(gt = 0) = 22
 
+    #: The default auth parameters for created clients
+    default_auth_params: t.Dict[str, str] = Field(default_factory = dict)
+
 
 settings = Configuration()

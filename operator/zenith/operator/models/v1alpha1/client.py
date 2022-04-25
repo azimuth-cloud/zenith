@@ -103,7 +103,7 @@ class ZenithClientAuthSpec(BaseModel):
             "the Zenith proxy."
         )
     )
-    params: Dict = Field(
+    params: Dict[str, str] = Field(
         default_factory = dict,
         description = (
             "Parameters for the Zenith authentication callout. "
