@@ -1,15 +1,12 @@
 import base64
 import dataclasses
 
-from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
     NoEncryption,
     PrivateFormat,
     PublicFormat,
-    load_ssh_public_key,
-    load_ssh_private_key
 )
 
 import httpx
@@ -59,15 +56,6 @@ async def on_startup(**kwargs):
         prefix = settings.api_group,
         key = "last-handled-configuration",
     )
-    kopf_settings.admission.server = kopf.WebhookServer(
-        addr = "0.0.0.0",
-        port = settings.webhook.port,
-        host = settings.webhook.host,
-        certfile = settings.webhook.certfile,
-        pkeyfile = settings.webhook.keyfile
-    )
-    if settings.webhook.managed:
-        kopf_settings.admission.managed = f"webhook.{settings.api_group}"
     # Create the CRDs
     await ekclient.apply_object(reservation_crd)
     await ekclient.apply_object(client_crd)
@@ -81,69 +69,27 @@ async def on_cleanup(**kwargs):
     await ekclient.aclose()
 
 
-@kopf.on.validate(k8s.Secret.api_version, k8s.Secret.name, id = "validate-credential")
-async def validate_credential(body, operation, **kwargs):
+async def create_credential_secret(reservation, parent):
     """
-    Validates secrets that have the Zenith credential type.
-    """
-    if body["type"] != settings.credential_secret_type:
-        return
-    if operation not in {"CREATE", "UPDATE"}:
-        return
-    data = body.get("data", {})
-    if "ssh-publickey" not in data:
-        raise kopf.AdmissionError("required key ssh-publickey not present")
-    if "ssh-privatekey" not in data:
-        raise kopf.AdmissionError("required key ssh-privatekey not present")
-    try:
-        _ = load_ssh_public_key(base64.b64decode(data["ssh-publickey"]))
-    except (ValueError, UnsupportedAlgorithm):
-        raise kopf.AdmissionError("ssh-publickey is not a valid SSH public key")
-    try:
-        _ = load_ssh_private_key(base64.b64decode(data["ssh-privatekey"]), password = None)
-    except (ValueError, UnsupportedAlgorithm):
-        raise kopf.AdmissionError("ssh-privatekey is not a valid password-less SSH private key")
-
-
-@kopf.on.mutate(Reservation.api_version, Reservation.name, id = "validate-reservation")
-async def mutate_reservation(name, operation, body, patch, **kwargs):
-    """
-    Validates and mutates Zenith reservations.
-    """
-    if operation not in {"CREATE", "UPDATE"}:
-        return
-    try:
-        reservation = api.Reservation.parse_obj(body)
-    except pydantic.ValidationError as exc:
-        raise kopf.AdmissionError(str(exc))
-    else:
-        # If no secret name is given, generate one from the reservation name
-        if not reservation.spec.credential_secret_name:
-            patch.spec["credentialSecretName"] = f"{name}-credential"
-
-
-async def create_credential_secret(name, namespace, reservation):
-    """
-    Creates a secret containing an SSH keypair with the given reservation as the owner.
+    Creates a secret containing an SSH keypair for the given reservation with the specified
+    parent as the owner.
     """
     private_key = Ed25519PrivateKey.generate()
     secret_data = {
         "metadata": {
-            "name": name,
-            "namespace": namespace,
+            "name": reservation.spec.credential_secret_name,
             "labels": {
                 "app.kubernetes.io/managed-by": "zenith-operator",
-                "zenith.stackhpc.com/reservation": reservation.metadata.name,
+                "zenith.stackhpc.com/reservation": parent.metadata.name,
             },
         },
-        "type": settings.credential_secret_type,
         "stringData": {
-            "ssh-privatekey": (
+            reservation.spec.credential_secret_private_key_name: (
                 private_key
                     .private_bytes(Encoding.PEM, PrivateFormat.OpenSSH, NoEncryption())
                     .decode()
             ),
-            "ssh-publickey": (
+            reservation.spec.credential_secret_public_key_name: (
                 private_key
                     .public_key()
                     .public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH)
@@ -151,8 +97,8 @@ async def create_credential_secret(name, namespace, reservation):
             ),
         },
     }
-    kopf.adopt(secret_data, reservation)
-    return await k8s.Secret(ekclient).create(secret_data, namespace = namespace)
+    kopf.adopt(secret_data, parent)
+    return await k8s.Secret(ekclient).create(secret_data)
 
 
 @kopf.on.create(Reservation.api_version, Reservation.name)
@@ -181,20 +127,16 @@ async def reservation_changed(name, namespace, body, **kwargs):
         )
     except ApiError as exc:
         if exc.status_code == 404:
-            secret = await create_credential_secret(
-                reservation.spec.credential_secret_name,
-                namespace,
-                body
-            )
+            secret = await create_credential_secret(reservation, body)
         else:
             raise
-    # The referenced secret must be a Zenith credential
-    if secret.type != settings.credential_secret_type:
-        raise kopf.TemporaryError(
-            f"referenced secret must be of type '{settings.credential_secret_type}'"
-        )
     # Extract the public key from the secret and reserve a domain for it
-    public_key = base64.b64decode(secret.data["ssh-publickey"]).decode()
+    try:
+        public_key_b64 = secret.data[reservation.spec.credential_secret_public_key_name]
+    except KeyError:
+        raise kopf.TemporaryError("unable to find public key data in secret")
+    else:
+        public_key = base64.b64decode(public_key_b64).decode()
     async with httpx.AsyncClient(base_url = settings.registrar_admin_url) as zclient:
         response = await zclient.post(
             "/admin/reserve",
@@ -216,29 +158,16 @@ async def reservation_changed(name, namespace, body, **kwargs):
     )
 
 
-@kopf.on.mutate(Client.api_version, Client.name, id = "mutate-client")
-async def mutate_client(operation, body, patch, **kwargs):
-    """
-    Mutates the spec of Zenith client instances to match the model.
-    """
-    if operation not in {"CREATE", "UPDATE"}:
-        return
-    try:
-        client = api.Client.parse_obj(body)
-    except pydantic.ValidationError as exc:
-        raise kopf.AdmissionError(str(exc))
-    else:
-        # Patch the spec to include all the default options
-        patch.spec.update(client.spec.dict(exclude_none = True))
-
-
 @kopf.on.create(Client.api_version, Client.name)
 @kopf.on.update(Client.api_version, Client.name, field = "spec")
 async def client_changed(name, namespace, body, **kwargs):
     """
     Executes when a client is created or the spec of a client is updated.
     """
-    client = api.Client.parse_obj(body)
+    try:
+        client = api.Client.parse_obj(body)
+    except pydantic.ValidationError as exc:
+        raise kopf.PermanentError(str(exc))
     # Patch the phase to acknowledge that we are aware of the resource
     if client.status.phase == api.ClientPhase.UNKNOWN:
         client.status.phase = api.ClientPhase.PENDING
@@ -293,7 +222,12 @@ async def client_changed(name, namespace, body, **kwargs):
             raise kopf.TemporaryError("could not find credential for reservation")
         else:
             raise
-    # Derive the upstream host from the service name
+    # Extract the SSH private key data from the credential
+    try:
+        private_key_b64 = credential.data[reservation.spec.credential_secret_private_key_name]
+    except KeyError:
+        raise kopf.TemporaryError("unable to find private key data in reservation secret")
+    # Derive the upstream host from the service
     upstream_host = "{}.{}.{}".format(
         service.metadata.name,
         service.metadata.namespace,
@@ -307,37 +241,24 @@ async def client_changed(name, namespace, body, **kwargs):
             upstream_port = int(client.spec.upstream.port)
         except ValueError:
             try:
-                service_port = next(
-                    port
+                upstream_port = next(
+                    port["port"]
                     for port in service.spec.ports
                     if port["name"] == client.spec.upstream.port
                 )
             except StopIteration:
                 raise kopf.TemporaryError("named port does not exist for service")
-            else:
-                upstream_port = service_port["port"]
-        else:
-            try:
-                service_port = next(
-                    port
-                    for port in service.spec.ports
-                    if port["port"] == upstream_port
-                )
-            except StopIteration:
-                raise kopf.TemporaryError("given port does not exist for service")
     else:
         # If no port was given, use the first port
         try:
-            service_port = service.spec.ports[0]
+            upstream_port = service.spec.ports[0]["port"]
         except IndexError:
             raise kopf.TemporaryError("service does not have any ports")
-        else:
-            upstream_port = service_port["port"]
     # Parameters for the template rendering
     params = dict(
         name = name,
         namespace = namespace,
-        ssh_private_key_data = credential.data["ssh-privatekey"],
+        ssh_private_key_data = private_key_b64,
         upstream_host = upstream_host,
         upstream_port = upstream_port,
         client = client
@@ -401,8 +322,12 @@ async def client_deployment_event(type, namespace, labels, status, **kwargs):
                 phase = api.ClientPhase.AVAILABLE
             else:
                 phase = api.ClientPhase.UNAVAILABLE
-    _ = await ClientStatus(ekclient).patch(
-        labels[f"{settings.api_group}/client"],
-        { "status": { "phase": phase } },
-        namespace = namespace
-    )
+    try:
+        _ = await ClientStatus(ekclient).patch(
+            labels[f"{settings.api_group}/client"],
+            { "status": { "phase": phase } },
+            namespace = namespace
+        )
+    except ApiError as exc:
+        if exc.status_code != 404:
+            raise

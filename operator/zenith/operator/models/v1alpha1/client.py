@@ -177,7 +177,7 @@ class MITMProxyAuthInjectServiceAccount(BaseModel):
     Model for service account auth injection parameters.
     """
     cluster_role_name: constr(min_length = 1) = Field(
-        "cluster-admin",
+        ...,
         description = "The name of the cluster role to bind the service account to."
     )
 

@@ -36,6 +36,8 @@ apiVersion: zenith.stackhpc.com/v1alpha1
 kind: Reservation
 metadata:
   name: echoserver
+spec:
+  credentialSecretName: echoserver-zenith-cred
 ---
 apiVersion: zenith.stackhpc.com/v1alpha1
 kind: Client

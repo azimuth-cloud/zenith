@@ -1,7 +1,7 @@
 import enum
 import typing
 
-from pydantic import Extra
+from pydantic import Extra, ValidationError
 
 from configomatic import Section
 
@@ -102,6 +102,14 @@ class BaseModel(Section):
             # When extra fields are allowed, stop Kubernetes pruning them
             if model.__config__.extra == Extra.allow:
                 schema["x-kubernetes-preserve-unknown-fields"] = True
+            # If an instance can be produced with no arguments without an error, use it
+            # as the default value
+            try:
+                instance = model()
+            except ValidationError:
+                pass
+            else:
+                schema.setdefault("default", instance.dict(exclude_none = True))
 
     def dict(self, **kwargs):
         # Unless otherwise specified, we want by_alias = True
