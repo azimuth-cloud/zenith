@@ -1,5 +1,7 @@
 import base64
 import dataclasses
+import logging
+import sys
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import (
@@ -43,6 +45,9 @@ Client = ResourceSpec.from_crd(client_crd)
 ClientStatus = dataclasses.replace(Client, name = f"{Client.name}/status")
 
 
+logger = logging.getLogger(__name__)
+
+
 @kopf.on.startup()
 async def on_startup(**kwargs):
     """
@@ -57,9 +62,13 @@ async def on_startup(**kwargs):
         prefix = settings.api_group,
         key = "last-handled-configuration",
     )
-    # Create the CRDs
-    await ekclient.apply_object(reservation_crd)
-    await ekclient.apply_object(client_crd)
+    try:
+        # Create the CRDs
+        await ekclient.apply_object(reservation_crd)
+        await ekclient.apply_object(client_crd)
+    except Exception as exc:
+        logging.exception("error applying CRDs - exiting")
+        sys.exit(1)
 
 
 @kopf.on.cleanup()
