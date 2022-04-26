@@ -3,7 +3,7 @@ entries:
   zenith-apiserver:
   - apiVersion: v2
     appVersion: f2a1195
-    created: "2022-04-25T15:12:57.496523478Z"
+    created: "2022-04-26T15:34:54.496680675Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 4ac39b7ab513421debe240584e293e529229b0f0c7b8c422b52c62303c9da779
@@ -14,7 +14,7 @@ entries:
     version: 0.1.0-dev.0.main.150
   - apiVersion: v2
     appVersion: c1589d5
-    created: "2022-04-25T15:12:57.496092575Z"
+    created: "2022-04-26T15:34:54.496390781Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 6532f9238d504383e303e5c1fb895e1dbd565a7fc5450c715b38867899fddd70
@@ -25,7 +25,7 @@ entries:
     version: 0.1.0-dev.0.main.149
   - apiVersion: v2
     appVersion: 9884b1d
-    created: "2022-04-25T15:12:57.495652971Z"
+    created: "2022-04-26T15:34:54.496100087Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: fa2818a16f4e4239dd66cc62b2b6125b006a774d59ffbba5756bea0f41ef1696
@@ -36,7 +36,7 @@ entries:
     version: 0.1.0-dev.0.main.148
   - apiVersion: v2
     appVersion: 283741d
-    created: "2022-04-25T15:12:57.495260268Z"
+    created: "2022-04-26T15:34:54.495809393Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: a1f86315532db22ab437a59d82c30d6ed47f5597e5ac8b79958a9b50f477f7b8
@@ -47,7 +47,7 @@ entries:
     version: 0.1.0-dev.0.main.147
   - apiVersion: v2
     appVersion: b0c19d0
-    created: "2022-04-25T15:12:57.494825265Z"
+    created: "2022-04-26T15:34:54.495496799Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 26bea9e5258d0ca75f71d93685e9b96e926b6db2b65d6ff5fff7e03d5260b45d
@@ -58,7 +58,7 @@ entries:
     version: 0.1.0-dev.0.main.146
   - apiVersion: v2
     appVersion: 6047f38
-    created: "2022-04-25T15:12:57.494441462Z"
+    created: "2022-04-26T15:34:54.495191806Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: d193bef2ad6694309cf4f97330ed264806fe1406d797c49c3cf26f773edde611
@@ -69,7 +69,7 @@ entries:
     version: 0.1.0-dev.0.main.142
   - apiVersion: v2
     appVersion: 42b5a35
-    created: "2022-04-25T15:12:57.494058859Z"
+    created: "2022-04-26T15:34:54.494899312Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 48b6730c9a3c6d1570b539843f079ec6d817ceeeb07000ea0dc7c6ce391010fb
@@ -80,7 +80,7 @@ entries:
     version: 0.1.0-dev.0.main.141
   - apiVersion: v2
     appVersion: 268cdb4
-    created: "2022-04-25T15:12:57.493666256Z"
+    created: "2022-04-26T15:34:54.494587218Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: e85e136b428157c29ceb85f9b6d09e0c5a72e6a2ef985b89e120bdd0158eedca
@@ -91,7 +91,7 @@ entries:
     version: 0.1.0-dev.0.main.140
   - apiVersion: v2
     appVersion: 17d7aee
-    created: "2022-04-25T15:12:57.493370953Z"
+    created: "2022-04-26T15:34:54.494041129Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 76d3df6f5922b51ab50ed42ebef1fe63c0711b58d5ad7e19757b00710e36adff
@@ -102,7 +102,7 @@ entries:
     version: 0.1.0-dev.0.main.139
   - apiVersion: v2
     appVersion: 1e823d4
-    created: "2022-04-25T15:12:57.493076351Z"
+    created: "2022-04-26T15:34:54.493662437Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: d7d0701ee21748dd59838d4d2d7a311264cb1a6bc259424ca0b0ffca932c6cd2
@@ -113,7 +113,7 @@ entries:
     version: 0.1.0-dev.0.liveness-checks.145
   - apiVersion: v2
     appVersion: +Inf
-    created: "2022-04-25T15:12:57.492739848Z"
+    created: "2022-04-26T15:34:54.493251346Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 07c4e420497b9293e9b2806e67e1c0ce623a52cffd33ad6e1ca22c770b04399d
@@ -123,8 +123,19 @@ entries:
     - zenith-apiserver-0.1.0-dev.0.liveness-checks.144.tgz
     version: 0.1.0-dev.0.liveness-checks.144
   - apiVersion: v2
+    appVersion: d956e19
+    created: "2022-04-26T15:34:54.492779855Z"
+    description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
+      API server using Zenith. '
+    digest: 97200858a37bcc1d1e0839d34feaec2891fda36e55be019d8f1cf83c3361c642
+    name: zenith-apiserver
+    type: application
+    urls:
+    - zenith-apiserver-0.1.0-dev.0.feature-k8s-operator.158.tgz
+    version: 0.1.0-dev.0.feature-k8s-operator.158
+  - apiVersion: v2
     appVersion: e3980e1
-    created: "2022-04-25T15:12:57.492454146Z"
+    created: "2022-04-26T15:34:54.492239267Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 20db8033187a85167b70b675a9751c70df6773a219c6d4d07aedc3025e6b4c77
@@ -135,7 +146,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.157
   - apiVersion: v2
     appVersion: 3dbdb39
-    created: "2022-04-25T15:12:57.492122144Z"
+    created: "2022-04-26T15:34:54.491956372Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 34fe069bcaacb1fd2e365969e38f54bfef3593ea560b1ef4892fddb13408998c
@@ -146,7 +157,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.156
   - apiVersion: v2
     appVersion: 66c2760
-    created: "2022-04-25T15:12:57.49170714Z"
+    created: "2022-04-26T15:34:54.491621879Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 438265b4b59f2d4f7bdd6bd84643c18e8d05e06c9f5645fe4ca91a360a685d30
@@ -157,7 +168,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.155
   - apiVersion: v2
     appVersion: 35cf84c
-    created: "2022-04-25T15:12:57.491303237Z"
+    created: "2022-04-26T15:34:54.491331285Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: be43818074d573eb2b9b7187351146a85b51b4d16b408275e0ef7435941f3f91
@@ -168,7 +179,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.154
   - apiVersion: v2
     appVersion: 4e17a0a
-    created: "2022-04-25T15:12:57.490920734Z"
+    created: "2022-04-26T15:34:54.490999692Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: ece4ab07c5c0c2b8761fe534aa7418699afac1269de01d465eb7e841f4b1100b
@@ -179,7 +190,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.153
   - apiVersion: v2
     appVersion: f16b4a3
-    created: "2022-04-25T15:12:57.490493431Z"
+    created: "2022-04-26T15:34:54.490684499Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 4ed2ecb9fe6716900b3d81797107334957a0d358c2eea5273358259db08763ac
@@ -190,7 +201,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.152
   - apiVersion: v2
     appVersion: 7feffd5
-    created: "2022-04-25T15:12:57.490118928Z"
+    created: "2022-04-26T15:34:54.490372905Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: d05be142fee28037dced71e21f60a2b3f6c60ebca272c17a8d16c84375a463fc
@@ -201,7 +212,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.151
   - apiVersion: v2
     appVersion: b044b3f
-    created: "2022-04-25T15:12:57.489503323Z"
+    created: "2022-04-26T15:34:54.490067411Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 40f4c45006dc9e75f2b0e47c1c75c5f2cf525c0d758a30ff81d7402b6c1fc6f5
@@ -212,7 +223,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.138
   - apiVersion: v2
     appVersion: 460cc96
-    created: "2022-04-25T15:12:57.48907972Z"
+    created: "2022-04-26T15:34:54.489741618Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 80bcee73bef2aed7800d01f0fe2d9949c59afaa5e5f4481d2884884caa20834e
@@ -223,7 +234,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.137
   - apiVersion: v2
     appVersion: d2127ea
-    created: "2022-04-25T15:12:57.488691617Z"
+    created: "2022-04-26T15:34:54.489433424Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 5d0ae17649bff107d154877b17e319cc1f4ba210928af16e0bd9121061fb84b8
@@ -234,7 +245,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.136
   - apiVersion: v2
     appVersion: 899a225
-    created: "2022-04-25T15:12:57.488229913Z"
+    created: "2022-04-26T15:34:54.489061832Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 2ac2f3791393f1d37ded00cbd8b31695da02fb02f54ce3de1c7c480c937bf434
@@ -245,7 +256,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.135
   - apiVersion: v2
     appVersion: ebf519a
-    created: "2022-04-25T15:12:57.487622608Z"
+    created: "2022-04-26T15:34:54.48867524Z"
     description: 'Helm chart that generates a static pod manifest for proxying a Kubernetes
       API server using Zenith. '
     digest: 667910a79af456e91a5feac6b50d1875fc4944d7e9336e323cb53613a7d7a319
@@ -257,7 +268,7 @@ entries:
   zenith-client:
   - apiVersion: v2
     appVersion: 850b1cf
-    created: "2022-04-25T15:12:57.497483886Z"
+    created: "2022-04-26T15:34:54.49737456Z"
     description: Helm chart for deploying a Zenith client on Kubernetes
     digest: d076b4c1103e713206662348b9e4b7ceecd66a3617827aa2d6c330c1daf596e7
     name: zenith-client
@@ -267,7 +278,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.124
   - apiVersion: v2
     appVersion: a0b4a85
-    created: "2022-04-25T15:12:57.496996082Z"
+    created: "2022-04-26T15:34:54.497035567Z"
     description: Helm chart for deploying a Zenith client on Kubernetes
     digest: b91084a98fb07ffa0bfcf7fa0fe75eea8487cbd034b322e738448b71afef8c75
     name: zenith-client
@@ -277,8 +288,18 @@ entries:
     version: 0.1.0-dev.0.client-chart.123
   zenith-operator:
   - apiVersion: v2
+    appVersion: d956e19
+    created: "2022-04-26T15:34:54.499044526Z"
+    description: Helm chart for deploying the Zenith operator.
+    digest: e65babce1f7fcc479da9b934c48b3c956f42cbe6c39c96bb608c029d795b557d
+    name: zenith-operator
+    type: application
+    urls:
+    - zenith-operator-0.1.0-dev.0.feature-k8s-operator.158.tgz
+    version: 0.1.0-dev.0.feature-k8s-operator.158
+  - apiVersion: v2
     appVersion: e3980e1
-    created: "2022-04-25T15:12:57.499873805Z"
+    created: "2022-04-26T15:34:54.498710633Z"
     description: Helm chart for deploying the Zenith operator.
     digest: af7489f6762e7c1ca910f54f4a0d0e5227235a55667a2a3fb12333b94bff4bbf
     name: zenith-operator
@@ -288,7 +309,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.157
   - apiVersion: v2
     appVersion: 3dbdb39
-    created: "2022-04-25T15:12:57.499434801Z"
+    created: "2022-04-26T15:34:54.49838754Z"
     description: Helm chart for deploying the Zenith operator.
     digest: 597d32269cc39e7fc52da2e2158f15952554279f2b2ba431e994409c69e3833b
     name: zenith-operator
@@ -298,7 +319,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.156
   - apiVersion: v2
     appVersion: 66c2760
-    created: "2022-04-25T15:12:57.498808096Z"
+    created: "2022-04-26T15:34:54.498047147Z"
     description: Helm chart for deploying the Zenith operator.
     digest: 545aa70957608811e985624d3eef228167b28480318eaa6282c5c2a958bcd561
     name: zenith-operator
@@ -308,7 +329,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.155
   - apiVersion: v2
     appVersion: 35cf84c
-    created: "2022-04-25T15:12:57.497941989Z"
+    created: "2022-04-26T15:34:54.497699954Z"
     description: Helm chart for deploying the Zenith operator.
     digest: fa6da1d30281127a8a797c1738fa9ef3b5fd7218cc33645b4b9b8809241df78e
     name: zenith-operator
@@ -319,7 +340,7 @@ entries:
   zenith-proxy:
   - apiVersion: v2
     appVersion: f2a1195
-    created: "2022-04-25T15:12:57.516106233Z"
+    created: "2022-04-26T15:34:54.515454787Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: d7cf92a723f8777ac3fca0a3833abb328f72d6be07e1ef3efd2945621cad52d4
     name: zenith-proxy
@@ -329,7 +350,7 @@ entries:
     version: 0.1.0-dev.0.main.150
   - apiVersion: v2
     appVersion: c1589d5
-    created: "2022-04-25T15:12:57.515633829Z"
+    created: "2022-04-26T15:34:54.514972397Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 31a3161319c70c04b7327957003df54db953affd85a98a34b53410071b9f743a
     name: zenith-proxy
@@ -339,7 +360,7 @@ entries:
     version: 0.1.0-dev.0.main.149
   - apiVersion: v2
     appVersion: 9884b1d
-    created: "2022-04-25T15:12:57.515161625Z"
+    created: "2022-04-26T15:34:54.514468407Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 845cb63bffabdabdb256a59d9f28690c0c3376914387251ebc9bbf9357ab12fe
     name: zenith-proxy
@@ -349,7 +370,7 @@ entries:
     version: 0.1.0-dev.0.main.148
   - apiVersion: v2
     appVersion: 283741d
-    created: "2022-04-25T15:12:57.514667221Z"
+    created: "2022-04-26T15:34:54.513759022Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: e850d3dc1a4f67521f89a8858eac60a7f89a69d2c91e5fa1fd121a885ca071ec
     name: zenith-proxy
@@ -359,7 +380,7 @@ entries:
     version: 0.1.0-dev.0.main.147
   - apiVersion: v2
     appVersion: b0c19d0
-    created: "2022-04-25T15:12:57.514189117Z"
+    created: "2022-04-26T15:34:54.513044837Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 7736244fa4e3b95df8e4df1138bd9c8ebb09ac86f393ef00112c0fb9fa1b2545
     name: zenith-proxy
@@ -369,7 +390,7 @@ entries:
     version: 0.1.0-dev.0.main.146
   - apiVersion: v2
     appVersion: 6047f38
-    created: "2022-04-25T15:12:57.513726114Z"
+    created: "2022-04-26T15:34:54.512217154Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 85e92165c69772ae85e4a0c74a25f3e9d59cb741ab4d83c2980637a5c3200936
     name: zenith-proxy
@@ -379,7 +400,7 @@ entries:
     version: 0.1.0-dev.0.main.142
   - apiVersion: v2
     appVersion: 42b5a35
-    created: "2022-04-25T15:12:57.51325011Z"
+    created: "2022-04-26T15:34:54.511395471Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 9cf4d3e0162c764a8815b4c2d8f6a09d2121bdec7160b9db88a2be380de0639f
     name: zenith-proxy
@@ -389,7 +410,7 @@ entries:
     version: 0.1.0-dev.0.main.141
   - apiVersion: v2
     appVersion: 268cdb4
-    created: "2022-04-25T15:12:57.512752606Z"
+    created: "2022-04-26T15:34:54.51093908Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: aff26808b06bd97c093ef7447451cacee1f347b724af8d24d310886041f786ad
     name: zenith-proxy
@@ -399,7 +420,7 @@ entries:
     version: 0.1.0-dev.0.main.140
   - apiVersion: v2
     appVersion: 17d7aee
-    created: "2022-04-25T15:12:57.512275902Z"
+    created: "2022-04-26T15:34:54.51048279Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 0cd66ff36324f5bed1d41839002816b2c7279ca131a17b65326804c9b969a628
     name: zenith-proxy
@@ -409,7 +430,7 @@ entries:
     version: 0.1.0-dev.0.main.139
   - apiVersion: v2
     appVersion: 1e823d4
-    created: "2022-04-25T15:12:57.511758898Z"
+    created: "2022-04-26T15:34:54.509955501Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 6b607b3bf22ccd78afc070db0405fadae2d9736e84b905ed839ddb71053fde20
     name: zenith-proxy
@@ -419,7 +440,7 @@ entries:
     version: 0.1.0-dev.0.liveness-checks.145
   - apiVersion: v2
     appVersion: +Inf
-    created: "2022-04-25T15:12:57.511235694Z"
+    created: "2022-04-26T15:34:54.509463211Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 4f16c43bafdfd777f3a740cfaf7ad5096d7b449d0a665746fbfe6024b94202fa
     name: zenith-proxy
@@ -429,7 +450,7 @@ entries:
     version: 0.1.0-dev.0.liveness-checks.144
   - apiVersion: v2
     appVersion: 66c2760
-    created: "2022-04-25T15:12:57.510280987Z"
+    created: "2022-04-26T15:34:54.508978021Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 5411a139c1b8e1d52d7750985793973dba8bcdf7fe9a1f2504187a521707fd0b
     name: zenith-proxy
@@ -439,7 +460,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.155
   - apiVersion: v2
     appVersion: 35cf84c
-    created: "2022-04-25T15:12:57.509512981Z"
+    created: "2022-04-26T15:34:54.508447432Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: b1be0833682eae0d10efc34fd79638d05ad1baf6921419a4a6f892c0daa405bc
     name: zenith-proxy
@@ -449,7 +470,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.154
   - apiVersion: v2
     appVersion: 4e17a0a
-    created: "2022-04-25T15:12:57.508559673Z"
+    created: "2022-04-26T15:34:54.507976942Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 99f22a67ca8526b9e95d96a647f45e6c9fb6b7a0a2c4c9fe5f3e7750553d5c40
     name: zenith-proxy
@@ -459,7 +480,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.153
   - apiVersion: v2
     appVersion: f16b4a3
-    created: "2022-04-25T15:12:57.507919268Z"
+    created: "2022-04-26T15:34:54.507480952Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 59f7be83bed59ef36654ad18baaadaeb7f46d34130abb518238ba105329e4488
     name: zenith-proxy
@@ -469,7 +490,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.152
   - apiVersion: v2
     appVersion: 7feffd5
-    created: "2022-04-25T15:12:57.507343664Z"
+    created: "2022-04-26T15:34:54.506971762Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 6f3fa3607d060899bf8283ad8be566eab74b0f9a857a8178cc1e32e8b8aa424a
     name: zenith-proxy
@@ -479,7 +500,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.151
   - apiVersion: v2
     appVersion: b044b3f
-    created: "2022-04-25T15:12:57.506721759Z"
+    created: "2022-04-26T15:34:54.506484372Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 9004cba2930786383b62d3c01ac53e91750824aa4e0bb211820e028f0b113f5f
     name: zenith-proxy
@@ -489,7 +510,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.138
   - apiVersion: v2
     appVersion: 460cc96
-    created: "2022-04-25T15:12:57.506173554Z"
+    created: "2022-04-26T15:34:54.506011482Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 10f541ce8a8a652699493b1e4470b465f7c4cf67a3272a368680868b3e439aad
     name: zenith-proxy
@@ -499,7 +520,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.137
   - apiVersion: v2
     appVersion: d2127ea
-    created: "2022-04-25T15:12:57.50560525Z"
+    created: "2022-04-26T15:34:54.505523692Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 8bceb141db8c1cab71dd0059791dc6603bdd4e3cefb5692f1e17f8ef4884ab07
     name: zenith-proxy
@@ -509,7 +530,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.136
   - apiVersion: v2
     appVersion: 899a225
-    created: "2022-04-25T15:12:57.505045845Z"
+    created: "2022-04-26T15:34:54.504992803Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: aa1dc61fd6ec29b515bb27cbcb0713a1c6cc63fc038d2b0525edf99f41fd102e
     name: zenith-proxy
@@ -519,7 +540,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.135
   - apiVersion: v2
     appVersion: ebf519a
-    created: "2022-04-25T15:12:57.504587442Z"
+    created: "2022-04-26T15:34:54.504494613Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 39dd0626dfd4e6a5d3a10686946df24e5b37165d58abc40b92f9dc49de205df1
     name: zenith-proxy
@@ -529,7 +550,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.134
   - apiVersion: v2
     appVersion: 7f55050
-    created: "2022-04-25T15:12:57.504122838Z"
+    created: "2022-04-26T15:34:54.503939325Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: fc198b8e5070e53eec63508d4d22b9755865775b7ea44837c73d6bf2ea3aa5d6
     name: zenith-proxy
@@ -539,7 +560,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.133
   - apiVersion: v2
     appVersion: 575b75f
-    created: "2022-04-25T15:12:57.503621634Z"
+    created: "2022-04-26T15:34:54.503100542Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 542cd0586c9329ce2a2650d34f366b832430bd9fc234934bfdb46091bccb384d
     name: zenith-proxy
@@ -549,7 +570,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.132
   - apiVersion: v2
     appVersion: ea38851
-    created: "2022-04-25T15:12:57.503197131Z"
+    created: "2022-04-26T15:34:54.502476555Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 60ec8a8f89ce5939a4d48390b3285ac6e0dfcc9251a667020e2bcba522cce68f
     name: zenith-proxy
@@ -559,7 +580,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.131
   - apiVersion: v2
     appVersion: e2509db
-    created: "2022-04-25T15:12:57.502775528Z"
+    created: "2022-04-26T15:34:54.501221681Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 56e405bb79db33730d1a0ba85b0bc8fc4a84535d16b16f34f6ac3efd0d593c4e
     name: zenith-proxy
@@ -569,7 +590,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.130
   - apiVersion: v2
     appVersion: bbb4aba
-    created: "2022-04-25T15:12:57.502379524Z"
+    created: "2022-04-26T15:34:54.500826789Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: a5dd39ab45c14753fa52f17505cb0d783246b2663032dd03f151be0c2246da5d
     name: zenith-proxy
@@ -579,7 +600,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.129
   - apiVersion: v2
     appVersion: 0a03b70
-    created: "2022-04-25T15:12:57.501964021Z"
+    created: "2022-04-26T15:34:54.500436397Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: f53d3e4fff26bbb7fb357bbae5ce8fa0c2b901b6a22209adbeaf69249454d940
     name: zenith-proxy
@@ -589,7 +610,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.128
   - apiVersion: v2
     appVersion: 31eef21
-    created: "2022-04-25T15:12:57.501572418Z"
+    created: "2022-04-26T15:34:54.500093404Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 3a534e1fa1095b406d0b158ea49c3b86dda918e339f8ae3e753ea89a95efcb2e
     name: zenith-proxy
@@ -599,7 +620,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.127
   - apiVersion: v2
     appVersion: 4af4791
-    created: "2022-04-25T15:12:57.501159915Z"
+    created: "2022-04-26T15:34:54.499729512Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 449ebc7d668196f16be28c4dedaa0a1faeab8db9a87c6ace255583cbeb5908ae
     name: zenith-proxy
@@ -609,7 +630,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.126
   - apiVersion: v2
     appVersion: 4e9b8f2
-    created: "2022-04-25T15:12:57.500683311Z"
+    created: "2022-04-26T15:34:54.499383119Z"
     description: Helm chart for deploying a Zenith client to proxy a Kubernetes service
     digest: 742d167ecf4ffafdda413f508dea050a6f1da4e16c1984e5d004d63ed872d01a
     name: zenith-proxy
@@ -620,7 +641,7 @@ entries:
   zenith-server:
   - apiVersion: v2
     appVersion: 26026b1
-    created: "2022-04-25T15:12:58.284670086Z"
+    created: "2022-04-26T15:34:55.365197337Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -635,7 +656,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.68
   - apiVersion: v2
     appVersion: c081eda
-    created: "2022-04-25T15:12:58.27760333Z"
+    created: "2022-04-26T15:34:55.357473497Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -650,7 +671,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.67
   - apiVersion: v2
     appVersion: 4dc74d4
-    created: "2022-04-25T15:12:58.27120658Z"
+    created: "2022-04-26T15:34:55.350301345Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -665,7 +686,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.66
   - apiVersion: v2
     appVersion: 5b25e37
-    created: "2022-04-25T15:12:58.263876722Z"
+    created: "2022-04-26T15:34:55.34229091Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -680,7 +701,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.65
   - apiVersion: v2
     appVersion: 4799e6c
-    created: "2022-04-25T15:12:58.257047168Z"
+    created: "2022-04-26T15:34:55.33454287Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -695,7 +716,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.64
   - apiVersion: v2
     appVersion: 08984cd
-    created: "2022-04-25T15:12:58.250724518Z"
+    created: "2022-04-26T15:34:55.327446417Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -710,7 +731,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.63
   - apiVersion: v2
     appVersion: dea12d1
-    created: "2022-04-25T15:12:58.243670163Z"
+    created: "2022-04-26T15:34:55.319867973Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -725,7 +746,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.62
   - apiVersion: v2
     appVersion: 16f38a9
-    created: "2022-04-25T15:12:58.236885609Z"
+    created: "2022-04-26T15:34:55.312897517Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -740,7 +761,7 @@ entries:
     version: 0.1.0-dev.0.tls-support.61
   - apiVersion: v2
     appVersion: 8291a0d
-    created: "2022-04-25T15:12:58.229133348Z"
+    created: "2022-04-26T15:34:55.305330574Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -755,7 +776,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.98
   - apiVersion: v2
     appVersion: 5b99811
-    created: "2022-04-25T15:12:58.222481496Z"
+    created: "2022-04-26T15:34:55.298071024Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -770,7 +791,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.97
   - apiVersion: v2
     appVersion: fba4e35
-    created: "2022-04-25T15:12:58.214852436Z"
+    created: "2022-04-26T15:34:55.289707796Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -785,7 +806,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.96
   - apiVersion: v2
     appVersion: 4b4e36a
-    created: "2022-04-25T15:12:58.208073982Z"
+    created: "2022-04-26T15:34:55.281833459Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -800,7 +821,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.95
   - apiVersion: v2
     appVersion: bebb4a6
-    created: "2022-04-25T15:12:58.200942126Z"
+    created: "2022-04-26T15:34:55.274682907Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -815,7 +836,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.94
   - apiVersion: v2
     appVersion: 3b98d81
-    created: "2022-04-25T15:12:58.19381687Z"
+    created: "2022-04-26T15:34:55.266925767Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -830,7 +851,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.93
   - apiVersion: v2
     appVersion: 456f106
-    created: "2022-04-25T15:12:58.18745252Z"
+    created: "2022-04-26T15:34:55.259746615Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -845,7 +866,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.92
   - apiVersion: v2
     appVersion: 3a75659
-    created: "2022-04-25T15:12:58.180480865Z"
+    created: "2022-04-26T15:34:55.251538385Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -860,7 +881,7 @@ entries:
     version: 0.1.0-dev.0.subdomain-registrar.91
   - apiVersion: v2
     appVersion: a394768
-    created: "2022-04-25T15:12:58.174147115Z"
+    created: "2022-04-26T15:34:55.24400684Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -875,7 +896,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.59
   - apiVersion: v2
     appVersion: 3c7fdeb
-    created: "2022-04-25T15:12:58.167003659Z"
+    created: "2022-04-26T15:34:55.236964186Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -890,7 +911,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.57
   - apiVersion: v2
     appVersion: 7dd8e1e
-    created: "2022-04-25T15:12:58.16078311Z"
+    created: "2022-04-26T15:34:55.229112648Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -905,7 +926,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.54
   - apiVersion: v2
     appVersion: 83f9996
-    created: "2022-04-25T15:12:58.153625154Z"
+    created: "2022-04-26T15:34:55.222060994Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -920,7 +941,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.49
   - apiVersion: v2
     appVersion: cdd0a7d
-    created: "2022-04-25T15:12:58.147266804Z"
+    created: "2022-04-26T15:34:55.214078858Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -935,7 +956,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.48
   - apiVersion: v2
     appVersion: "5930918"
-    created: "2022-04-25T15:12:58.139899246Z"
+    created: "2022-04-26T15:34:55.207075603Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -950,7 +971,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.47
   - apiVersion: v2
     appVersion: 9a0f8ab
-    created: "2022-04-25T15:12:58.133010391Z"
+    created: "2022-04-26T15:34:55.199071468Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -965,7 +986,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.46
   - apiVersion: v2
     appVersion: b4ed27e
-    created: "2022-04-25T15:12:58.126725142Z"
+    created: "2022-04-26T15:34:55.191907516Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -980,7 +1001,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.45
   - apiVersion: v2
     appVersion: 2f8be5d
-    created: "2022-04-25T15:12:58.119676886Z"
+    created: "2022-04-26T15:34:55.183540089Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -995,7 +1016,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.44
   - apiVersion: v2
     appVersion: 936118c
-    created: "2022-04-25T15:12:58.113319836Z"
+    created: "2022-04-26T15:34:55.17575965Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1010,7 +1031,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.43
   - apiVersion: v2
     appVersion: fcec357
-    created: "2022-04-25T15:12:58.106327081Z"
+    created: "2022-04-26T15:34:55.168765894Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1025,7 +1046,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.42
   - apiVersion: v2
     appVersion: bc8c0b7
-    created: "2022-04-25T15:12:58.100036832Z"
+    created: "2022-04-26T15:34:55.161109352Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1040,7 +1061,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.41
   - apiVersion: v2
     appVersion: 76ab2b2
-    created: "2022-04-25T15:12:58.092813575Z"
+    created: "2022-04-26T15:34:55.154066998Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1055,7 +1076,7 @@ entries:
     version: 0.1.0-dev.0.service-sync.40
   - apiVersion: v2
     appVersion: afccfe4
-    created: "2022-04-25T15:12:58.085508117Z"
+    created: "2022-04-26T15:34:55.145963965Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1070,7 +1091,7 @@ entries:
     version: 0.1.0-dev.0.reserved-subdomain.88
   - apiVersion: v2
     appVersion: f2a1195
-    created: "2022-04-25T15:12:57.98807825Z"
+    created: "2022-04-26T15:34:55.039970154Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1085,7 +1106,7 @@ entries:
     version: 0.1.0-dev.0.main.150
   - apiVersion: v2
     appVersion: c1589d5
-    created: "2022-04-25T15:12:57.981208196Z"
+    created: "2022-04-26T15:34:55.031587027Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1100,7 +1121,7 @@ entries:
     version: 0.1.0-dev.0.main.149
   - apiVersion: v2
     appVersion: 9884b1d
-    created: "2022-04-25T15:12:57.973668036Z"
+    created: "2022-04-26T15:34:55.024247179Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1115,7 +1136,7 @@ entries:
     version: 0.1.0-dev.0.main.148
   - apiVersion: v2
     appVersion: 283741d
-    created: "2022-04-25T15:12:57.96654018Z"
+    created: "2022-04-26T15:34:55.015771754Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1130,7 +1151,7 @@ entries:
     version: 0.1.0-dev.0.main.147
   - apiVersion: v2
     appVersion: b0c19d0
-    created: "2022-04-25T15:12:57.960004829Z"
+    created: "2022-04-26T15:34:55.008258209Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1145,7 +1166,7 @@ entries:
     version: 0.1.0-dev.0.main.146
   - apiVersion: v2
     appVersion: 6047f38
-    created: "2022-04-25T15:12:57.952660071Z"
+    created: "2022-04-26T15:34:55.000510769Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1160,7 +1181,7 @@ entries:
     version: 0.1.0-dev.0.main.142
   - apiVersion: v2
     appVersion: 42b5a35
-    created: "2022-04-25T15:12:57.946011718Z"
+    created: "2022-04-26T15:34:54.992422236Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1175,7 +1196,7 @@ entries:
     version: 0.1.0-dev.0.main.141
   - apiVersion: v2
     appVersion: 268cdb4
-    created: "2022-04-25T15:12:57.938430959Z"
+    created: "2022-04-26T15:34:54.985095288Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1190,7 +1211,7 @@ entries:
     version: 0.1.0-dev.0.main.140
   - apiVersion: v2
     appVersion: 17d7aee
-    created: "2022-04-25T15:12:57.9309716Z"
+    created: "2022-04-26T15:34:54.976705861Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1205,7 +1226,7 @@ entries:
     version: 0.1.0-dev.0.main.139
   - apiVersion: v2
     appVersion: 9bce450
-    created: "2022-04-25T15:12:57.924361748Z"
+    created: "2022-04-26T15:34:54.968638327Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1220,7 +1241,7 @@ entries:
     version: 0.1.0-dev.0.main.120
   - apiVersion: v2
     appVersion: 5d80817
-    created: "2022-04-25T15:12:57.91705169Z"
+    created: "2022-04-26T15:34:54.96125928Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1235,7 +1256,7 @@ entries:
     version: 0.1.0-dev.0.main.119
   - apiVersion: v2
     appVersion: 1534c3f
-    created: "2022-04-25T15:12:57.910366738Z"
+    created: "2022-04-26T15:34:54.953254245Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1250,7 +1271,7 @@ entries:
     version: 0.1.0-dev.0.main.118
   - apiVersion: v2
     appVersion: 2cf50cc
-    created: "2022-04-25T15:12:57.902705077Z"
+    created: "2022-04-26T15:34:54.945937996Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1265,7 +1286,7 @@ entries:
     version: 0.1.0-dev.0.main.117
   - apiVersion: v2
     appVersion: 5fcea96
-    created: "2022-04-25T15:12:57.895514321Z"
+    created: "2022-04-26T15:34:54.937736666Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1280,7 +1301,7 @@ entries:
     version: 0.1.0-dev.0.main.116
   - apiVersion: v2
     appVersion: 60d67ab
-    created: "2022-04-25T15:12:57.888657967Z"
+    created: "2022-04-26T15:34:54.929844829Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1295,7 +1316,7 @@ entries:
     version: 0.1.0-dev.0.main.115
   - apiVersion: v2
     appVersion: 5ddd603
-    created: "2022-04-25T15:12:57.88143571Z"
+    created: "2022-04-26T15:34:54.922562279Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1310,7 +1331,7 @@ entries:
     version: 0.1.0-dev.0.main.114
   - apiVersion: v2
     appVersion: 87a5a43
-    created: "2022-04-25T15:12:57.874776857Z"
+    created: "2022-04-26T15:34:54.914522945Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1325,7 +1346,7 @@ entries:
     version: 0.1.0-dev.0.main.113
   - apiVersion: v2
     appVersion: 3216b13
-    created: "2022-04-25T15:12:57.867374699Z"
+    created: "2022-04-26T15:34:54.907224596Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1340,7 +1361,7 @@ entries:
     version: 0.1.0-dev.0.main.112
   - apiVersion: v2
     appVersion: f9a335c
-    created: "2022-04-25T15:12:57.860785347Z"
+    created: "2022-04-26T15:34:54.898155083Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1355,7 +1376,7 @@ entries:
     version: 0.1.0-dev.0.main.111
   - apiVersion: v2
     appVersion: 027cfa0
-    created: "2022-04-25T15:12:57.852816784Z"
+    created: "2022-04-26T15:34:54.890110049Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1370,7 +1391,7 @@ entries:
     version: 0.1.0-dev.0.main.110
   - apiVersion: v2
     appVersion: "8359812"
-    created: "2022-04-25T15:12:57.845589428Z"
+    created: "2022-04-26T15:34:54.882841099Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1385,7 +1406,7 @@ entries:
     version: 0.1.0-dev.0.main.109
   - apiVersion: v2
     appVersion: efa3973
-    created: "2022-04-25T15:12:57.839047476Z"
+    created: "2022-04-26T15:34:54.87505986Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1400,7 +1421,7 @@ entries:
     version: 0.1.0-dev.0.main.108
   - apiVersion: v2
     appVersion: dee2b30
-    created: "2022-04-25T15:12:57.831759219Z"
+    created: "2022-04-26T15:34:54.86779641Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1415,7 +1436,7 @@ entries:
     version: 0.1.0-dev.0.main.107
   - apiVersion: v2
     appVersion: 6137ce3
-    created: "2022-04-25T15:12:57.825204967Z"
+    created: "2022-04-26T15:34:54.859628779Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1430,7 +1451,7 @@ entries:
     version: 0.1.0-dev.0.main.106
   - apiVersion: v2
     appVersion: 2d00350
-    created: "2022-04-25T15:12:57.817730808Z"
+    created: "2022-04-26T15:34:54.851528746Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1445,7 +1466,7 @@ entries:
     version: 0.1.0-dev.0.main.105
   - apiVersion: v2
     appVersion: 883756a
-    created: "2022-04-25T15:12:57.81039755Z"
+    created: "2022-04-26T15:34:54.8440553Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1460,7 +1481,7 @@ entries:
     version: 0.1.0-dev.0.main.104
   - apiVersion: v2
     appVersion: 88b7ac7
-    created: "2022-04-25T15:12:57.803845799Z"
+    created: "2022-04-26T15:34:54.836213462Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1475,7 +1496,7 @@ entries:
     version: 0.1.0-dev.0.main.103
   - apiVersion: v2
     appVersion: 4c29f97
-    created: "2022-04-25T15:12:57.796637442Z"
+    created: "2022-04-26T15:34:54.828861714Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1490,7 +1511,7 @@ entries:
     version: 0.1.0-dev.0.main.102
   - apiVersion: v2
     appVersion: fd4237b
-    created: "2022-04-25T15:12:57.79007109Z"
+    created: "2022-04-26T15:34:54.820519287Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1505,7 +1526,7 @@ entries:
     version: 0.1.0-dev.0.main.101
   - apiVersion: v2
     appVersion: 044c742
-    created: "2022-04-25T15:12:57.782593531Z"
+    created: "2022-04-26T15:34:54.812675349Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1520,7 +1541,7 @@ entries:
     version: 0.1.0-dev.0.main.100
   - apiVersion: v2
     appVersion: 4f2065d
-    created: "2022-04-25T15:12:58.079185767Z"
+    created: "2022-04-26T15:34:55.138662016Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1535,7 +1556,7 @@ entries:
     version: 0.1.0-dev.0.main.99
   - apiVersion: v2
     appVersion: 6fb5192
-    created: "2022-04-25T15:12:58.07194141Z"
+    created: "2022-04-26T15:34:55.130789779Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1550,7 +1571,7 @@ entries:
     version: 0.1.0-dev.0.main.90
   - apiVersion: v2
     appVersion: d4e06f0
-    created: "2022-04-25T15:12:58.06556016Z"
+    created: "2022-04-26T15:34:55.122944741Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1565,7 +1586,7 @@ entries:
     version: 0.1.0-dev.0.main.88
   - apiVersion: v2
     appVersion: c5e830e
-    created: "2022-04-25T15:12:58.058124101Z"
+    created: "2022-04-26T15:34:55.115910186Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1580,7 +1601,7 @@ entries:
     version: 0.1.0-dev.0.main.77
   - apiVersion: v2
     appVersion: 0fe9044
-    created: "2022-04-25T15:12:58.05159395Z"
+    created: "2022-04-26T15:34:55.108213845Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1595,7 +1616,7 @@ entries:
     version: 0.1.0-dev.0.main.76
   - apiVersion: v2
     appVersion: 99ff401
-    created: "2022-04-25T15:12:58.044562495Z"
+    created: "2022-04-26T15:34:55.10118849Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1610,7 +1631,7 @@ entries:
     version: 0.1.0-dev.0.main.75
   - apiVersion: v2
     appVersion: 41ec78b
-    created: "2022-04-25T15:12:58.037036735Z"
+    created: "2022-04-26T15:34:55.093254454Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1625,7 +1646,7 @@ entries:
     version: 0.1.0-dev.0.main.74
   - apiVersion: v2
     appVersion: 1b522c7
-    created: "2022-04-25T15:12:58.030654085Z"
+    created: "2022-04-26T15:34:55.085573812Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1640,7 +1661,7 @@ entries:
     version: 0.1.0-dev.0.main.73
   - apiVersion: v2
     appVersion: f9d9cdc
-    created: "2022-04-25T15:12:58.02367873Z"
+    created: "2022-04-26T15:34:55.078501658Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1655,7 +1676,7 @@ entries:
     version: 0.1.0-dev.0.main.72
   - apiVersion: v2
     appVersion: 3321ae0
-    created: "2022-04-25T15:12:58.01726878Z"
+    created: "2022-04-26T15:34:55.070877416Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1670,7 +1691,7 @@ entries:
     version: 0.1.0-dev.0.main.71
   - apiVersion: v2
     appVersion: d20764f
-    created: "2022-04-25T15:12:58.009906022Z"
+    created: "2022-04-26T15:34:55.063876061Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1685,7 +1706,7 @@ entries:
     version: 0.1.0-dev.0.main.70
   - apiVersion: v2
     appVersion: 8f9b591
-    created: "2022-04-25T15:12:58.00333477Z"
+    created: "2022-04-26T15:34:55.056120821Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1700,7 +1721,7 @@ entries:
     version: 0.1.0-dev.0.main.69
   - apiVersion: v2
     appVersion: 35ed837
-    created: "2022-04-25T15:12:57.996232714Z"
+    created: "2022-04-26T15:34:55.049051667Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1715,7 +1736,7 @@ entries:
     version: 0.1.0-dev.0.main.60
   - apiVersion: v2
     appVersion: fb88e0e
-    created: "2022-04-25T15:12:57.989170058Z"
+    created: "2022-04-26T15:34:55.041087131Z"
     description: Helm chart for deploying a Zenith server on Kubernetes
     digest: f8eaaf3772b2b68c62f00be0ad747d3fb36535696bd9f261b0784e45ae03700c
     name: zenith-server
@@ -1725,7 +1746,7 @@ entries:
     version: 0.1.0-dev.0.main.38
   - apiVersion: v2
     appVersion: cd70ddf
-    created: "2022-04-25T15:12:57.988625654Z"
+    created: "2022-04-26T15:34:55.040556642Z"
     description: Helm chart for deploying a Zenith server on Kubernetes
     digest: 89a11005fc7f35d83b3d9a9aeb8e0dbdbfb39b6290a040f1ece5604abb406b38
     name: zenith-server
@@ -1735,7 +1756,7 @@ entries:
     version: 0.1.0-dev.0.main.37
   - apiVersion: v2
     appVersion: 1e823d4
-    created: "2022-04-25T15:12:57.775671677Z"
+    created: "2022-04-26T15:34:54.805182103Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1750,7 +1771,7 @@ entries:
     version: 0.1.0-dev.0.liveness-checks.145
   - apiVersion: v2
     appVersion: +Inf
-    created: "2022-04-25T15:12:57.768788023Z"
+    created: "2022-04-26T15:34:54.796959673Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1764,8 +1785,23 @@ entries:
     - zenith-server-0.1.0-dev.0.liveness-checks.144.tgz
     version: 0.1.0-dev.0.liveness-checks.144
   - apiVersion: v2
+    appVersion: d956e19
+    created: "2022-04-26T15:34:54.789475428Z"
+    dependencies:
+    - condition: consul.enabled
+      name: consul
+      repository: https://helm.releases.hashicorp.com
+      version: ~0.35.0
+    description: Helm chart for deploying a Zenith server on Kubernetes
+    digest: 99855aad9fe7df2f99a513700cb3f1b7b7555fdf6416105d7b5438dbced4d600
+    name: zenith-server
+    type: application
+    urls:
+    - zenith-server-0.1.0-dev.0.feature-k8s-operator.158.tgz
+    version: 0.1.0-dev.0.feature-k8s-operator.158
+  - apiVersion: v2
     appVersion: e3980e1
-    created: "2022-04-25T15:12:57.761495265Z"
+    created: "2022-04-26T15:34:54.7811126Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1780,7 +1816,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.157
   - apiVersion: v2
     appVersion: 3dbdb39
-    created: "2022-04-25T15:12:57.754752012Z"
+    created: "2022-04-26T15:34:54.773064867Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1795,7 +1831,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.156
   - apiVersion: v2
     appVersion: 66c2760
-    created: "2022-04-25T15:12:57.747023551Z"
+    created: "2022-04-26T15:34:54.76564252Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1810,7 +1846,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.155
   - apiVersion: v2
     appVersion: 35cf84c
-    created: "2022-04-25T15:12:57.740092497Z"
+    created: "2022-04-26T15:34:54.757612686Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1825,7 +1861,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.154
   - apiVersion: v2
     appVersion: 4e17a0a
-    created: "2022-04-25T15:12:57.733165142Z"
+    created: "2022-04-26T15:34:54.750085041Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1840,7 +1876,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.153
   - apiVersion: v2
     appVersion: f16b4a3
-    created: "2022-04-25T15:12:57.725762584Z"
+    created: "2022-04-26T15:34:54.741742214Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1855,7 +1891,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.152
   - apiVersion: v2
     appVersion: 7feffd5
-    created: "2022-04-25T15:12:57.719115631Z"
+    created: "2022-04-26T15:34:54.734200869Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1870,7 +1906,7 @@ entries:
     version: 0.1.0-dev.0.feature-k8s-operator.151
   - apiVersion: v2
     appVersion: "2299276"
-    created: "2022-04-25T15:12:57.711552972Z"
+    created: "2022-04-26T15:34:54.726503228Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1885,7 +1921,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.87
   - apiVersion: v2
     appVersion: 471f881
-    created: "2022-04-25T15:12:57.704650818Z"
+    created: "2022-04-26T15:34:54.718551193Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1900,7 +1936,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.85
   - apiVersion: v2
     appVersion: e5a9dae
-    created: "2022-04-25T15:12:57.698223267Z"
+    created: "2022-04-26T15:34:54.711460039Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1915,7 +1951,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.84
   - apiVersion: v2
     appVersion: b7d564c
-    created: "2022-04-25T15:12:57.691174211Z"
+    created: "2022-04-26T15:34:54.703294008Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1930,7 +1966,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.83
   - apiVersion: v2
     appVersion: dfa6dd9
-    created: "2022-04-25T15:12:57.684822461Z"
+    created: "2022-04-26T15:34:54.696230953Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1945,7 +1981,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.82
   - apiVersion: v2
     appVersion: 90c0e00
-    created: "2022-04-25T15:12:57.677802106Z"
+    created: "2022-04-26T15:34:54.687075443Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1960,7 +1996,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.81
   - apiVersion: v2
     appVersion: e8b6ea1
-    created: "2022-04-25T15:12:57.671289355Z"
+    created: "2022-04-26T15:34:54.679053708Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1975,7 +2011,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.80
   - apiVersion: v2
     appVersion: dd04f53
-    created: "2022-04-25T15:12:57.664034198Z"
+    created: "2022-04-26T15:34:54.672000754Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -1990,7 +2026,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.79
   - apiVersion: v2
     appVersion: 0c1e66f
-    created: "2022-04-25T15:12:57.657087943Z"
+    created: "2022-04-26T15:34:54.664272414Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2005,7 +2041,7 @@ entries:
     version: 0.1.0-dev.0.docs-update.78
   - apiVersion: v2
     appVersion: b044b3f
-    created: "2022-04-25T15:12:57.650488991Z"
+    created: "2022-04-26T15:34:54.657210159Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2020,7 +2056,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.138
   - apiVersion: v2
     appVersion: 460cc96
-    created: "2022-04-25T15:12:57.643151833Z"
+    created: "2022-04-26T15:34:54.648924831Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2035,7 +2071,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.137
   - apiVersion: v2
     appVersion: d2127ea
-    created: "2022-04-25T15:12:57.635817875Z"
+    created: "2022-04-26T15:34:54.641227889Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2050,7 +2086,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.136
   - apiVersion: v2
     appVersion: 899a225
-    created: "2022-04-25T15:12:57.627180907Z"
+    created: "2022-04-26T15:34:54.633235055Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2065,7 +2101,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.135
   - apiVersion: v2
     appVersion: ebf519a
-    created: "2022-04-25T15:12:57.620252553Z"
+    created: "2022-04-26T15:34:54.625334018Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2080,7 +2116,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.134
   - apiVersion: v2
     appVersion: 7f55050
-    created: "2022-04-25T15:12:57.613219697Z"
+    created: "2022-04-26T15:34:54.61793897Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2095,7 +2131,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.133
   - apiVersion: v2
     appVersion: 575b75f
-    created: "2022-04-25T15:12:57.605662438Z"
+    created: "2022-04-26T15:34:54.609682841Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2110,7 +2146,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.132
   - apiVersion: v2
     appVersion: ea38851
-    created: "2022-04-25T15:12:57.598972985Z"
+    created: "2022-04-26T15:34:54.602196996Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2125,7 +2161,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.131
   - apiVersion: v2
     appVersion: e2509db
-    created: "2022-04-25T15:12:57.591184324Z"
+    created: "2022-04-26T15:34:54.593886867Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2140,7 +2176,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.130
   - apiVersion: v2
     appVersion: bbb4aba
-    created: "2022-04-25T15:12:57.583480463Z"
+    created: "2022-04-26T15:34:54.585950331Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2155,7 +2191,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.129
   - apiVersion: v2
     appVersion: 0a03b70
-    created: "2022-04-25T15:12:57.575408Z"
+    created: "2022-04-26T15:34:54.578601283Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2170,7 +2206,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.128
   - apiVersion: v2
     appVersion: 31eef21
-    created: "2022-04-25T15:12:57.568443945Z"
+    created: "2022-04-26T15:34:54.570554749Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2185,7 +2221,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.127
   - apiVersion: v2
     appVersion: 4af4791
-    created: "2022-04-25T15:12:57.56152799Z"
+    created: "2022-04-26T15:34:54.563150202Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2200,7 +2236,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.126
   - apiVersion: v2
     appVersion: 4e9b8f2
-    created: "2022-04-25T15:12:57.553655128Z"
+    created: "2022-04-26T15:34:54.554603179Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2215,7 +2251,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.125
   - apiVersion: v2
     appVersion: 850b1cf
-    created: "2022-04-25T15:12:57.546892575Z"
+    created: "2022-04-26T15:34:54.546383448Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2230,7 +2266,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.124
   - apiVersion: v2
     appVersion: a0b4a85
-    created: "2022-04-25T15:12:57.538945812Z"
+    created: "2022-04-26T15:34:54.539070299Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2245,7 +2281,7 @@ entries:
     version: 0.1.0-dev.0.client-chart.123
   - apiVersion: v2
     appVersion: 71d119d
-    created: "2022-04-25T15:12:57.530559046Z"
+    created: "2022-04-26T15:34:54.531042865Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2260,7 +2296,7 @@ entries:
     version: 0.1.0-dev.0.atomic-reservation.122
   - apiVersion: v2
     appVersion: "8867323"
-    created: "2022-04-25T15:12:57.523804493Z"
+    created: "2022-04-26T15:34:54.522933233Z"
     dependencies:
     - condition: consul.enabled
       name: consul
@@ -2273,4 +2309,4 @@ entries:
     urls:
     - zenith-server-0.1.0-dev.0.atomic-reservation.121.tgz
     version: 0.1.0-dev.0.atomic-reservation.121
-generated: "2022-04-25T15:12:57.487120404Z"
+generated: "2022-04-26T15:34:54.488143651Z"
