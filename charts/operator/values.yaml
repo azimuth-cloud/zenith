@@ -1,0 +1,52 @@
+# Configuration for the operator
+# For all available options, see config.py in the operator source
+config: {}
+
+# Details of a secret containing a kubeconfig file for a remote cluster
+# If given, this is used in preference to a service account
+kubeconfigSecret:
+  # The name of the secret
+  name:
+  # The key of the kubeconfig file in the secret
+  key: value
+
+# The name of the clusterrole that the operator should be bound to
+#
+# Note that in order for the operator to grant permissions to service accounts
+# for MITM proxies, the operator itself needs to hold all of those permissions
+# In particular, in order for the operator to grant the cluster-admin role
+# to service accounts for MITM proxies, it must hold cluster-admin itself
+#
+# Only used if kubeconfigSecret.name is not specified
+clusterRoleName: cluster-admin
+
+# The image to use for the operator
+image:
+  repository: ghcr.io/stackhpc/zenith-operator
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to appVersion if not given
+
+imagePullSecrets: []
+
+# Pod-level security context
+podSecurityContext:
+  runAsNonRoot: true
+
+# Container-level security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+
+# Resource requests and limits for the containers
+resources: {}
+
+# Node selector for operator pods
+nodeSelector: {}
+
+# Affinity rules for operator pods
+affinity: {}
+
+# Tolerations for operator pods
+tolerations: []

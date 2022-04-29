@@ -9,6 +9,7 @@ jobs:
       matrix:
         include:
           - component: client
+          - component: operator
           - component: proxy
           - component: registrar
           - component: sshd
