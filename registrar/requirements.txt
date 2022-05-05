@@ -1,10 +1,10 @@
 anyio==3.5.0
 certifi==2021.10.8
 cffi==1.15.0
-charset-normalizer==2.0.11
+charset-normalizer==2.0.12
 configomatic @ git+https://github.com/stackhpc/configomatic.git@3a7e88693e8f44530ac4f1f5ee3d64977cf3784d#egg=configomatic
-cryptography==36.0.1
-fastapi==0.73.0
+cryptography==37.0.2
+fastapi==0.75.2
 h11==0.12.0
 httpcore==0.14.7
 httpx==0.22.0
@@ -15,4 +15,4 @@ PyYAML==6.0
 rfc3986==1.5.0
 sniffio==1.2.0
 starlette==0.17.1
-typing_extensions==4.0.1
+typing_extensions==4.2.0

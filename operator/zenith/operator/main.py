@@ -67,7 +67,7 @@ async def on_startup(**kwargs):
         await ekclient.apply_object(reservation_crd)
         await ekclient.apply_object(client_crd)
     except Exception as exc:
-        logging.exception("error applying CRDs - exiting")
+        logger.exception("error applying CRDs - exiting")
         sys.exit(1)
 
 
