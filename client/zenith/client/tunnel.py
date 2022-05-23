@@ -57,14 +57,20 @@ def raise_timeout_error(signum, frame):
 def timeout(seconds):
     """
     Context manager / decorator that imposes a timeout on the wrapped code.
+
+    This context manager only works on Linux.
+
+    When running on Windows it is a no-op due to the unavailability of SIGALRM.
     """
-    previous = signal.signal(signal.SIGALRM, raise_timeout_error)
-    signal.alarm(seconds)
+    if hasattr(signal, "SIGALRM"):
+        previous = signal.signal(signal.SIGALRM, raise_timeout_error)
+        signal.alarm(seconds)
     try:
         yield
     finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, previous)
+        if hasattr(signal, "SIGALRM"):
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, previous)
 
 
 def configure_tunnel(ssh_proc, config):
