@@ -57,14 +57,20 @@ def raise_timeout_error(signum, frame):
 def timeout(seconds):
     """
     Context manager / decorator that imposes a timeout on the wrapped code.
+
+    This context manager only works on Linux.
+
+    When running on Windows it is a no-op due to the unavailability of SIGALRM.
     """
-    previous = signal.signal(signal.SIGALRM, raise_timeout_error)
-    signal.alarm(seconds)
+    if hasattr(signal, "SIGALRM"):
+        previous = signal.signal(signal.SIGALRM, raise_timeout_error)
+        signal.alarm(seconds)
     try:
         yield
     finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, previous)
+        if hasattr(signal, "SIGALRM"):
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, previous)
 
 
 def configure_tunnel(ssh_proc, config):
@@ -131,15 +137,26 @@ def ssh_identity(config):
     Context manager that makes a temporary file to contain the SSH identity, populates it
     (either using the given private key or by generating one) and yields the path.
     """
-    with tempfile.NamedTemporaryFile() as ssh_private_key_file:
+    # In order to support Windows, we cannot use the NamedTemporaryFile context manager
+    # to wrap all the logic because the file cannot be opened by the SSH process
+    # https://bugs.python.org/issue14243
+    # Instead, we must clean the file up ourselves
+    ssh_private_key_file_name = None
+    with tempfile.NamedTemporaryFile(delete = False) as ssh_private_key_file:
+        ssh_private_key_file_name = ssh_private_key_file.name
         logger.info("[CLIENT] Writing SSH private key data to temporary file")
         # If the private key data was given, use it (it is base64-encoded)
         ssh_private_key_file.write(base64.b64decode(config.ssh_private_key_data))
-        # In order for SSH to see the data, we need to flush it
-        ssh_private_key_file.flush()
-        # Make sure the key file has the correct permissions
-        os.chmod(ssh_private_key_file.name, 0o600)
-        yield ssh_private_key_file.name
+    # Make sure the key file has the correct permissions
+    os.chmod(ssh_private_key_file_name, 0o600)
+    try:
+        yield ssh_private_key_file_name
+    finally:
+        # Try our best to clean up the file
+        try:
+            os.remove(ssh_private_key_file_name)
+        except OSError:
+            pass
 
 
 def create(config):
