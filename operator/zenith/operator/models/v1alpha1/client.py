@@ -24,7 +24,7 @@ class ContainerImage(BaseModel):
         ContainerImagePullPolicy.IF_NOT_PRESENT,
         description = "The pull policy for the container image."
     )
-    tag: constr(regex = r"^[a-zA-Z0-9][a-zA-Z0-9.-_]{0,127}$") = Field(
+    tag: constr(regex = r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$") = Field(
         settings.default_image_tag,
         description = "The tag for the container image."
     )
