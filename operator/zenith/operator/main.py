@@ -170,9 +170,13 @@ async def reservation_changed(name, namespace, body, **kwargs):
 
 @kopf.on.create(Client.api_version, Client.name)
 @kopf.on.update(Client.api_version, Client.name, field = "spec")
+@kopf.on.resume(Client.api_version, Client.name)
 async def client_changed(name, namespace, body, **kwargs):
     """
     Executes when a client is created or the spec of a client is updated.
+
+    It also runs for each client when the operator is resumed and will update the
+    client resources to match the new configuration.
     """
     try:
         client = api.Client.parse_obj(body)
