@@ -2,6 +2,8 @@ import typing as t
 
 from pydantic import Extra, Field, conint, constr, validator
 
+from ...config import settings
+
 from ..schema import BaseModel, Dict, Enum, IntOrString
 
 
@@ -23,7 +25,7 @@ class ContainerImage(BaseModel):
         description = "The pull policy for the container image."
     )
     tag: constr(regex = r"^[a-zA-Z0-9][a-zA-Z0-9.-_]{0,127}$") = Field(
-        "main",
+        settings.default_image_tag,
         description = "The tag for the container image."
     )
 

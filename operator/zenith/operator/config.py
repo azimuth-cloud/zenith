@@ -23,6 +23,9 @@ class Configuration(BaseConfiguration):
     #: The base domain used for cluster services
     cluster_service_domain: constr(regex = r"^[a-z0-9.-]+$") = "svc.cluster.local"
 
+    #: The default tag for Zenith images used by the operator
+    default_image_tag: constr(regex = r"^[a-zA-Z0-9][a-zA-Z0-9.-_]{0,127}$") = "main"
+
     #: The admin URL for the Zenith registrar
     registrar_admin_url: AnyHttpUrl
     #: The host for the Zenith SSHD service

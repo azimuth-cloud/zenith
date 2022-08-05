@@ -190,6 +190,11 @@ def create(config):
             "IdentitiesOnly=yes",
             "-i",
             ssh_identity_path,
+            # Use the configured server alive interval
+            "-o",
+            f"ServerAliveInterval={config.server_alive_period}",
+            "-o",
+            f"ServerAliveCountMax={config.server_alive_failures}",
             # Use a dynamically allocated port
             "-R",
             f"0:{config.forward_to_host}:{config.forward_to_port}",

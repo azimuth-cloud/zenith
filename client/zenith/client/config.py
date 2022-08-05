@@ -79,6 +79,10 @@ class ConnectConfig(Configuration):
     forward_to_host: str = "localhost"
     #: The port to forward tunnel traffic to
     forward_to_port: int = 8000
+    #: The period after which a server alive message will be sent if no data is received
+    server_alive_period: conint(gt = 0) = 10
+    #: The number of server alive messages that can fail before the tunnel is terminated
+    server_alive_failures: conint(gt = 0) = 3
     #: The backend protocol
     backend_protocol: typing.Literal["http", "https"] = "http"
     #: An optional liveness path for the upstream service
