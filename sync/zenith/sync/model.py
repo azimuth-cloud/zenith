@@ -21,13 +21,10 @@ class Service:
     """
     #: The name of the service
     name: str
-    #: The metadata for the service
-    metadata: typing.Mapping[str, str] = dataclasses.field(default_factory = dict)
     #: The healthy endpoints for the service
     endpoints: typing.Iterable[Endpoint] = dataclasses.field(default_factory = list)
-    #: The TLS configuration for the service
-    #: Should be a dict with the keys "tls-cert", "tls-key" and "tls-client-ca"
-    tls: typing.Mapping[str, str] = dataclasses.field(default_factory = dict)
+    #: The configuration for the service
+    config: typing.Mapping[str, str] = dataclasses.field(default_factory = dict)
 
 
 @enum.unique

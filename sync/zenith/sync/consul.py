@@ -20,11 +20,12 @@ class ServiceWatcher:
         self._queues = {}
         self._running = False
 
-    async def _tls_config(self, client, instance):
+    async def _config(self, client, instance):
         """
-        Fetches the TLS configuration from Consul for the given instance.
+        Fetches the configuration from Consul for the given instance.
         """
-        url = f"/v1/kv/{self.config.tls_key_prefix}/{instance['Service']['ID']}?raw=true"
+        service_id = instance["Service"]["ID"]
+        url = f"/v1/kv/{self.config.config_key_prefix}/{service_id}?raw=true"
         response = await client.get(url)
         if 200 <= response.status_code < 300:
             return response.json()
@@ -83,16 +84,10 @@ class ServiceWatcher:
         """
         # The return value from the health endpoint for the service is a list of instances
         instances, next_idx = await self._wait(client, f"/v1/health/service/{name}", index)
-        # Request the TLS configurations for each instance in parallel
-        tls_configs = await asyncio.gather(*[self._tls_config(client, i) for i in instances])
+        # Request the configurations for each instance in parallel
+        configs = await asyncio.gather(*[self._config(client, i) for i in instances])
         service = Service(
             name = name,
-            # Merge the metadata from the instances together
-            metadata = {
-                k: v
-                for instance in instances
-                for k, v in (instance["Service"].get("Meta") or {}).items()
-            },
             # Get the address and port of each instance for which all the checks are passing
             endpoints = [
                 Endpoint(
@@ -103,8 +98,8 @@ class ServiceWatcher:
                 # Allow instances in the warning state as a grace period for health checks
                 if all(c["Status"] in {"passing", "warning"} for c in instance["Checks"])
             ],
-            # Merge the TLS configuration associated with each instance
-            tls = { k: v for tls_config in tls_configs for k, v in tls_config.items() }
+            # Merge the configurations associated with each instance
+            config = { k: v for config in configs for k, v in config.items() }
         )
         return service, next_idx
 

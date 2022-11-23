@@ -1,6 +1,9 @@
 import base64
+import enum
 import pathlib
 import typing
+
+import yaml
 
 from pydantic import Field, FilePath, AnyHttpUrl, conint, constr, validator
 
@@ -13,6 +16,16 @@ AuthParamsValue = constr(max_length = 1024)
 
 #: Type for an RFC3986 compliant URL path component
 UrlPath = constr(regex = r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
+
+
+class AuthType(str, enum.Enum):
+    """
+    Enumeration of possible auth types for clients.
+    """
+    #: Indicates that external authentication should be used, if configured
+    EXTERNAL = "external"
+    #: Indicates that OIDC authentication should be used
+    OIDC = "oidc"
 
 
 def base64_encoded_content(path):
@@ -95,8 +108,18 @@ class ConnectConfig(Configuration):
     read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
+    #: The type of authentication to use
+    auth_type: AuthType = AuthType.EXTERNAL
+    #: The URL of the OIDC issuer to use (only used when auth_type == "oidc")
+    auth_oidc_issuer: typing.Optional[AnyHttpUrl] = None
+    #: Path to a file containing the OIDC client ID and secret
+    auth_oidc_credentials_file: typing.Optional[FilePath] = None
+    #: The OIDC client ID
+    auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = None
+    #: The OIDC client secret
+    auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = None
     #: Parameters for the proxy authentication service
-    auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
+    auth_external_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Path to a file containing a TLS certificate chain to use
     tls_cert_file: typing.Optional[FilePath] = None
     #: Base64-encoded TLS certificate to use
@@ -110,8 +133,8 @@ class ConnectConfig(Configuration):
     #: Base64-encoded CA to use to validate TLS client certificates
     tls_client_ca_data: typing.Optional[str] = None
 
-    @validator("auth_params", pre = True)
-    def pre_validate_auth_params(cls, value):
+    @validator("auth_external_params", pre = True)
+    def pre_validate_auth_external_params(cls, value):
         """
         Applies pre-validation to the auth params.
         """
@@ -134,6 +157,36 @@ class ConnectConfig(Configuration):
             return base64_encoded_content(ssh_identity_path)
         else:
             raise ValueError("No SSH private key specified.")
+
+    @validator("auth_oidc_client_id", always = True)
+    def validate_auth_oidc_client_id(cls, v, values, **kwargs):
+        """
+        Extracts the OIDC client ID from the credentials file if not given.
+        """
+        if v:
+            return v
+        credentials_file = values.get("auth_oidc_credentials_file")
+        if credentials_file:
+            with credentials_file.open() as fh:
+                credentials = yaml.safe_load(fh)
+            return credentials["client-id"]
+        else:
+            return None
+
+    @validator("auth_oidc_client_secret", always = True)
+    def validate_auth_oidc_client_secret(cls, v, values, **kwargs):
+        """
+        Extracts the OIDC client secret from the credentials file if not given.
+        """
+        if v:
+            return v
+        credentials_file = values.get("auth_oidc_credentials_file")
+        if credentials_file:
+            with credentials_file.open() as fh:
+                credentials = yaml.safe_load(fh)
+            return credentials["client-secret"]
+        else:
+            return None
 
     @validator("tls_cert_data", always = True)
     def validate_tls_cert_data(cls, v, *, values):

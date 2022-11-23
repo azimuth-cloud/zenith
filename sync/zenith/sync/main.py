@@ -11,7 +11,7 @@ async def run(config):
     mirror = TLSSecretMirror(config.kubernetes)
     watcher = ServiceWatcher(config.consul)
     reconciler = ServiceReconciler(config.kubernetes)
-    # Both run coroutines should run forever if there are no problems
+    # All the coroutines should run forever if there are no problems
     # We can't use gather because we want the entire command to exit if one
     # of the coroutines exits, even if that exit is clean
     done, not_done = await asyncio.wait(

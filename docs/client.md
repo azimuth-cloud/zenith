@@ -178,8 +178,8 @@ own authentication.
       * CLI argument: *Not available as a CLI argument.*
       * Environment variable: `ZENITH_CLIENT__SKIP_AUTH`
       * Default: `false`
-  * `auth_params`: Indicates if the external auth should be skipped for this client.
+  * `auth_external_params`: Indicates if the external auth should be skipped for this client.
       * CLI argument: *Not available as a CLI argument.*
-      * Environment variables of the form `ZENITH_CLIENT__AUTH_PARAMS__{KEY}`, e.g.
-        `ZENITH_CLIENT__AUTH_PARAMS__OPENSTACK_PROJECT`
+      * Environment variables of the form `ZENITH_CLIENT__AUTH_EXTERNAL_PARAMS__{KEY}`, e.g.
+        `ZENITH_CLIENT__AUTH_EXTERNAL_PARAMS__OPENSTACK_PROJECT`
       * Default: `{}`
