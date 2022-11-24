@@ -56,8 +56,8 @@ sync:
     #   port:
     #   # The tag to use for identifying Zenith services in Consul
     #   serviceTag:
-    #   # The prefix to use for additional service information for Zenith services in Consul KV
-    #   tlsKeyPrefix:
+    #   # The prefix to use for Zenith service config in Consul KV
+    #   configKeyPrefix:
     #   # The timeout to use with Consul blocking queries
     #   blockingQueryTimeout:
     # The Kubernetes configuration
@@ -79,8 +79,16 @@ sync:
         #   secretName:
         #   # TLS-specific annotations
         #   annotations:
+        # # The OIDC auth configuration
+        # oidc:
+        #   # The Helm chart to use for the oauth2-proxy that provides OIDC auth for services
+        #   oauth2ProxyChartRepo:
+        #   oauth2ProxyChartName:
+        #   oauth2ProxyChartVersion:
+        #   # The default values for the oauth2-proxy releases for OIDC-authenticated services
+        #   oauth2ProxyDefaultValues: {}
         # # The external auth configuration
-        # auth:
+        # externalAuth:
         #   # The URL for verifying incoming requests
         #   url:
         #   # The URL to redirect to when the verify URL returns a 401
@@ -88,7 +96,7 @@ sync:
         #   signinUrl:
         #   # The URL parameter to contain the original URL when redirecting to the signin URL
         #   nextUrlParam: next
-        #   # Dictionary of headers to set for authentication requests
+        #   # Dictionary of headers to set for authentication requests
         #   # These will override headers from the incoming request, which would otherwise be forwarded
         #   # In particular, you may need to override the accepts header to suit the content types served
         #   # by the external authentication service

@@ -6,7 +6,7 @@ consul:
   address: {{ tpl .Values.common.consul.address . | quote }}
   port: {{ .Values.common.consul.port }}
   serviceTag: {{ .Values.common.consul.serviceTag | quote }}
-  tlsKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
+  configKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
 kubernetes:
   ingress:
     baseDomain: {{ $ingress.baseDomain | quote }}
