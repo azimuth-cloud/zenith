@@ -297,7 +297,7 @@ class ServiceReconciler:
             #   Then set additional headers from the external auth params
             request_headers.update({
                 f"{self.config.ingress.external_auth.param_header_prefix}{name}": value
-                for name, value in service.config.get("auth-external-params", {})
+                for name, value in service.config.get("auth-external-params", {}).items()
             })
             ingress_modifier.configure_authentication(
                 ingress,
