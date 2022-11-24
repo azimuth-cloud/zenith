@@ -7,11 +7,41 @@ metadata:
   labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
   namespace: {{ .Values.sync.config.kubernetes.targetNamespace }}
 rules:
-  # We need full access to eps, secrets, services and ingresses in the target namespace
-  - apiGroups: [""]
-    resources: ["endpoints", "secrets", "services"]
-    verbs: ["*"]
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses"]
-    verbs: ["*"]
+  # For basic services, we need to manage secrets, endpoints, services and ingresses
+  # For OIDC authenticated services, we also need to manage configmaps, deployments,
+  # poddisruptionbudgets, serviceaccounts and servicemonitors
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - endpoints
+      - secrets
+      - services
+      - serviceaccounts
+    verbs:
+      - "*"
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - "*"
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - "*"
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+    verbs:
+      - "*"
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - servicemonitors
+    verbs:
+      - "*"
 {{- end }}
