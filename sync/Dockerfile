@@ -15,7 +15,7 @@ RUN useradd \
 
 # Install tini, which we will use to marshal the processes and Python
 RUN apt-get update && \
-    apt-get install -y git python3 python3-pip tini && \
+    apt-get install -y curl git python3 python3-pip tini && \
     rm -rf /var/lib/apt/lists/*
 
 # Install the Helm CLI
