@@ -170,6 +170,8 @@ class ServiceReconciler:
                 },
             },
             cleanup_on_fail = True,
+            # The namespace should exist, so we don't need to create it
+            create_namespace = False,
             namespace = self.config.target_namespace
             # We don't need to wait, we just need to know that Helm created the resources
         )
