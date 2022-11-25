@@ -1,8 +1,5 @@
-from .client import (
-    Client,
-    UpstreamScheme,
-    MITMProxyAuthInjectType,
-    ClientPhase,
-    ClientStatus,
-)
-from .reservation import Reservation, ReservationPhase, ReservationStatus
+from .client import *
+from .reservation import *
+
+
+__version__ = __name__.rsplit(".", maxsplit = 1)[-1]

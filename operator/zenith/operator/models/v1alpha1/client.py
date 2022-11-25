@@ -1,13 +1,13 @@
 import typing as t
 
-from pydantic import Extra, Field, conint, constr, validator
+from pydantic import Extra, Field, constr, validator
+
+from kube_custom_resource import CustomResource, schema
 
 from ...config import settings
 
-from ..schema import BaseModel, Dict, Enum, IntOrString
 
-
-class ContainerImagePullPolicy(str, Enum):
+class ContainerImagePullPolicy(str, schema.Enum):
     """
     Enum of possible options for the container image pull policy.
     """
@@ -16,7 +16,7 @@ class ContainerImagePullPolicy(str, Enum):
     NEVER = "Never"
 
 
-class ContainerImage(BaseModel):
+class ContainerImage(schema.BaseModel):
     """
     Model for a container image.
     """
@@ -30,21 +30,21 @@ class ContainerImage(BaseModel):
     )
 
 
-class ContainerResources(BaseModel):
+class ContainerResources(schema.BaseModel):
     """
     Model for the resources for a container.
     """
-    requests: Dict[constr(min_length = 1), constr(min_length = 1)] = Field(
+    requests: schema.Dict[str, str] = Field(
         default_factory = dict,
         description = "The resource requests for the container."
     )
-    limits: Dict[constr(min_length = 1), constr(min_length = 1)] = Field(
+    limits: schema.Dict[str, str] = Field(
         default_factory = dict,
         description = "The resource limits for the container."
     )
 
 
-class UpstreamScheme(str, Enum):
+class UpstreamScheme(str, schema.Enum):
     """
     Enum of possible options for the upstream scheme.
     """
@@ -52,7 +52,7 @@ class UpstreamScheme(str, Enum):
     HTTPS = "https"
 
 
-class UpstreamSpec(BaseModel):
+class UpstreamSpec(schema.BaseModel):
     """
     Model for the upstream section of a client spec.
     """
@@ -60,7 +60,7 @@ class UpstreamSpec(BaseModel):
         ...,
         description = "The name of the service to use as the upstream."
     )
-    port: t.Optional[IntOrString] = Field(
+    port: t.Optional[schema.IntOrString] = Field(
         None,
         description = (
             "The service port to use for the upstream. "
@@ -94,7 +94,7 @@ class UpstreamSpec(BaseModel):
                 raise ValueError("must be greater than 0")
 
 
-class ZenithClientAuthSpec(BaseModel):
+class ZenithClientAuthSpec(schema.BaseModel):
     """
     Model for the auth section of a Zenith client spec.
     """
@@ -105,7 +105,7 @@ class ZenithClientAuthSpec(BaseModel):
             "the Zenith proxy."
         )
     )
-    params: Dict[str, str] = Field(
+    params: schema.Dict[str, str] = Field(
         default_factory = dict,
         description = (
             "Parameters for the Zenith authentication callout. "
@@ -124,7 +124,7 @@ class ZenithClientContainerImage(ContainerImage):
     )
 
 
-class MITMProxyAuthInjectType(str, Enum):
+class MITMProxyAuthInjectType(str, schema.Enum):
     """
     Enum of possible options for the MITM proxy auth injection type.
     """
@@ -134,7 +134,7 @@ class MITMProxyAuthInjectType(str, Enum):
     SERVICE_ACCOUNT = "ServiceAccount"
 
 
-class MITMProxyAuthInjectBasic(BaseModel):
+class MITMProxyAuthInjectBasic(schema.BaseModel):
     """
     Model for basic auth injection parameters.
     """
@@ -152,7 +152,7 @@ class MITMProxyAuthInjectBasic(BaseModel):
     )
 
 
-class MITMProxyAuthInjectBearer(BaseModel):
+class MITMProxyAuthInjectBearer(schema.BaseModel):
     """
     Model for bearer auth injection parameters.
     """
@@ -174,7 +174,7 @@ class MITMProxyAuthInjectBearer(BaseModel):
     )
 
 
-class MITMProxyAuthInjectServiceAccount(BaseModel):
+class MITMProxyAuthInjectServiceAccount(schema.BaseModel):
     """
     Model for service account auth injection parameters.
     """
@@ -184,7 +184,7 @@ class MITMProxyAuthInjectServiceAccount(BaseModel):
     )
 
 
-class MITMProxyAuthInjectSpec(BaseModel):
+class MITMProxyAuthInjectSpec(schema.BaseModel):
     """
     Model for the MITM proxy auth injection configuration.
     """
@@ -244,7 +244,7 @@ class MITMProxyContainerImage(ContainerImage):
     )
 
 
-class MITMProxySpec(BaseModel):
+class MITMProxySpec(schema.BaseModel):
     """
     Model for the MITM proxy section of a client spec.
     """
@@ -252,7 +252,7 @@ class MITMProxySpec(BaseModel):
         False,
         description = "Indicates whether the MITM proxy is enabled."
     )
-    port: conint(ge = 1) = Field(
+    port: schema.conint(ge = 1) = Field(
         8080,
         description = "The port that the MITM proxy should listen on."
     )
@@ -270,7 +270,7 @@ class MITMProxySpec(BaseModel):
     )
 
 
-class LocalObjectReference(BaseModel):
+class LocalObjectReference(schema.BaseModel):
     """
     Model for an object reference.
     """
@@ -280,7 +280,7 @@ class LocalObjectReference(BaseModel):
     )
 
 
-class PodSecurityContext(BaseModel):
+class PodSecurityContext(schema.BaseModel):
     """
     Model for a pod security context.
     """
@@ -291,13 +291,13 @@ class PodSecurityContext(BaseModel):
         True,
         description = "Indicates that containers must run as a non-root user."
     )
-    run_as_user: conint(ge = 0) = Field(
+    run_as_user: schema.conint(ge = 0) = Field(
         1001,
         description = "The UID to run the entrypoint of container processes."
     )
 
 
-class SecurityContextCapabilities(BaseModel):
+class SecurityContextCapabilities(schema.BaseModel):
     """
     Model for the capabilities of a container security context.
     """
@@ -311,7 +311,7 @@ class SecurityContextCapabilities(BaseModel):
     )
 
 
-class ContainerSecurityContext(BaseModel):
+class ContainerSecurityContext(schema.BaseModel):
     """
     Model for the container security context.
     """    
@@ -332,7 +332,7 @@ class ContainerSecurityContext(BaseModel):
     )
 
 
-class ClientSpec(BaseModel):
+class ClientSpec(schema.BaseModel):
     """
     Model for the spec of a Zenith client.
     """
@@ -364,7 +364,7 @@ class ClientSpec(BaseModel):
         default_factory = ContainerResources,
         description = "The resources for the Zenith client container."
     )
-    replica_count: conint(ge = 1) = Field(
+    replica_count: schema.conint(ge = 1) = Field(
         1,
         description = "The number of replicas for the client deployment."
     )
@@ -376,21 +376,21 @@ class ClientSpec(BaseModel):
         default_factory = ContainerSecurityContext,
         description = "The container-level security context for containers in client pods."
     )
-    node_selector: Dict[str, str] = Field(
+    node_selector: schema.Dict[str, str] = Field(
         default_factory = dict,
         description = "The node labels required for a client pod to be scheduled."
     )
-    affinity: Dict[str, t.Any] = Field(
+    affinity: schema.Dict[str, schema.Any] = Field(
         default_factory = dict,
         description = "The affinity constraints for client pods."
     )
-    tolerations: t.List[Dict[str, t.Any]] = Field(
+    tolerations: t.List[schema.Dict[str, schema.Any]] = Field(
         default_factory = list,
         description = "The tolerations for client pods."
     )
 
 
-class ClientPhase(str, Enum):
+class ClientPhase(str, schema.Enum):
     """
     Enum of possible phases for a Zenith client.
     """
@@ -402,7 +402,7 @@ class ClientPhase(str, Enum):
     UNKNOWN = "Unknown"
 
 
-class ClientStatus(BaseModel):
+class ClientStatus(schema.BaseModel):
     """
     Model for the status of a Zenith client.
     """
@@ -415,7 +415,32 @@ class ClientStatus(BaseModel):
     )
 
 
-class Client(BaseModel):
+class Client(
+    CustomResource,
+    subresources = {"status": {}},
+    printer_columns = [
+        {
+            "name": "Phase",
+            "type": "string",
+            "jsonPath": ".status.phase",
+        },
+        {
+            "name": "Upstream Service",
+            "type": "string",
+            "jsonPath": ".spec.upstream.serviceName",
+        },
+        {
+            "name": "MITM Enabled",
+            "type": "boolean",
+            "jsonPath": ".spec.mitmProxy.enabled",
+        },
+        {
+            "name": "MITM Auth",
+            "type": "string",
+            "jsonPath": ".spec.mitmProxy.authInject.type",
+        },
+    ]
+):
     """
     Model for a Zenith client.
     """

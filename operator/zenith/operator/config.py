@@ -19,6 +19,10 @@ class Configuration(BaseConfiguration):
 
     #: The API group of the cluster CRDs
     api_group: constr(min_length = 1) = "zenith.stackhpc.com"
+    #: A list of categories to place CRDs into
+    crd_categories: t.List[constr(min_length = 1)] = Field(
+        default_factory = lambda: ["zenith"]
+    )
 
     #: The base domain used for cluster services
     cluster_service_domain: constr(regex = r"^[a-z0-9.-]+$") = "svc.cluster.local"
