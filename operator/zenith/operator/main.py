@@ -219,6 +219,11 @@ async def client_changed(instance, name, namespace, body, **kwargs):
     if instance.status.phase == api.ClientPhase.UNKNOWN:
         instance.status.phase = api.ClientPhase.PENDING
         await save_instance_status(instance)
+    # Make sure that the auth configuration is correct
+    auth_type = instance.spec.auth.type or api.AuthType(settings.default_auth_type.value)
+    if auth_type == api.AuthType.OIDC:
+        if not instance.spec.auth.oidc:
+            raise kopf.PermanentError(".spec.auth.oidc is required for OIDC authentication")
     # Make sure the specified service exists
     services = await ekclient.api("v1").resource("services")
     try:
@@ -304,9 +309,7 @@ async def client_changed(instance, name, namespace, body, **kwargs):
         ssh_private_key_data = private_key_b64,
         upstream_host = upstream_host,
         upstream_port = upstream_port,
-        client = instance,
-        # Merge any client-specific auth parameters with the defaults
-        auth_params = mergeconcat(settings.default_auth_params, instance.spec.auth.params)
+        client = instance
     )
     # Decide whether we need the service account and cluster role and delete if not
     service_account = default_loader.load("client/serviceaccount.yaml", **params)

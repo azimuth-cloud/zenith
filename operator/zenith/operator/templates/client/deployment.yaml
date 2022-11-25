@@ -17,21 +17,34 @@ spec:
         app.kubernetes.io/managed-by: zenith-operator
         {{ settings.api_group }}/client: {{ name }}
     spec:
-      {% if client.spec.image_pull_secrets %}
+{%- if client.spec.image_pull_secrets %}
       imagePullSecrets:
         {{ client.spec.image_pull_secrets | toyaml | indent(8) }}
-      {% endif %}
+{%- endif %}
       securityContext:
         {{ client.spec.pod_security_context | toyaml | indent(8) }}
-{% if client.spec.mitm_proxy.enabled and client.spec.mitm_proxy.auth_inject.type == "ServiceAccount" %}
+{%- if client.spec.mitm_proxy.enabled and client.spec.mitm_proxy.auth_inject.type == "ServiceAccount" %}
       serviceAccountName: {{ name }}-zenith-client
-{% endif %}
+{%- endif %}
       containers:
         - name: zenith-client
           securityContext:
             {{ client.spec.security_context | toyaml | indent(12) }}
           image: {{ "{}:{}".format(client.spec.image.repository, client.spec.image.tag) }}
           imagePullPolicy: {{ client.spec.image.pull_policy }}
+{%- if client.spec.auth.oidc %}
+          env:
+            - name: ZENITH_CLIENT__AUTH_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ client.spec.auth.oidc.credentials_secret_name }}
+                  key: {{ client.spec.auth.oidc.client_id_key }}
+            - name: ZENITH_CLIENT__AUTH_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ client.spec.auth.oidc.credentials_secret_name }}
+                  key: {{ client.spec.auth.oidc.client_secret_key }}
+{%- endif %}
           resources:
             {{ client.spec.resources | toyaml | indent(12) }}
           volumeMounts:
@@ -40,7 +53,7 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
-{% if client.spec.mitm_proxy.enabled %}
+{%- if client.spec.mitm_proxy.enabled %}
         - name: mitm-proxy
           securityContext:
             {{ client.spec.security_context | toyaml | indent(12) }}
@@ -54,17 +67,17 @@ spec:
           env:
             - name: ZENITH_PROXY_LISTEN_PORT
               value: "{{ client.spec.mitm_proxy.port }}"
-{% if client.spec.upstream.read_timeout %}
+{%- if client.spec.upstream.read_timeout %}
             - name: ZENITH_PROXY_READ_TIMEOUT
               value: "{{ client.spec.upstream.read_timeout }}"
-{% endif %}
+{%- endif %}
             - name: ZENITH_PROXY_UPSTREAM_SCHEME
               value: {{ client.spec.upstream.scheme }}
             - name: ZENITH_PROXY_UPSTREAM_HOST
               value: {{ upstream_host }}
             - name: ZENITH_PROXY_UPSTREAM_PORT
               value: "{{ upstream_port }}"
-{% if client.spec.mitm_proxy.auth_inject.type == "Basic" %}
+{%- if client.spec.mitm_proxy.auth_inject.type == "Basic" %}
             - name: ZENITH_PROXY_AUTH_INJECT
               value: basic
             - name: ZENITH_PROXY_AUTH_BASIC_USERNAME
@@ -77,7 +90,7 @@ spec:
                 secretKeyRef:
                   name: {{ client.spec.mitm_proxy.auth_inject.basic.secret_name }}
                   key: {{ client.spec.mitm_proxy.auth_inject.basic.password_key }}
-{% elif client.spec.mitm_proxy.auth_inject.type == "Bearer" %}
+{%- elif client.spec.mitm_proxy.auth_inject.type == "Bearer" %}
             - name: ZENITH_PROXY_AUTH_INJECT
               value: bearer
             - name: ZENITH_PROXY_AUTH_BEARER_HEADER
@@ -89,12 +102,12 @@ spec:
                 secretKeyRef:
                   name: {{ client.spec.mitm_proxy.auth_inject.bearer.secret_name }}
                   key: {{ client.spec.mitm_proxy.auth_inject.bearer.token_key }}
-{% elif client.spec.mitm_proxy.auth_inject.type == "ServiceAccount" %}
+{%- elif client.spec.mitm_proxy.auth_inject.type == "ServiceAccount" %}
             - name: ZENITH_PROXY_AUTH_INJECT
               value: bearer
             - name: ZENITH_PROXY_AUTH_BEARER_TOKEN_FILE
               value: /var/run/secrets/kubernetes.io/serviceaccount/token
-{% endif %}
+{%- endif %}
           resources:
             {{ client.spec.mitm_proxy.resources | toyaml | indent(12) }}
           volumeMounts:
@@ -102,28 +115,28 @@ spec:
               mountPath: /var/cache/nginx
             - name: var-run-nginx
               mountPath: /var/run/nginx
-{% endif %}
+{%- endif %}
       volumes:
         - name: etc-zenith
           secret:
             secretName: {{ name }}-zenith-client
         - name: tmp
           emptyDir: {}
-{% if client.spec.mitm_proxy.enabled %}
+{%- if client.spec.mitm_proxy.enabled %}
         - name: var-cache-nginx
           emptyDir: {}
         - name: var-run-nginx
           emptyDir: {}
-{% endif %}
-{% if client.spec.node_selector %}
+{%- endif %}
+{%- if client.spec.node_selector %}
       nodeSelector:
         {{ client.spec.node_selector | toyaml | indent(8) }}
-{% endif %}
-{% if client.spec.affinity %}
+{%- endif %}
+{%- if client.spec.affinity %}
       affinity:
         {{ client.spec.affinity | toyaml | indent(8) }}
-{% endif %}
-{% if client.spec.tolerations %}
+{%- endif %}
+{%- if client.spec.tolerations %}
       tolerations:
         {{ client.spec.tolerations | toyaml | indent(8) }}
-{% endif %}
+{%- endif %}

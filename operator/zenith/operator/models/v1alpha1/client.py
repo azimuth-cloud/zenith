@@ -1,6 +1,6 @@
 import typing as t
 
-from pydantic import Extra, Field, constr, validator
+from pydantic import Extra, Field, AnyHttpUrl, constr, validator
 
 from kube_custom_resource import CustomResource, schema
 
@@ -21,7 +21,7 @@ class ContainerImage(schema.BaseModel):
     Model for a container image.
     """
     pull_policy: ContainerImagePullPolicy = Field(
-        ContainerImagePullPolicy.IF_NOT_PRESENT,
+        ContainerImagePullPolicy(settings.default_image_pull_policy.value),
         description = "The pull policy for the container image."
     )
     tag: constr(regex = r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$") = Field(
@@ -94,7 +94,50 @@ class UpstreamSpec(schema.BaseModel):
                 raise ValueError("must be greater than 0")
 
 
-class ZenithClientAuthSpec(schema.BaseModel):
+class AuthType(str, schema.Enum):
+    """
+    Enumeration of possible auth types for clients.
+    """
+    EXTERNAL = "external"
+    OIDC = "oidc"
+
+
+class ExternalAuthSpec(schema.BaseModel):
+    """
+    Model for the external auth section of a Zenith client spec.
+    """
+    params: schema.Dict[str, str] = Field(
+        default_factory = dict,
+        description = (
+            "Parameters for the Zenith authentication callout. "
+            "The available parameters depend on the target Zenith server."
+        )
+    )
+
+
+class OIDCAuthSpec(schema.BaseModel):
+    """
+    Model for the OIDC auth section of a Zenith client spec.
+    """
+    issuer: AnyHttpUrl = Field(
+        ...,
+        description = "The URL of the OIDC issuer to use."
+    )
+    credentials_secret_name: constr(regex = r"^[a-z0-9-]+$") = Field(
+        ...,
+        description = "The name of the secret containing the OIDC client ID and secret."
+    )
+    client_id_key: constr(min_length = 1) = Field(
+        "client-id",
+        description = "The key of the client ID within the credentials secret."
+    )
+    client_secret_key: constr(min_length = 1) = Field(
+        "client-secret",
+        description = "The key of the client secret within the credentials secret."
+    )
+
+
+class AuthSpec(schema.BaseModel):
     """
     Model for the auth section of a Zenith client spec.
     """
@@ -105,11 +148,22 @@ class ZenithClientAuthSpec(schema.BaseModel):
             "the Zenith proxy."
         )
     )
-    params: schema.Dict[str, str] = Field(
-        default_factory = dict,
+    type: t.Optional[AuthType] = Field(
+        None,
         description = (
-            "Parameters for the Zenith authentication callout. "
-            "The available parameters depend on the target Zenith server."
+            "The type of authentication to use. "
+            "If not given, the default authentication for the operator will be used."
+        )
+    )
+    external: t.Optional[ExternalAuthSpec] = Field(
+        default = None,
+        description = "Configuration for external auth."
+    )
+    oidc: t.Optional[OIDCAuthSpec] = Field(
+        default = None,
+        description = (
+            "Configuration for OIDC auth. "
+            "If not given, the operator default configuration will be used."
         )
     )
 
@@ -356,8 +410,8 @@ class ClientSpec(schema.BaseModel):
         default_factory = ZenithClientContainerImage,
         description = "The image specification for the Zenith client container."
     )
-    auth: ZenithClientAuthSpec = Field(
-        default_factory = ZenithClientAuthSpec,
+    auth: AuthSpec = Field(
+        default_factory = AuthSpec,
         description = "The auth configuration for the Zenith client."
     )
     resources: ContainerResources = Field(
@@ -428,6 +482,16 @@ class Client(
             "name": "Upstream Service",
             "type": "string",
             "jsonPath": ".spec.upstream.serviceName",
+        },
+        {
+            "name": "Skip Auth",
+            "type": "boolean",
+            "jsonPath": ".spec.auth.skip",
+        },
+        {
+            "name": "Auth Type",
+            "type": "string",
+            "jsonPath": ".spec.auth.type",
         },
         {
             "name": "MITM Enabled",

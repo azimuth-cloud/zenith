@@ -78,7 +78,7 @@ class Reservation(
         },
         {
             "name": "FQDN",
-            "type": "integer",
+            "type": "string",
             "jsonPath": ".status.fqdn",
         },
     ]

@@ -156,9 +156,21 @@ class ServiceReconciler:
                     "provider": "oidc",
                     "oidc-issuer-url": service.config["auth-oidc-issuer"],
                     "email-domain": "*",
+                    # If email addresses are not explicitly required, don't require them to be present
+                    # This means using a claim that is always available, like 'sub'
+                    "oidc-email-claim": (
+                        "email"
+                        if service.config.get("auth-oidc-require-email", False)
+                        else "sub"
+                    ),
+                    # Allow unverified email addresses unless explicitly required
                     "insecure-oidc-allow-unverified-email": (
                         "true"
-                        if service.config.get("auth-oidc-allow-unverified-email", True)
+                        if (
+                            # If email addresses are not required at all, then they don't need to be verified
+                            not service.config.get("auth-oidc-require-email", False) or
+                            service.config.get("auth-oidc-allow-unverified-email", True)
+                        )
                         else "false"
                     ),
                     "pass-access-token": "",
