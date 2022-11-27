@@ -126,10 +126,11 @@ class ServiceReconciler:
         """
         Reconciles the secret for the oauth2-proxy for the service.
         """
+        issuer = service.config["auth-oidc-issuer"]
         # We want the secret name to be unique for each issuer, mainly so that a new client
         # is created if the issuer is changed and dynamic client registration is in use
         # To do this, we hash the issuer and put the first 8 characters in the secret name
-        issuer_hash = hashlib.sha256(service.config["auth-oidc-issuer"].encode()).hexdigest()
+        issuer_hash = hashlib.sha256(issuer.encode()).hexdigest()
         secret_name = f"{release_name}-{issuer_hash[:8]}"
         # Read the existing secret so that we can reuse the values in the Helm release
         secrets = await client.api("v1").resource("secrets")
@@ -156,7 +157,11 @@ class ServiceReconciler:
             next_data["client-secret"] = service.config["auth-oidc-client-secret"]
         # Register a new client using dynamic client registration if there is no existing client
         elif "client-id" not in next_data:
-            async with httpx.AsyncClient(base_url = service.config["auth-oidc-issuer"]) as http:
+            self._log(
+                "info",
+                f"Registering OIDC client for {service.name} at {issuer}"
+            )
+            async with httpx.AsyncClient(base_url = issuer) as http:
                 # Get the registration endpoint from the discovery URL
                 response = await http.get("/.well-known/openid-configuration")
                 response.raise_for_status()
