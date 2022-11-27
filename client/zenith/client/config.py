@@ -112,12 +112,13 @@ class ConnectConfig(Configuration):
     auth_type: AuthType = AuthType.EXTERNAL
     #: The URL of the OIDC issuer to use (only used when auth_type == "oidc")
     auth_oidc_issuer: typing.Optional[AnyHttpUrl] = None
-    #: Path to a file containing the OIDC client ID and secret
-    auth_oidc_credentials_file: typing.Optional[FilePath] = None
-    #: The OIDC client ID
+    #: The OIDC client ID, if known
     auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = None
-    #: The OIDC client secret
+    #: The OIDC client secret, required if client ID is given
     auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = None
+    #: The token to use to register an OIDC client using dynamic client registration
+    #: Only used if no client ID is given
+    auth_oidc_client_registration_token: typing.Optional[constr(min_length = 1)] = None
     #: Parameters for the proxy authentication service
     auth_external_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Path to a file containing a TLS certificate chain to use
@@ -157,36 +158,6 @@ class ConnectConfig(Configuration):
             return base64_encoded_content(ssh_identity_path)
         else:
             raise ValueError("No SSH private key specified.")
-
-    @validator("auth_oidc_client_id", always = True)
-    def validate_auth_oidc_client_id(cls, v, values, **kwargs):
-        """
-        Extracts the OIDC client ID from the credentials file if not given.
-        """
-        if v:
-            return v
-        credentials_file = values.get("auth_oidc_credentials_file")
-        if credentials_file:
-            with credentials_file.open() as fh:
-                credentials = yaml.safe_load(fh)
-            return credentials["client-id"]
-        else:
-            return None
-
-    @validator("auth_oidc_client_secret", always = True)
-    def validate_auth_oidc_client_secret(cls, v, values, **kwargs):
-        """
-        Extracts the OIDC client secret from the credentials file if not given.
-        """
-        if v:
-            return v
-        credentials_file = values.get("auth_oidc_credentials_file")
-        if credentials_file:
-            with credentials_file.open() as fh:
-                credentials = yaml.safe_load(fh)
-            return credentials["client-secret"]
-        else:
-            return None
 
     @validator("tls_cert_data", always = True)
     def validate_tls_cert_data(cls, v, *, values):

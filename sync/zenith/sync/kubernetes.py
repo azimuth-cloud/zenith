@@ -1,8 +1,11 @@
 import asyncio
 import base64
+import hashlib
 import importlib.metadata
 import logging
 import os
+
+import httpx
 
 from easykube import Configuration, ApiError, PRESENT
 
@@ -119,19 +122,95 @@ class ServiceReconciler:
                 client_ca_secret
             )
 
+    async def _reconcile_oidc_secret(self, release_name, client, service, service_domain):
+        """
+        Reconciles the secret for the oauth2-proxy for the service.
+        """
+        # We want the secret name to be unique for each issuer, mainly so that a new client
+        # is created if the issuer is changed and dynamic client registration is in use
+        # To do this, we hash the issuer and put the first 8 characters in the secret name
+        issuer_hash = hashlib.sha256(service.config["auth-oidc-issuer"].encode()).hexdigest()
+        secret_name = f"{release_name}-{issuer_hash[:8]}"
+        # Read the existing secret so that we can reuse the values in the Helm release
+        secrets = await client.api("v1").resource("secrets")
+        # If the secret already exists, use it
+        try:
+            secret = await secrets.fetch(secret_name)
+        except ApiError as exc:
+            existing_data = {}
+            if exc.status_code != 404:
+                raise
+        else:
+            existing_data = {
+                key: base64.b64decode(value).decode()
+                for key, value in secret.get("data", {}).items()
+            }
+        # Calculate the next data based on the tunnel configuration
+        next_data = existing_data.copy()
+        # Generate a random cookie secret if required
+        if "cookie-secret" not in next_data:
+            next_data["cookie-secret"] = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        # If the client specified a client ID, always use it
+        if "auth-oidc-client-id" in service.config:
+            next_data["client-id"] = service.config["auth-oidc-client-id"]
+            next_data["client-secret"] = service.config["auth-oidc-client-secret"]
+        # Register a new client using dynamic client registration if there is no existing client
+        elif "client-id" not in next_data:
+            async with httpx.AsyncClient(base_url = service.config["auth-oidc-issuer"]) as http:
+                # Get the registration endpoint from the discovery URL
+                response = await http.get("/.well-known/openid-configuration")
+                response.raise_for_status()
+                registration_endpoint = response.json()["registration_endpoint"]
+                headers = {}
+                if "auth-oidc-client-registration-token" in service.config:
+                    token = service.config["auth-oidc-client-registration-token"]
+                    headers["Authorization"] = f"Bearer {token}"
+                # Get the redirect URI that will be used for the client
+                redirect_scheme = (
+                    "https"
+                    if self.config.ingress.tls.enabled or "tls-cert" in service.config
+                    else "http"
+                )
+                redirect_uri = f"{redirect_scheme}://{service_domain}/_oidc/callback"
+                response = await http.post(
+                    registration_endpoint,
+                    headers = headers,
+                    json = {
+                        "application_type": "web",
+                        "response_types": ["code"],
+                        "grant_types": ["authorization_code"],
+                        "redirect_uris": [redirect_uri],
+                    }
+                )
+                response.raise_for_status()
+                # Set the client ID and secret from the response
+                next_data["client-id"] = response.json()["client_id"]
+                next_data["client-secret"] = response.json()["client_secret"]
+        # Patch the secret if required
+        if next_data != existing_data:
+            secret = await secrets.create_or_patch(
+                secret_name,
+                {
+                    "metadata": {
+                        "name": secret_name,
+                    },
+                    "stringData": next_data,
+                }
+            )
+        return secret
+
     async def _reconcile_oidc_proxy(self, release_name, client, service, service_domain):
         """
         Reconciles the oauth2-proxy release to do OIDC authentication for the service.
         """
-        # Read the existing cookie secret so that we can reuse it
-        # If it doesn't exist yet, generate one
-        try:
-            secrets = await client.api("v1").resource("secrets")
-            secret = await secrets.fetch(release_name)
-            cookie_secret = base64.b64decode(secret["data"]["cookie-secret"]).decode()
-        except (ApiError, KeyError):
-            # https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/overview#generating-a-cookie-secret
-            cookie_secret = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        secret = await self._reconcile_oidc_secret(release_name, client, service, service_domain)
+        # Calculate the checksum of the secret data
+        # We use this as a pod annotation so the deployment rotates when it changes
+        secret_hash = hashlib.sha256()
+        for key in sorted(secret["data"].keys()):
+            secret_hash.update(secret["data"][key].encode())
+        secret_checksum = secret_hash.hexdigest()
+        # Ensure that the OIDC
         _ = await self._helm_client.ensure_release(
             release_name,
             await self._helm_client.get_chart(
@@ -145,9 +224,10 @@ class ServiceReconciler:
             {
                 "fullnameOverride": release_name,
                 "config": {
-                    "clientID": service.config["auth-oidc-client-id"],
-                    "clientSecret": service.config["auth-oidc-client-secret"],
-                    "cookieSecret": cookie_secret,
+                    "existingSecret": secret["metadata"]["name"],
+                },
+                "podAnnotations": {
+                    "checksum/existing-secret": secret_checksum,
                 },
                 "extraArgs": {
                     "proxy-prefix": "/_oidc",
@@ -252,12 +332,12 @@ class ServiceReconciler:
         Apply any authentication configuration defined in the configuration and/or
         service to the ingress.
         """
-        auth_enabled = not service.config.get("skip-auth", False)
+        skip_auth = service.config.get("skip-auth", False)
         auth_type = service.config.get("auth-type", "external")
         # If OIDC is enabled, we create an oauth2-proxy instance to delegate the auth to
         # If it is not enabled, we need to make sure that the instance does not exist
         oidc_release_name = f"oidc-{service.name}"
-        if auth_enabled and auth_type == "oidc":
+        if not skip_auth and auth_type == "oidc":
             await self._reconcile_oidc_proxy(
                 oidc_release_name,
                 client,
@@ -457,6 +537,58 @@ class ServiceReconciler:
             namespace = self.config.target_namespace
         )
 
+    async def _try_reconcile_service(self, client, service, ingress_modifier):
+        """
+        Tries to reconcile the specified service, logging any errors that occur.
+        """
+        attempt = 1
+        while True:
+            try:
+                await self._reconcile_service(client, service, ingress_modifier)
+            except Exception as exc:
+                if attempt == self.config.reconciliation_retries:
+                    message = "Failed to reconcile {} after {} attempts - giving up".format(
+                        service.name,
+                        self.config.reconciliation_retries
+                    )
+                    self._log("exception", message)
+                    return
+                else:
+                    message = "Failed to reconcile {} on attempt {} - retrying".format(
+                        service.name,
+                        attempt
+                    )
+                    self._log("exception", message)
+                    attempt = attempt + 1
+            else:
+                return
+
+    async def _try_remove_service(self, client, name):
+        """
+        Tries to remove the specified service, logging any errors that occur.
+        """
+        attempt = 1
+        while True:
+            try:
+                await self._remove_service(client, name)
+            except Exception as exc:
+                if attempt == self.config.reconciliation_retries:
+                    message = "Failed to remove {} after {} attempts - giving up".format(
+                        name,
+                        self.config.reconciliation_retries
+                    )
+                    self._log("exception", message)
+                    return
+                else:
+                    message = "Failed to remove {} on attempt {} - retrying".format(
+                        name,
+                        attempt
+                    )
+                    self._log("exception", message)
+                    attempt = attempt + 1
+            else:
+                return
+
     async def run(self, source):
         """
         Run the reconciler against services from the given service source.
@@ -483,19 +615,19 @@ class ServiceReconciler:
                 async for service in services.list(labels = self._labels(PRESENT))
             }
             tasks = [
-                self._reconcile_service(client, service, ingress_modifier)
+                self._try_reconcile_service(client, service, ingress_modifier)
                 for service in initial_services
             ] + [
-                self._remove_service(client, name)
+                self._try_remove_service(client, name)
                 for name in existing_services.difference(s.name for s in initial_services)
             ]
             await asyncio.gather(*tasks)
             # Once the initial state has been synchronised, start processing events
             async for event in events:
                 if event.kind == EventKind.DELETED:
-                    await self._remove_service(client, event.service.name)
+                    await self._try_remove_service(client, event.service.name)
                 else:
-                    await self._reconcile_service(client, event.service, ingress_modifier)
+                    await self._try_reconcile_service(client, event.service, ingress_modifier)
 
 
 class TLSSecretMirror:

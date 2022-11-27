@@ -81,10 +81,13 @@ class ClientConfig(BaseModel):
     auth_type: AuthType = AuthType.EXTERNAL
     #: The URL of the OIDC issuer to use (only used when auth_type == OIDC)
     auth_oidc_issuer: typing.Optional[AnyHttpUrl] = None
-    #: The OIDC client ID (only used when auth_type == OIDC)
+    #: The OIDC client ID, if known
     auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = None
-    #: The OIDC client secret (only used when auth_type == OIDC)
+    #: The OIDC client secret, required if client ID is given
     auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = None
+    #: The token to use to register an OIDC client using dynamic client registration
+    #: Only used if no client ID is given
+    auth_oidc_client_registration_token: typing.Optional[constr(min_length = 1)] = None
     #: Parameters for the external authentication service (deprecated name)
     auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Parameters for the external authentication service
@@ -141,26 +144,21 @@ class ClientConfig(BaseModel):
             raise ValueError("required for OIDC authentication")
         return v
 
-    @validator("auth_oidc_client_id", always = True)
-    def validate_auth_oidc_client_id(cls, v, values, **kwargs):
-        """
-        Validates that the OIDC client ID is present when the auth type is OIDC.
-        """
-        skip_auth = values.get("skip_auth", False)
-        auth_type = values.get("auth_type", AuthType.OIDC)
-        if not skip_auth and auth_type == AuthType.OIDC and not v:
-            raise ValueError("required for OIDC authentication")
-        return v
-
     @validator("auth_oidc_client_secret", always = True)
     def validate_auth_oidc_client_secret(cls, v, values, **kwargs):
         """
-        Validates that the OIDC issuer is present when the auth type is OIDC.
+        Validates that a client secret is given when a client ID is present.
         """
         skip_auth = values.get("skip_auth", False)
-        auth_type = values.get("auth_type", AuthType.OIDC)
-        if not skip_auth and auth_type == AuthType.OIDC and not v:
-            raise ValueError("required for OIDC authentication")
+        auth_type = values.get("auth_type", AuthType.EXTERNAL)
+        auth_oidc_client_id = values.get("auth_oidc_client_id")
+        if (
+            not skip_auth and
+            auth_type == AuthType.OIDC and
+            auth_oidc_client_id and
+            not v
+        ):
+            raise ValueError("required when OIDC client ID is given")
         return v
 
     @validator("tls_cert")
@@ -328,6 +326,27 @@ def consul_check_service_host_and_port(
         raise TunnelError("Failed to list Consul services")
 
 
+def consul_check_auth_config(server_config: SSHDConfig, tunnel: Tunnel):
+    """
+    Checks that the auth config is valid, including verifying that the OIDC issuer
+    supports discovery and dynamic client registration where required.
+    """
+    if tunnel.config.skip_auth or tunnel.config.auth_type != AuthType.OIDC:
+        return
+    print("[SERVER] [INFO] Checking that OIDC issuer supports discovery")
+    # Check that the issuer supports discovery
+    issuer_url = tunnel.config.auth_oidc_issuer.rstrip("/")
+    response = requests.get(f"{issuer_url}/.well-known/openid-configuration")
+    response.raise_for_status()
+    # Check that the issuer supports dynamic client registration when required
+    if (
+        not tunnel.config.auth_oidc_client_id and
+        "registration_endpoint" not in response.json()
+    ):
+        print("[SERVER] [ERROR] OIDC issuer does not support dynamic client registration")
+        sys.exit(1)
+
+
 def consul_post_config(
     server_config: SSHDConfig,
     logger: logging.Logger,
@@ -348,11 +367,14 @@ def consul_post_config(
             "auth-type": tunnel.config.auth_type.value,
         })
         if tunnel.config.auth_type == AuthType.OIDC:
-            config.update({
-                "auth-oidc-issuer": tunnel.config.auth_oidc_issuer,
-                "auth-oidc-client-id": tunnel.config.auth_oidc_client_id,
-                "auth-oidc-client-secret": tunnel.config.auth_oidc_client_secret,
-            })
+            config["auth-oidc-issuer"] = tunnel.config.auth_oidc_issuer
+            if tunnel.config.auth_oidc_client_id:
+                config.update({
+                    "auth-oidc-client-id": tunnel.config.auth_oidc_client_id,
+                    "auth-oidc-client-secret": tunnel.config.auth_oidc_client_secret,
+                })
+            elif tunnel.config.auth_oidc_client_registration_token:
+                config["auth-oidc-client-registration-token"] = tunnel.config.auth_oidc_client_registration_token
         else:
             config["auth-external-params"] = tunnel.config.auth_external_params
     if tunnel.config.tls_cert:
@@ -620,6 +642,7 @@ def run(server_config: SSHDConfig, subdomain: str):
             {"subdomain": subdomain, "tunnelid": tunnel.id}
         )
         consul_check_service_host_and_port(server_config, tunnel)
+        consul_check_auth_config(server_config, tunnel)
         consul_post_config(server_config, logger, tunnel)
         consul_register_service(server_config, logger, tunnel, subdomain)
         register_signal_handlers(server_config, logger, tunnel)

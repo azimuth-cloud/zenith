@@ -99,11 +99,16 @@ def configure_tunnel(ssh_proc, config):
             else:
                 tunnel_config.update(auth_type = config.auth_type.value)
                 if config.auth_type == AuthType.OIDC:
-                    tunnel_config.update(
-                        auth_oidc_issuer = config.auth_oidc_issuer,
-                        auth_oidc_client_id = config.auth_oidc_client_id,
-                        auth_oidc_client_secret = config.auth_oidc_client_secret
-                    )
+                    tunnel_config.update(auth_oidc_issuer = config.auth_oidc_issuer)
+                    if config.auth_oidc_client_id:
+                        tunnel_config.update(
+                            auth_oidc_client_id = config.auth_oidc_client_id,
+                            auth_oidc_client_secret = config.auth_oidc_client_secret
+                        )
+                    elif config.auth_oidc_client_registration_token:
+                        tunnel_config.update(
+                            auth_oidc_client_registration_token = config.auth_oidc_client_registration_token
+                        )
                 elif config.auth_external_params:
                     tunnel_config.update(auth_external_params = config.auth_external_params)
             if config.tls_cert_file:

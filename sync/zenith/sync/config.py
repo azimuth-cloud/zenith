@@ -1,7 +1,7 @@
 import re
 import typing as t
 
-from pydantic import Field, AnyHttpUrl, constr
+from pydantic import Field, AnyHttpUrl, conint, constr
 
 from configomatic import Configuration, Section, LoggingConfiguration
 
@@ -182,6 +182,8 @@ class KubernetesConfig(Section):
     service_name_label: str = "zenith.stackhpc.com/service-name"
     #: The annotation used to record that a secret is a mirror of another secret
     tls_mirror_annotation: str = "zenith.stackhpc.com/mirrors"
+    #: The number of times that a failed reconciliation will be retried before giving up
+    reconciliation_retries: conint(gt = 0) = 3
     #: The ingress configuration
     ingress: IngressConfig
     #: The Helm client configuration
