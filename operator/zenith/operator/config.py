@@ -62,7 +62,7 @@ class Configuration(BaseConfiguration):
     #: The default OIDC issuer for clients that request OIDC but don't specify an issuer
     default_oidc_issuer: t.Optional[AnyHttpUrl] = None
     #: The token to use to create new OIDC clients with the default issuer
-    default_oidc_issuer_client_registration_token: t.Optional[constr(min_length = 1)] = None
+    default_oidc_client_registration_token: t.Optional[constr(min_length = 1)] = None
     #: The default external auth parameters for created clients
     default_external_auth_params: t.Dict[str, str] = Field(default_factory = dict)
 

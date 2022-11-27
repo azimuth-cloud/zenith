@@ -1,5 +1,6 @@
 import base64
 import functools
+import hashlib
 import logging
 import sys
 
@@ -220,10 +221,13 @@ async def client_changed(instance, name, namespace, body, **kwargs):
         instance.status.phase = api.ClientPhase.PENDING
         await save_instance_status(instance)
     # Make sure that the auth configuration is correct
-    auth_type = instance.spec.auth.type or api.AuthType(settings.default_auth_type.value)
-    if auth_type == api.AuthType.OIDC:
-        if not instance.spec.auth.oidc:
-            raise kopf.PermanentError(".spec.auth.oidc is required for OIDC authentication")
+    auth_type = instance.spec.auth.type or api.AuthType(settings.default_auth_type)
+    if (
+        auth_type == api.AuthType.OIDC and
+        not instance.spec.auth.oidc and
+        not settings.default_oidc_issuer
+    ):
+        raise kopf.PermanentError(".spec.auth.oidc is required")
     # Make sure the specified service exists
     services = await ekclient.api("v1").resource("services")
     try:
@@ -328,7 +332,16 @@ async def client_changed(instance, name, namespace, body, **kwargs):
     secret = default_loader.load("client/secret.yaml", **params)
     kopf.adopt(secret, body)
     await ekclient.apply_object(secret, force = True)
-    deployment = default_loader.load("client/deployment.yaml", **params)
+    # Take a checksum of the secret data to pass to the deployment, so that it rolls over
+    hash = hashlib.sha256()
+    for key in sorted(secret["stringData"].keys()):
+        hash.update(secret["stringData"][key].encode())
+    # when the config changes
+    deployment = default_loader.load(
+        "client/deployment.yaml",
+        **params,
+        config_checksum = hash.hexdigest()
+    )
     kopf.adopt(deployment, body)
     await ekclient.apply_object(deployment, force = True)
 

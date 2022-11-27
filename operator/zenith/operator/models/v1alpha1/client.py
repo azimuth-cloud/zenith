@@ -125,7 +125,16 @@ class OIDCAuthSpec(schema.BaseModel):
     )
     credentials_secret_name: constr(regex = r"^[a-z0-9-]+$") = Field(
         ...,
-        description = "The name of the secret containing the OIDC client ID and secret."
+        description = (
+            "The name of the secret containing the OIDC credentials. "
+            "This can be either a client ID and secret or a token that Zenith can "
+            "use to register a new client using dynamic client registration, if "
+            "supported by the issuer."
+        )
+    )
+    client_registration_token_key: constr(min_length = 1) = Field(
+        "client-registration-token",
+        description = "The key of the client registration token within the credentials secret."
     )
     client_id_key: constr(min_length = 1) = Field(
         "client-id",
