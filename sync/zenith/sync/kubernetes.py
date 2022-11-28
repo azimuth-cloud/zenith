@@ -387,7 +387,7 @@ class ServiceReconciler:
                 namespace = self.config.target_namespace
             )
         # If external auth is enabled, we need to configure the ingress
-        if auth_type == "external" and self.config.ingress.external_auth.url:
+        if not skip_auth and auth_type == "external" and self.config.ingress.external_auth.url:
             # Determine what headers to set/override on the auth request
             #   Start with the fixed defaults
             request_headers = dict(self.config.ingress.external_auth.request_headers)
