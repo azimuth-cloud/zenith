@@ -32,10 +32,19 @@ spec:
           image: {{ printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources: {{ toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.kubeconfigSecret.name }}
+          {{- if or .Values.kubeconfigSecret.name .Values.oidcClientRegistrationTokenSecret.name }}
           env:
+          {{- if .Values.oidcClientRegistrationTokenSecret.name }}
+            - name: ZENITH_OPERATOR__DEFAULT_OIDC_CLIENT_REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.oidcClientRegistrationTokenSecret.name }}
+                  key: {{ .Values.oidcClientRegistrationTokenSecret.key }}
+          {{- end }}
+          {{- if .Values.kubeconfigSecret.name }}
             - name: KUBECONFIG
               value: /etc/kube/config
+          {{- end }}
           {{- end }}
           volumeMounts:
             - name: etc-zenith
