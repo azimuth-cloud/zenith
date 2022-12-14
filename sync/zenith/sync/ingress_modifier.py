@@ -80,6 +80,7 @@ class NginxIngressModifier(IngressModifier):
     AUTH_URL_ANNOTATION = "nginx.ingress.kubernetes.io/auth-url"
     AUTH_SIGNIN_ANNOTATION = "nginx.ingress.kubernetes.io/auth-signin"
     AUTH_SIGNIN_REDIRECT_PARAM_ANNOTATION = "nginx.ingress.kubernetes.io/auth-signin-redirect-param"
+    AUTH_RESPONSE_HEADERS_ANNOTATION = "nginx.ingress.kubernetes.io/auth-response-headers"
     AUTH_SNIPPET_ANNOTATION = "nginx.ingress.kubernetes.io/auth-snippet"
     # Annotation for applying additional configuration
     CONFIGURATION_SNIPPET_ANNOTATION = "nginx.ingress.kubernetes.io/configuration-snippet"
@@ -122,21 +123,10 @@ class NginxIngressModifier(IngressModifier):
                 f"proxy_set_header {name} {value};"
                 for name, value in request_headers.items()
             ])
-        config_snippet = []
         if response_headers:
-            for idx, headers in enumerate(response_headers):
-                if isinstance(headers, (list, tuple)):
-                    auth_header, upstream_header = headers
-                else:
-                    auth_header = upstream_header = headers
-                # Convert the auth header to an Nginx variable name
-                auth_header = auth_header.lower().replace("-", "_")
-                config_snippet.extend([
-                    f"auth_request_set $auth_header_{idx} $upstream_http_{auth_header};",
-                    f"proxy_set_header {upstream_header} \"$auth_header_{idx}\";",
-                ])
+            annotations[self.AUTH_RESPONSE_HEADERS_ANNOTATION] = ",".join(response_headers)
         if response_cookies:
-            config_snippet.extend(
+            annotations[self.CONFIGURATION_SNIPPET_ANNOTATION] = "\n".join(
                 [
                     f"auth_request_set $auth_cookie_{name} $upstream_cookie_{name};"
                     for name in response_cookies
@@ -158,5 +148,3 @@ class NginxIngressModifier(IngressModifier):
                     "}",
                 ]
             )
-        if config_snippet:
-            annotations[self.CONFIGURATION_SNIPPET_ANNOTATION] = "\n".join(config_snippet)

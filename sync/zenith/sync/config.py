@@ -1,5 +1,6 @@
 import re
 import typing as t
+import typing_extensions as te
 
 from pydantic import Field, AnyHttpUrl, conint, constr
 
@@ -78,6 +79,23 @@ class DomainName(str):
         return cls(".".join(DNSLabel.validate(dns_label) for dns_label in dns_labels))
 
 
+class ForwardedQueryParamRule(te.TypedDict, total = False):
+    """
+    Model for a forwarded query parameter rule.
+    """
+    value: constr(min_length = 1)
+    pattern: constr(min_length = 1)
+
+
+class ForwardedQueryParam(te.TypedDict, total = False):
+    """
+    Model for a forwarded query parameter.
+    """
+    name: constr(min_length = 1)
+    default: t.List[constr(min_length = 1)]
+    allow: t.List[ForwardedQueryParamRule]
+
+
 class OIDCConfig(Section):
     """
     Model for the ingress OIDC configuration section.
@@ -90,6 +108,11 @@ class OIDCConfig(Section):
     oauth2_proxy_chart_version: constr(min_length = 1) = "6.5.0"
     #: Default values for the proxy release
     oauth2_proxy_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
+    #: The query parameters that are passed to the IDP in the authorize request
+    #: For example, Keycloak allows a kc_idp_hint parameter that can be used to
+    #: pre-select an identity provider
+    #: See https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/alpha-config#loginurlparameter
+    forwarded_query_params: t.List[ForwardedQueryParam] = Field(default_factory = list)
 
 
 class ExternalAuthConfig(Section):

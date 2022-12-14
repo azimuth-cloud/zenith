@@ -6,6 +6,7 @@ import logging
 import os
 
 import httpx
+import yaml
 
 from easykube import Configuration, ApiError, PRESENT
 
@@ -202,19 +203,84 @@ class ServiceReconciler:
                     "stringData": next_data,
                 }
             )
-        return secret
+        return next_data["cookie-secret"], next_data["client-id"], next_data["client-secret"]
+
+    def _oauth2_proxy_alpha_config(self, service, client_id, client_secret):
+        """
+        Returns the OAuth2 proxy alpha config for the service, and the checksum
+        of the config (the chart does not currently include an annotation for it).
+        """
+        config = {
+            "injectResponseHeaders": [
+                {
+                    "name": "X-Remote-User",
+                    "values": [
+                        { "claim": "preferred_username" }
+                    ],
+                },
+                {
+                    "name": "X-Remote-Group",
+                    "values": [
+                        { "claim": "groups" }
+                    ],
+                },
+                {
+                    "name": "X-Access-Token",
+                    "values": [
+                        { "claim": "access_token" }
+                    ],
+                },
+            ],
+            "upstreamConfig": {
+                "upstreams": [
+                    {
+                        "id": "static",
+                        "path": "/",
+                        "static": True,
+                    },
+                ],
+            },
+            "providers": [
+                {
+                    "id": "oidc",
+                    "provider": "oidc",
+                    "clientID": client_id,
+                    "clientSecret": client_secret,
+                    "loginURLParameters": self.config.ingress.oidc.forwarded_query_params,
+                    "oidcConfig": {
+                        "issuerURL": service.config["auth-oidc-issuer"],
+                        "insecureAllowUnverifiedEmail": (
+                            # If email addresses are not required at all, then they don't need to be verified
+                            not service.config.get("auth-oidc-require-email", False) or
+                            service.config.get("auth-oidc-allow-unverified-email", True)
+                        ),
+                        # If email addresses are not explicitly required, don't require them to be present
+                        # This means using a claim that is always available, like 'sub'
+                        "emailClaim": (
+                            "email"
+                            if service.config.get("auth-oidc-require-email", False)
+                            else "sub"
+                        ),
+                        "audienceClaims": ["aud"],
+                    },
+                },
+            ],
+        }
+        # Generate the checksum from the YAML representation
+        checksum = hashlib.sha256(yaml.safe_dump(config).encode()).hexdigest()
+        return config, checksum
 
     async def _reconcile_oidc_proxy(self, release_name, client, service, service_domain):
         """
         Reconciles the oauth2-proxy release to do OIDC authentication for the service.
         """
-        secret = await self._reconcile_oidc_secret(release_name, client, service, service_domain)
-        # Calculate the checksum of the secret data
-        # We use this as a pod annotation so the deployment rotates when it changes
-        secret_hash = hashlib.sha256()
-        for key in sorted(secret["data"].keys()):
-            secret_hash.update(secret["data"][key].encode())
-        secret_checksum = secret_hash.hexdigest()
+        cookie_secret, client_id, client_secret = await self._reconcile_oidc_secret(
+            release_name,
+            client,
+            service,
+            service_domain
+        )
+        config, config_checksum = self._oauth2_proxy_alpha_config(service, client_id, client_secret)
         # Ensure that the OIDC
         _ = await self._helm_client.ensure_release(
             release_name,
@@ -228,38 +294,23 @@ class ServiceReconciler:
             # Override with service-specific values
             {
                 "fullnameOverride": release_name,
+                "alphaConfig": {
+                    "enabled": True,
+                    "configData": config,
+                },
                 "config": {
-                    "existingSecret": secret["metadata"]["name"],
+                    "configFile": "",
                 },
                 "podAnnotations": {
-                    "checksum/existing-secret": secret_checksum,
+                    "checksum/config-alpha": config_checksum,
                 },
+                "proxyVarsAsSecrets": False,
                 "extraArgs": {
                     "proxy-prefix": "/_oidc",
+                    "cookie-secret": cookie_secret,
                     "cookie-expire": service.config.get("auth-oidc-cookie-expire", "24h"),
                     "whitelist-domain": service_domain,
-                    "provider": "oidc",
-                    "oidc-issuer-url": service.config["auth-oidc-issuer"],
                     "email-domain": "*",
-                    # If email addresses are not explicitly required, don't require them to be present
-                    # This means using a claim that is always available, like 'sub'
-                    "oidc-email-claim": (
-                        "email"
-                        if service.config.get("auth-oidc-require-email", False)
-                        else "sub"
-                    ),
-                    # Allow unverified email addresses unless explicitly required
-                    "insecure-oidc-allow-unverified-email": (
-                        "true"
-                        if (
-                            # If email addresses are not required at all, then they don't need to be verified
-                            not service.config.get("auth-oidc-require-email", False) or
-                            service.config.get("auth-oidc-allow-unverified-email", True)
-                        )
-                        else "false"
-                    ),
-                    "pass-access-token": "",
-                    "set-xauthrequest": "",
                 },
                 # We will always manage our own ingress for the _oidc path
                 "ingress": {
@@ -364,15 +415,8 @@ class ServiceReconciler:
                     namespace = self.config.target_namespace,
                     domain = self.config.cluster_services_domain
                 ),
-                "https://$host/_oidc/start",
-                "rd",
-                # Copy the oauth2-proxy auth request headers to the upstream request, but
-                # rename them to the conventional names
-                response_headers = [
-                    ("X-Auth-Request-Preferred-Username", "X-Remote-User"),
-                    ("X-Auth-Request-Groups", "X-Remote-Group"),
-                    ("X-Auth-Request-Access-Token", "X-Access-Token"),
-                ],
+                "https://$host/_oidc/start??rd=$escaped_request_uri&$args",
+                response_headers = ["X-Remote-User", "X-Remote-Group", "X-Access-Token"],
                 # oauth2-proxy uses cookie splitting for large OIDC tokens
                 # Make sure that we copy a reasonable number of split cookies to the main response
                 response_cookies = [f"_oauth2_proxy_{i}" for i in range(1, 4)]
