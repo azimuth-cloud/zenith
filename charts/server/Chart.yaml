@@ -8,6 +8,6 @@ appVersion: main
 
 dependencies:
   - name: consul
-    version: ~0.35.0
+    version: ~1.0.2
     repository: https://helm.releases.hashicorp.com
     condition: consul.enabled
