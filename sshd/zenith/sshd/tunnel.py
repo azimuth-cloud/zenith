@@ -465,25 +465,32 @@ def run(server_config, subdomain):
          intercept traffic.
     """
     print(f"[SERVER] [INFO] Initiating tunnel for subdomain '{subdomain}'")
-    tunnel = get_tunnel_config(server_config.configure_timeout)
-    consul_check_service_host_and_port(server_config, tunnel)
-    consul_register_service(server_config, tunnel, subdomain)
-    register_signal_handlers(server_config, tunnel)
-    # We need to send a regular heartbeat to Consul
-    # The heartbeat interval depends on whether a liveness check is configured
-    if tunnel.config.liveness_path:
-        heartbeat_interval = tunnel.config.liveness_period
-    else:
-        heartbeat_interval = server_config.consul_heartbeat_interval
-    consul_failures = 0
-    liveness_failures = 0
-    liveness_succeeded_once = False
-    while True:
-        consul_failures, liveness_failures, liveness_succeeded_once = consul_heartbeat(
-            server_config,
-            tunnel,
-            consul_failures,
-            liveness_failures,
-            liveness_succeeded_once
-        )
-        time.sleep(heartbeat_interval)
+    try:
+        tunnel = get_tunnel_config(server_config.configure_timeout)
+        consul_check_service_host_and_port(server_config, tunnel)
+        consul_register_service(server_config, tunnel, subdomain)
+        register_signal_handlers(server_config, tunnel)
+        # We need to send a regular heartbeat to Consul
+        # The heartbeat interval depends on whether a liveness check is configured
+        if tunnel.config.liveness_path:
+            heartbeat_interval = tunnel.config.liveness_period
+        else:
+            heartbeat_interval = server_config.consul_heartbeat_interval
+        consul_failures = 0
+        liveness_failures = 0
+        liveness_succeeded_once = False
+        with open('/var/log/zenith.log', 'at') as f:
+            print(f"[INFO] tunnel starting heartbeach for {subdomain}", f)
+        while True:
+            consul_failures, liveness_failures, liveness_succeeded_once = consul_heartbeat(
+                server_config,
+                tunnel,
+                consul_failures,
+                liveness_failures,
+                liveness_succeeded_once
+            )
+            time.sleep(heartbeat_interval)
+    except Exception as e:
+        with open('/var/log/zenith.log', 'at') as f:
+            print(f"[ERROR] tunnel run for {subdomain} failed: {e}", f)
+        raise
