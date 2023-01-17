@@ -27,8 +27,8 @@ AuthParamsValue = constr(max_length = 1024)
 UrlPath = constr(regex = r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
 
 
-def write_log(msg, stfile=sys.stdout):
-    print(msg, file=stfile)
+def write_log(msg, file=sys.stdout):
+    print(msg, file=file)
     with open('/var/run/sshd/zenith_tunnel.log', 'a') as f:
         print(msg, file=f)
 
