@@ -32,11 +32,6 @@ COPY . /opt/zenith/sshd
 RUN pip3 install --no-deps -e /opt/zenith/sshd && \
     ln -sf /opt/zenith/sshd/etc/motd /etc/motd && \
     ln -sf /opt/zenith/sshd/etc/ssh/sshd_config /etc/ssh/sshd_config
-RUN mkdir -p /var/log/zenith && \
-    chmod -R 0775 /var/log/zenith && \
-    touch /var/log/zenith/tunnel.log && \
-    chown -R zenith /var/log/zenith && \
-    chgrp -R zenith /var/log/zenith
 
 USER $ZENITH_UID
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
