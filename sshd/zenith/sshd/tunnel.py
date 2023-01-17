@@ -479,7 +479,7 @@ def run(server_config, subdomain):
         consul_failures = 0
         liveness_failures = 0
         liveness_succeeded_once = False
-        with open('/var/log/zenith.log', 'at') as f:
+        with open('/var/log/zenith/tunnel.log', 'at') as f:
             print(f"[INFO] tunnel starting heartbeach for {subdomain}", f)
         while True:
             consul_failures, liveness_failures, liveness_succeeded_once = consul_heartbeat(
