@@ -34,8 +34,8 @@ RUN pip3 install --no-deps -e /opt/zenith/sshd && \
     ln -sf /opt/zenith/sshd/etc/ssh/sshd_config /etc/ssh/sshd_config
 RUN mkdir /var/log/zenith && \
     touch /var/log/zenith/tunnel.log && \
-    chown zenith /var/log/zenith && \
-    chmod chmod 477 /var/log/zenith
+    chown -R zenith /var/log/zenith && \
+    chmod -R 477 /var/log/zenith
 
 USER $ZENITH_UID
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
