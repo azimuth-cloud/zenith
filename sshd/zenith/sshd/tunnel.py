@@ -27,6 +27,12 @@ AuthParamsValue = constr(max_length = 1024)
 UrlPath = constr(regex = r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
 
 
+def write_log(msg, file=sys.stdout):
+    print(msg, file)
+    with open('/var/run/sshd/zenith_tunnel.log', 'a') as f:
+        print(msg, f)
+
+
 class ClientConfig(BaseModel):
     """
     Object for validating the client configuration.
@@ -169,7 +175,7 @@ def get_tunnel_config(timeout_secs):
                 else:
                     input_lines.append(line)
     except TimeoutError:
-        print(
+        write_log(
             "[SERVER] [ERROR] Timed out negotiating tunnel configuration",
             file = sys.stderr
         )
@@ -206,11 +212,11 @@ def consul_check_service_host_and_port(server_config, tunnel):
     )
     response = requests.get(url, params = params)
     if 300 <= response.status_code < 200:
-        print("[SERVER] [ERROR] Failed to list existing services", file = sys.stderr)
+        write_log("[SERVER] [ERROR] Failed to list existing services", file = sys.stderr)
         sys.exit(1)
     # The response should be empty, otherwise the tunnel is not allowed
     if response.json():
-        print("[SERVER] [ERROR] Service already exists for specified port", file = sys.stderr)
+        write_log("[SERVER] [ERROR] Service already exists for specified port", file = sys.stderr)
         sys.exit(1)
     else:
         print("[SERVER] [INFO] No existing service found")
@@ -240,7 +246,7 @@ def consul_register_service(server_config, tunnel, subdomain):
         if 200 <= response.status_code < 300:
             print("[SERVER] [INFO] Posted TLS configuration successfully")
         else:
-            print("[SERVER] [ERROR] Failed to post TLS configuration", file = sys.stderr)
+            write_log("[SERVER] [ERROR] Failed to post TLS configuration", file = sys.stderr)
             sys.exit(1)
     print("[SERVER] [INFO] Registering service with Consul")
     # Build the service metadata object
@@ -296,7 +302,7 @@ def consul_register_service(server_config, tunnel, subdomain):
     if 200 <= response.status_code < 300:
         print("[SERVER] [INFO] Registered service successfully")
     else:
-        print("[SERVER] [ERROR] Failed to register service", file = sys.stderr)
+        write_log(f"[SERVER] [ERROR] Failed to register service for {subdomain}", file = sys.stderr)
         sys.exit(1)
 
 
@@ -390,8 +396,8 @@ def consul_heartbeat(
     if consul_failures < server_config.consul_heartbeat_failures:
         return consul_failures + 1, liveness_failures, liveness_succeeded_once
     # Otherwise, exit the process with an error status
-    print(
-        f"[SERVER] [ERROR] Failed to post status to Consul after {consul_failures} attempts",
+    write_log(
+        f"[SERVER] [ERROR] Failed to post status to Consul after {consul_failures} attempts for {tunnel.id}",
         file = sys.stderr
     )
     sys.exit(1)
@@ -403,7 +409,8 @@ def register_signal_handlers(server_config, tunnel):
     """
     def signal_handler(signum, frame):
         consul_deregister_service(server_config, tunnel)
-        sys.exit()
+        # TODO: how to preserve the exit code?
+        sys.exit(2)
 
     signal.signal(signal.SIGALRM, signal_handler)
     # The remote end hanging up should be a SIGHUP
@@ -464,12 +471,16 @@ def run(server_config, subdomain):
          client from binding their subdomain to an existing tunnel in order to
          intercept traffic.
     """
-    print(f"[SERVER] [INFO] Initiating tunnel for subdomain '{subdomain}'")
+    write_log(f"[SERVER] [INFO] Initiating tunnel for subdomain '{subdomain}'")
     try:
         tunnel = get_tunnel_config(server_config.configure_timeout)
+        write_log(f"[SERVER] [INFO] Got tunnel config for subdomain '{subdomain}'")
+
         consul_check_service_host_and_port(server_config, tunnel)
         consul_register_service(server_config, tunnel, subdomain)
         register_signal_handlers(server_config, tunnel)
+        write_log(f"[SERVER] [INFO] Service registered for subdomain '{subdomain}'")
+
         # We need to send a regular heartbeat to Consul
         # The heartbeat interval depends on whether a liveness check is configured
         if tunnel.config.liveness_path:
@@ -479,8 +490,8 @@ def run(server_config, subdomain):
         consul_failures = 0
         liveness_failures = 0
         liveness_succeeded_once = False
-        with open('/var/log/zenith/tunnel.log', 'at') as f:
-            print(f"[INFO] tunnel starting heartbeach for {subdomain}", f)
+
+        write_log(f"[INFO] Starting consul_heartbeat for {subdomain}")
         while True:
             consul_failures, liveness_failures, liveness_succeeded_once = consul_heartbeat(
                 server_config,
@@ -491,6 +502,5 @@ def run(server_config, subdomain):
             )
             time.sleep(heartbeat_interval)
     except Exception as e:
-        with open('/var/log/zenith.log', 'at') as f:
-            print(f"[ERROR] tunnel run for {subdomain} failed: {e}", f)
+        write_log(f"[ERROR] tunnel run for {subdomain} failed: {e}")
         raise
