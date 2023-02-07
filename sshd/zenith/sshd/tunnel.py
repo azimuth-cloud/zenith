@@ -161,7 +161,7 @@ def get_tunnel_config(logger, timeout_secs):
     """
     Returns a config object for the tunnel.
     """
-    logger.info("Waiting for configuration")
+    logger.debug("Waiting for tunnel configuration")
     # A well behaved client should take very little time to negotiate the tunnel config
     # So we timeout if it takes too long
     try:
@@ -184,11 +184,13 @@ def get_tunnel_config(logger, timeout_secs):
     config = json.loads(base64.decodebytes("".join(input_lines).encode()))
     # We confirm that we received the configuration by sending another marker
     print("RECEIVED_CONFIGURATION")
-    logger.info(f"Received configuration: {json.dumps(config)}")
+    logger.info(f"Received tunnel configuration: {json.dumps(config)}")
     sys.stdout.flush()
+    tunnel_id = str(uuid.uuid4())
+    logger.info(f"Assigned tunnel id: {tunnel_id}")
     return Tunnel(
         # Generate a unique ID for the tunnel
-        id = str(uuid.uuid4()),
+        id = tunnel_id,
         # Try to parse and validate the received configuration
         config = ClientConfig.parse_obj(config)
     )
@@ -201,7 +203,7 @@ def consul_check_service_host_and_port(server_config, logger, tunnel):
     This protects against the case where a badly behaved client reports a different port
     to the one that was assigned to them.
     """
-    logger.info("Checking if Consul service exists for specified port")
+    logger.debug("Checking if Consul service exists for specified port")
     url = f"{server_config.consul_url}/v1/agent/services"
     params = dict(
         filter = (
@@ -212,12 +214,12 @@ def consul_check_service_host_and_port(server_config, logger, tunnel):
     )
     response = requests.get(url, params = params)
     if 300 <= response.status_code < 200:
-        logger.critical("Failed to list existing services")
+        logger.critical("Failed to list Consul services")
     # The response should be empty, otherwise the tunnel is not allowed
     if response.json():
-        logger.critical("Service already exists for specified port")
+        logger.critical("Consul service already exists for specified port")
     else:
-        logger.info("No existing service found")
+        logger.debug("No existing Consul service found")
 
 
 def consul_register_service(server_config, logger, tunnel, subdomain):
@@ -234,7 +236,7 @@ def consul_register_service(server_config, logger, tunnel, subdomain):
     if tunnel.config.tls_client_ca:
         tls_config["tls-client-ca"] = tunnel.config.tls_client_ca
     if tls_config:
-        logger.info("Posting TLS configuration to Consul")
+        logger.debug("Posting TLS configuration to Consul")
         url = "{consul_url}/v1/kv/{key_prefix}/{tunnel_id}".format(
             consul_url = server_config.consul_url,
             key_prefix = server_config.consul_key_prefix,
@@ -242,10 +244,10 @@ def consul_register_service(server_config, logger, tunnel, subdomain):
         )
         response = requests.put(url, json = tls_config)
         if 200 <= response.status_code < 300:
-            logger.info("TLS configuration updated successfully")
+            logger.info("TLS configuration updated")
         else:
             logger.critical("Failed to update TLS configuration")
-    logger.info("Registering service with Consul")
+    logger.debug("Registering service with Consul")
     # Build the service metadata object
     metadata = { server_config.backend_protocol_metadata_key: tunnel.config.backend_protocol }
     if tunnel.config.read_timeout:
@@ -297,12 +299,12 @@ def consul_register_service(server_config, logger, tunnel, subdomain):
     )
     # If we failed to register the service then bail
     if 200 <= response.status_code < 300:
-        logger.info("Registered service successfully")
+        logger.info("Registered service with Consul")
     else:
-        logger.critical("Failed to register service")
+        logger.critical("Failed to register service with Consul")
 
 
-def consul_deregister_service(server_config, tunnel):
+def consul_deregister_service(server_config, logger, tunnel):
     """
     Deregisters the service in Consul.
 
@@ -315,7 +317,9 @@ def consul_deregister_service(server_config, tunnel):
     tunnel gets a unique id, the worst case scenario is that an unused TLS
     configuration is left behind in Consul.
     """
+    logger.debug("Removing service from Consul")
     requests.put(f"{server_config.consul_url}/v1/agent/service/deregister/{tunnel.id}")
+    logger.debug("Removing configuration from Consul KV")
     requests.delete("{consul_url}/v1/kv/{key_prefix}/{tunnel_id}".format(
         consul_url = server_config.consul_url,
         key_prefix = server_config.consul_key_prefix,
@@ -337,7 +341,7 @@ def liveness_check(logger, tunnel):
     port = tunnel.config.allocated_port
     path = tunnel.config.liveness_path
     liveness_url = f"{proto}://127.0.0.1:{port}{path}"
-    logger.info(f"Executing liveness check using {liveness_url}")
+    logger.debug(f"Executing liveness check using {liveness_url}")
     try:
         # It is not our job to verify SSL certificates - that is for the eventual destination,
         # e.g. a user's browser, to decide
@@ -376,24 +380,24 @@ def consul_heartbeat(
         elif liveness_failures > 0:
             # We want services to stay in the critical state until they succeed at least once
             status = "warning" if liveness_succeeded_once else "critical"
-    logger.info(f"Updating service health status to '{status}' in Consul")
+    logger.debug(f"Updating Consul service health to '{status}'")
     # Post the service information to consul
     response = requests.put(
         f"{server_config.consul_url}/v1/agent/check/update/{tunnel.id}",
         json = { "Status": status }
     )
     if 200 <= response.status_code < 300:
-        logger.info("Service health updated successfully")
+        logger.info(f"Updated Consul service health to '{status}'")
         # Reset the Consul failures on success
         return 0, liveness_failures, liveness_succeeded_once
     else:
         # If we failed to update the health status, emit a warning
-        logger.warning("Failed to update service health")
+        logger.warning("Failed to update Consul service health")
     # Increment the failures if less than the limit
     if consul_failures < server_config.consul_heartbeat_failures:
         return consul_failures + 1, liveness_failures, liveness_succeeded_once
     # Otherwise, exit the process with an error status
-    logger.critical(f"Failed to post status to Consul after {consul_failures} attempts")
+    logger.critical(f"Failed to update Consul service health after {consul_failures} attempts")
 
 
 def register_signal_handlers(server_config, logger, tunnel):
@@ -401,8 +405,8 @@ def register_signal_handlers(server_config, logger, tunnel):
     Registers signal handlers for each of the exit signals we care about.
     """
     def signal_handler(signum, frame):
-        logger.info("Gracefully terminating tunnel")
-        consul_deregister_service(server_config, tunnel)
+        consul_deregister_service(server_config, logger, tunnel)
+        logger.info("Tunnel disconnected by client")
         sys.exit()
 
     signal.signal(signal.SIGALRM, signal_handler)
@@ -464,14 +468,22 @@ def run(server_config, subdomain):
          client from binding their subdomain to an existing tunnel in order to
          intercept traffic.
     """
-    logger = logging.getLogger(__name__)
+    actual_logger = logging.getLogger(__name__)
     # Make sure that we exit on critical errors
-    logger.addHandler(LogShutdownHandler())
+    actual_logger.addHandler(LogShutdownHandler())
     # Add the subdomain to the logging context
-    logger = logging.LoggerAdapter(logger, {"subdomain": subdomain})
+    logger = logging.LoggerAdapter(
+        actual_logger,
+        {"subdomain": subdomain, "tunnelid": ""}
+    )
     logger.info("Initiating tunnel")
     try:
         tunnel = get_tunnel_config(logger, server_config.configure_timeout)
+        # Now we know the tunnel id, replace the logger
+        logger = logging.LoggerAdapter(
+            actual_logger,
+            {"subdomain": subdomain, "tunnelid": tunnel.id}
+        )
         consul_check_service_host_and_port(server_config, logger, tunnel)
         consul_register_service(server_config, logger, tunnel, subdomain)
         register_signal_handlers(server_config, logger, tunnel)
