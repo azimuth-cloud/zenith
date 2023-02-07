@@ -14,6 +14,60 @@ def default_service_host():
     return socket.gethostbyname(socket.gethostname())
 
 
+class SSHDLoggingConfig(LoggingConfiguration):
+    """
+    Custom logging configuration for the zenith-sshd package.
+    """
+    formatters: dict = Field(default_factory = lambda: {
+        # The default format used for regular log messages
+        "default": {
+            "format": "[%(levelname)s] %(message)s",
+        },
+        # The format used for logs that are sent to tunnel clients
+        "tunnel_client": {
+            "format": "[%(levelname)s] [SERVER] %(message)s",
+        }
+    })
+    handlers: dict = Field(default_factory = lambda: {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "default",
+            "filters": ["less_than_warning"],
+        },
+        "stderr": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+            "formatter": "default",
+            "level": "WARNING",
+        },
+        "stdout_client": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "tunnel_client",
+            "filters": ["less_than_warning"],
+        },
+        "stderr_client": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+            "formatter": "tunnel_client",
+            "level": "WARNING",
+        },
+    })
+    loggers: dict = Field(default_factory = lambda: {
+        "": {
+            "handlers": ["stdout", "stderr"],
+            "level": "INFO",
+            "propagate": True
+        },
+        "zenith.sshd.tunnel": {
+            "handlers": ["stdout_client", "stderr_client"],
+            "level": "INFO",
+            "propagate": False
+        },
+    })
+
+
 class SSHDConfig(Configuration):
     """
     Configuration model for the zenith-sshd package.
@@ -24,7 +78,7 @@ class SSHDConfig(Configuration):
         env_prefix = "ZENITH_SSHD"
 
     #: The logging configuration
-    logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
+    logging: SSHDLoggingConfig = Field(default_factory = SSHDLoggingConfig)
 
     #: The address of the Consul server
     consul_address: str = "127.0.0.1"

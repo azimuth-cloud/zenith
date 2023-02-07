@@ -2,6 +2,7 @@ import base64
 import contextlib
 import dataclasses
 import json
+import logging
 import signal
 import socket
 import sys
@@ -13,6 +14,15 @@ from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from pydantic import BaseModel, Extra, Field, conint, constr, root_validator, validator
 import requests
+
+
+class LogShutdownHandler(logging.StreamHandler):
+    """
+    Log handler that exits on critical errors.
+    """
+    def emit(self, record):
+        if record.levelno >= logging.CRITICAL:
+            sys.exit(1)
 
 
 #: Type for a key in the authentication parameters
@@ -147,11 +157,11 @@ def timeout(seconds):
         signal.signal(signal.SIGALRM, previous)
 
 
-def get_tunnel_config(timeout_secs):
+def get_tunnel_config(logger, timeout_secs):
     """
     Returns a config object for the tunnel.
     """
-    print("[SERVER] [INFO] Waiting for configuration")
+    logger.info("Waiting for configuration")
     # A well behaved client should take very little time to negotiate the tunnel config
     # So we timeout if it takes too long
     try:
@@ -169,16 +179,12 @@ def get_tunnel_config(timeout_secs):
                 else:
                     input_lines.append(line)
     except TimeoutError:
-        print(
-            "[SERVER] [ERROR] Timed out negotiating tunnel configuration",
-            file = sys.stderr
-        )
-        sys.exit(1)
+        logger.critical("Timed out negotiating tunnel configuration")
     # The configuration should be base64-encoded JSON
     config = json.loads(base64.decodebytes("".join(input_lines).encode()))
     # We confirm that we received the configuration by sending another marker
     print("RECEIVED_CONFIGURATION")
-    print(f"[SERVER] [INFO] Received configuration: {json.dumps(config, indent = 2)}")
+    logger.info(f"Received configuration: {json.dumps(config)}")
     sys.stdout.flush()
     return Tunnel(
         # Generate a unique ID for the tunnel
@@ -188,14 +194,14 @@ def get_tunnel_config(timeout_secs):
     )
 
 
-def consul_check_service_host_and_port(server_config, tunnel):
+def consul_check_service_host_and_port(server_config, logger, tunnel):
     """
     Checks that there is not already an existing service with the same host and port.
 
     This protects against the case where a badly behaved client reports a different port
     to the one that was assigned to them.
     """
-    print("[SERVER] [INFO] Checking if Consul service already exists for allocated port")
+    logger.info("Checking if Consul service exists for specified port")
     url = f"{server_config.consul_url}/v1/agent/services"
     params = dict(
         filter = (
@@ -206,17 +212,15 @@ def consul_check_service_host_and_port(server_config, tunnel):
     )
     response = requests.get(url, params = params)
     if 300 <= response.status_code < 200:
-        print("[SERVER] [ERROR] Failed to list existing services", file = sys.stderr)
-        sys.exit(1)
+        logger.critical("Failed to list existing services")
     # The response should be empty, otherwise the tunnel is not allowed
     if response.json():
-        print("[SERVER] [ERROR] Service already exists for specified port", file = sys.stderr)
-        sys.exit(1)
+        logger.critical("Service already exists for specified port")
     else:
-        print("[SERVER] [INFO] No existing service found")
+        logger.info("No existing service found")
 
 
-def consul_register_service(server_config, tunnel, subdomain):
+def consul_register_service(server_config, logger, tunnel, subdomain):
     """
     Registers the service with Consul.
     """
@@ -230,7 +234,7 @@ def consul_register_service(server_config, tunnel, subdomain):
     if tunnel.config.tls_client_ca:
         tls_config["tls-client-ca"] = tunnel.config.tls_client_ca
     if tls_config:
-        print("[SERVER] [INFO] Posting TLS configuration to Consul")
+        logger.info("Posting TLS configuration to Consul")
         url = "{consul_url}/v1/kv/{key_prefix}/{tunnel_id}".format(
             consul_url = server_config.consul_url,
             key_prefix = server_config.consul_key_prefix,
@@ -238,11 +242,10 @@ def consul_register_service(server_config, tunnel, subdomain):
         )
         response = requests.put(url, json = tls_config)
         if 200 <= response.status_code < 300:
-            print("[SERVER] [INFO] Posted TLS configuration successfully")
+            logger.info("TLS configuration updated successfully")
         else:
-            print("[SERVER] [ERROR] Failed to post TLS configuration", file = sys.stderr)
-            sys.exit(1)
-    print("[SERVER] [INFO] Registering service with Consul")
+            logger.critical("Failed to update TLS configuration")
+    logger.info("Registering service with Consul")
     # Build the service metadata object
     metadata = { server_config.backend_protocol_metadata_key: tunnel.config.backend_protocol }
     if tunnel.config.read_timeout:
@@ -294,10 +297,9 @@ def consul_register_service(server_config, tunnel, subdomain):
     )
     # If we failed to register the service then bail
     if 200 <= response.status_code < 300:
-        print("[SERVER] [INFO] Registered service successfully")
+        logger.info("Registered service successfully")
     else:
-        print("[SERVER] [ERROR] Failed to register service", file = sys.stderr)
-        sys.exit(1)
+        logger.critical("Failed to register service")
 
 
 def consul_deregister_service(server_config, tunnel):
@@ -327,7 +329,7 @@ class LivenessCheckFailed(Exception):
     """
 
 
-def liveness_check(tunnel):
+def liveness_check(logger, tunnel):
     """
     Executes a liveness check for the tunnel and raises an exception with a message on failure.
     """
@@ -335,7 +337,7 @@ def liveness_check(tunnel):
     port = tunnel.config.allocated_port
     path = tunnel.config.liveness_path
     liveness_url = f"{proto}://127.0.0.1:{port}{path}"
-    print(f"[SERVER] [INFO] Executing liveness check using {liveness_url}")
+    logger.info(f"Executing liveness check using {liveness_url}")
     try:
         # It is not our job to verify SSL certificates - that is for the eventual destination,
         # e.g. a user's browser, to decide
@@ -349,6 +351,7 @@ def liveness_check(tunnel):
 
 def consul_heartbeat(
     server_config,
+    logger,
     tunnel,
     consul_failures,
     liveness_failures,
@@ -362,7 +365,7 @@ def consul_heartbeat(
         try:
             liveness_check(tunnel)
         except LivenessCheckFailed as exc:
-            print(f"[SERVER] [WARN] Liveness check failed: {exc}", file = sys.stderr)
+            logger.warning(f"Liveness check failed: {exc}")
             liveness_failures = liveness_failures + 1
         else:
             # When the check passes, reset the failure count
@@ -373,35 +376,32 @@ def consul_heartbeat(
         elif liveness_failures > 0:
             # We want services to stay in the critical state until they succeed at least once
             status = "warning" if liveness_succeeded_once else "critical"
-    print(f"[SERVER] [INFO] Updating service health status to '{status}' in Consul")
+    logger.info(f"Updating service health status to '{status}' in Consul")
     # Post the service information to consul
     response = requests.put(
         f"{server_config.consul_url}/v1/agent/check/update/{tunnel.id}",
         json = { "Status": status }
     )
     if 200 <= response.status_code < 300:
-        print("[SERVER] [INFO] Service health updated successfully")
+        logger.info("Service health updated successfully")
         # Reset the Consul failures on success
         return 0, liveness_failures, liveness_succeeded_once
     else:
         # If we failed to update the health status, emit a warning
-        print("[SERVER] [WARNING] Failed to update service health", file = sys.stderr)
+        logger.warning("Failed to update service health")
     # Increment the failures if less than the limit
     if consul_failures < server_config.consul_heartbeat_failures:
         return consul_failures + 1, liveness_failures, liveness_succeeded_once
     # Otherwise, exit the process with an error status
-    print(
-        f"[SERVER] [ERROR] Failed to post status to Consul after {consul_failures} attempts",
-        file = sys.stderr
-    )
-    sys.exit(1)
+    logger.critical(f"Failed to post status to Consul after {consul_failures} attempts")
 
 
-def register_signal_handlers(server_config, tunnel):
+def register_signal_handlers(server_config, logger, tunnel):
     """
     Registers signal handlers for each of the exit signals we care about.
     """
     def signal_handler(signum, frame):
+        logger.info("Gracefully terminating tunnel")
         consul_deregister_service(server_config, tunnel)
         sys.exit()
 
@@ -464,26 +464,36 @@ def run(server_config, subdomain):
          client from binding their subdomain to an existing tunnel in order to
          intercept traffic.
     """
-    print(f"[SERVER] [INFO] Initiating tunnel for subdomain '{subdomain}'")
-    tunnel = get_tunnel_config(server_config.configure_timeout)
-    consul_check_service_host_and_port(server_config, tunnel)
-    consul_register_service(server_config, tunnel, subdomain)
-    register_signal_handlers(server_config, tunnel)
-    # We need to send a regular heartbeat to Consul
-    # The heartbeat interval depends on whether a liveness check is configured
-    if tunnel.config.liveness_path:
-        heartbeat_interval = tunnel.config.liveness_period
-    else:
-        heartbeat_interval = server_config.consul_heartbeat_interval
-    consul_failures = 0
-    liveness_failures = 0
-    liveness_succeeded_once = False
-    while True:
-        consul_failures, liveness_failures, liveness_succeeded_once = consul_heartbeat(
-            server_config,
-            tunnel,
-            consul_failures,
-            liveness_failures,
-            liveness_succeeded_once
-        )
-        time.sleep(heartbeat_interval)
+    logger = logging.getLogger(__name__)
+    # Make sure that we exit on critical errors
+    logger.addHandler(LogShutdownHandler())
+    # Add the subdomain to the logging context
+    logger = logging.LoggerAdapter(logger, {"subdomain": subdomain})
+    logger.info("Initiating tunnel")
+    try:
+        tunnel = get_tunnel_config(logger, server_config.configure_timeout)
+        consul_check_service_host_and_port(server_config, logger, tunnel)
+        consul_register_service(server_config, logger, tunnel, subdomain)
+        register_signal_handlers(server_config, logger, tunnel)
+        # We need to send a regular heartbeat to Consul
+        # The heartbeat interval depends on whether a liveness check is configured
+        if tunnel.config.liveness_path:
+            heartbeat_interval = tunnel.config.liveness_period
+        else:
+            heartbeat_interval = server_config.consul_heartbeat_interval
+        consul_failures = 0
+        liveness_failures = 0
+        liveness_succeeded_once = False
+        while True:
+            consul_failures, liveness_failures, liveness_succeeded_once = consul_heartbeat(
+                server_config,
+                logger,
+                tunnel,
+                consul_failures,
+                liveness_failures,
+                liveness_succeeded_once
+            )
+            time.sleep(heartbeat_interval)
+    except Exception:
+        logger.exception("Unexpected exception")
+        raise
