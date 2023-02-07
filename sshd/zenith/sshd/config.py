@@ -1,7 +1,7 @@
 import socket
-import typing
 
-from pydantic import DirectoryPath, FilePath, Field, conint
+from pydantic import DirectoryPath, FilePath, Field, conint, validator
+from pydantic.utils import deep_update
 
 from configomatic import Configuration, LoggingConfiguration
 
@@ -18,54 +18,76 @@ class SSHDLoggingConfig(LoggingConfiguration):
     """
     Custom logging configuration for the zenith-sshd package.
     """
-    formatters: dict = Field(default_factory = lambda: {
-        # The default format used for regular log messages
-        "default": {
-            "format": "[%(levelname)s] %(message)s",
-        },
-        # The format used for logs that are sent to tunnel clients
-        "tunnel_client": {
-            "format": "[%(levelname)s] [SERVER] %(message)s",
-        }
-    })
-    handlers: dict = Field(default_factory = lambda: {
-        "stdout": {
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-            "formatter": "default",
-            "filters": ["less_than_warning"],
-        },
-        "stderr": {
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stderr",
-            "formatter": "default",
-            "level": "WARNING",
-        },
-        "stdout_client": {
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-            "formatter": "tunnel_client",
-            "filters": ["less_than_warning"],
-        },
-        "stderr_client": {
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stderr",
-            "formatter": "tunnel_client",
-            "level": "WARNING",
-        },
-    })
-    loggers: dict = Field(default_factory = lambda: {
-        "": {
-            "handlers": ["stdout", "stderr"],
-            "level": "INFO",
-            "propagate": True
-        },
-        "zenith.sshd.tunnel": {
-            "handlers": ["stdout_client", "stderr_client"],
-            "level": "INFO",
-            "propagate": False
-        },
-    })
+    @validator("formatters", pre = True, always = True)
+    def default_formatters(cls, v):
+        return deep_update(
+            {
+                # Default format used for regular log messages
+                "default": {
+                    "format": "[%(levelname)s] %(message)s",
+                },
+                # Format for logs that are sent to tunnel clients
+                "tunnel_client": {
+                    "format": "[%(levelname)s] [SERVER] %(message)s",
+                },
+            },
+            v or {}
+        )
+    
+    @validator("handlers", pre = True, always = True)
+    def default_handlers(cls, v):
+        return deep_update(
+            {
+                # Handlers for stdout/err with default formatting
+                "stdout": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stdout",
+                    "formatter": "default",
+                    "filters": ["less_than_warning"],
+                },
+                "stderr": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stderr",
+                    "formatter": "default",
+                    "level": "WARNING",
+                },
+                # Handlers for stdout/err for tunnel clients
+                "tunnel_client_stdout": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stdout",
+                    "formatter": "tunnel_client",
+                    "filters": ["less_than_warning"],
+                },
+                "tunnel_client_stderr": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stderr",
+                    "formatter": "tunnel_client",
+                    "level": "WARNING",
+                },
+            },
+            v or {}
+        )
+    
+    @validator("loggers", pre = True, always = True)
+    def default_loggers(cls, v):
+        return deep_update(
+            {
+                "": {
+                    "handlers": ["stdout", "stderr"],
+                    "level": "INFO",
+                    "propagate": True
+                },
+                "zenith.sshd.tunnel": {
+                    "handlers": [
+                        "tunnel_client_stdout",
+                        "tunnel_client_stderr",
+                    ],
+                    "level": "INFO",
+                    "propagate": False
+                },
+            },
+            v or {}
+        )
 
 
 class SSHDConfig(Configuration):
