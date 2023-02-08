@@ -192,6 +192,7 @@ class ServiceReconciler:
                 # Set the client ID and secret from the response
                 next_data["client-id"] = response.json()["client_id"]
                 next_data["client-secret"] = response.json()["client_secret"]
+                next_data["redirect-uri"] = redirect_uri
         # Patch the secret if required
         if next_data != existing_data:
             secret = await secrets.create_or_patch(
@@ -203,7 +204,12 @@ class ServiceReconciler:
                     "stringData": next_data,
                 }
             )
-        return next_data["cookie-secret"], next_data["client-id"], next_data["client-secret"]
+        return (
+            next_data["cookie-secret"],
+            next_data["client-id"],
+            next_data["client-secret"],
+            next_data["redirect-uri"]
+        )
 
     def _oauth2_proxy_alpha_config(self, service, client_id, client_secret):
         """
@@ -274,7 +280,7 @@ class ServiceReconciler:
         """
         Reconciles the oauth2-proxy release to do OIDC authentication for the service.
         """
-        cookie_secret, client_id, client_secret = await self._reconcile_oidc_secret(
+        cookie_secret, client_id, client_secret, redirect_uri = await self._reconcile_oidc_secret(
             release_name,
             client,
             service,
@@ -309,8 +315,15 @@ class ServiceReconciler:
                     "proxy-prefix": "/_oidc",
                     "cookie-secret": cookie_secret,
                     "cookie-expire": service.config.get("auth-oidc-cookie-expire", "24h"),
+                    # If the ingress is not using TLS, we have to allow the cookie on insecure connections
+                    "cookie-secure": (
+                        "true"
+                        if self.config.ingress.tls.enabled or "tls-cert" in service.config
+                        else "false"
+                    ),
                     "whitelist-domain": service_domain,
                     "email-domain": "*",
+                    "redirect-url": redirect_uri,
                 },
                 # We will always manage our own ingress for the _oidc path
                 "ingress": {
@@ -407,6 +420,12 @@ class ServiceReconciler:
                 service_domain,
                 ingress_modifier
             )
+            # Check if the ingress has TLS enabled so we know what scheme to use for the signin URL
+            ingress_scheme = (
+                "https"
+                if self.config.ingress.tls.enabled or "tls-cert" in service.config
+                else "http"
+            )
             # Configure authentication on the main ingress
             ingress_modifier.configure_authentication(
                 ingress,
@@ -415,7 +434,7 @@ class ServiceReconciler:
                     namespace = self.config.target_namespace,
                     domain = self.config.cluster_services_domain
                 ),
-                "https://$host/_oidc/start??rd=$escaped_request_uri&$args",
+                f"{ingress_scheme}://$host/_oidc/start??rd=$escaped_request_uri&$args",
                 response_headers = ["X-Remote-User", "X-Remote-Group", "X-Access-Token"],
                 # oauth2-proxy uses cookie splitting for large OIDC tokens
                 # Make sure that we copy a reasonable number of split cookies to the main response

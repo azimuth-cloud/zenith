@@ -105,7 +105,7 @@ class OIDCConfig(Section):
     #: The name of the proxy chart
     oauth2_proxy_chart_name: constr(min_length = 1) = "oauth2-proxy"
     #: The version of the proxy chart
-    oauth2_proxy_chart_version: constr(min_length = 1) = "6.5.0"
+    oauth2_proxy_chart_version: constr(min_length = 1) = "6.8.0"
     #: Default values for the proxy release
     oauth2_proxy_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
     #: The query parameters that are passed to the IDP in the authorize request
