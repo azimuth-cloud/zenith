@@ -186,6 +186,8 @@ class ServiceReconciler:
                         "response_types": ["code"],
                         "grant_types": ["authorization_code"],
                         "redirect_uris": [redirect_uri],
+                        # Send the service FQDN as the home URL
+                        "client_uri": f"{redirect_scheme}://{service_domain}",
                     }
                 )
                 response.raise_for_status()
