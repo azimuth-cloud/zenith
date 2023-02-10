@@ -103,8 +103,8 @@ class AuthConfig(Section):
     skip_auth_metadata_key: str = "skip-auth"
     #: The prefix to filter for metadata items containing authentication parameters
     param_metadata_prefix: str = "auth-"
-    #: The additional prefix to use when passing authentication parameters to the auth service
-    param_header_prefix: str = "x-"
+    #: The prefix to use when passing authentication headers to the auth service
+    param_header_prefix: str = "x-auth-"
 
 
 class TLSConfig(Section):

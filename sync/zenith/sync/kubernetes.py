@@ -1,6 +1,7 @@
 import asyncio
 import importlib.metadata
 import logging
+from urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
 from easykube import Configuration, resources as k8s
 
@@ -114,19 +115,33 @@ class ServiceReconciler:
         if skip_auth == "1":
             return
         # Apply the auth configuration, which may be ingress-controller specific
+        auth_params = {
+            name.removeprefix(self.config.ingress.auth.param_metadata_prefix): value
+            for name, value in service.metadata.items()
+            if name.startswith(self.config.ingress.auth.param_metadata_prefix)
+        }
+        # Determine the signin URL - we add the auth params as GET parameters
+        signin_url_info = urlparse(self.config.ingress.auth.signin_url)
+        signin_url_query_params = parse_qs(signin_url_info.query, keep_blank_values = True)
+        for name, value in auth_params.items():
+            signin_url_query_params.setdefault(name, []).append(value)
+        signin_url = urlunparse(
+            signin_url_info._replace(
+                query = urlencode(signin_url_query_params, doseq = True)
+            )
+        )
         # Determine what headers to set/override on the auth request
         #   Start with the fixed defaults
         request_headers = dict(self.config.ingress.auth.request_headers)
-        #   Then set additional headers from the auth params in the service metadata
+        #   Set additional headers from the auth params in the service metadata
         request_headers.update({
             f"{self.config.ingress.auth.param_header_prefix}{name}": value
-            for name, value in service.metadata.items()
-            if name.startswith(self.config.ingress.auth.param_metadata_prefix)
+            for name, value in auth_params.items()
         })
         ingress_modifier.configure_authentication(
             ingress,
             self.config.ingress.auth.url,
-            self.config.ingress.auth.signin_url,
+            signin_url,
             self.config.ingress.auth.next_url_param,
             request_headers,
             self.config.ingress.auth.response_headers
