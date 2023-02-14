@@ -1,0 +1,32 @@
+logging:
+  formatters:
+    # Format for logs from tunnels that are logged in SSHD
+    # Make sure to include the subdomain
+    tunnel_sshd:
+      format: "[%(levelname)s] [%(subdomain)s] [%(tunnelid)s] %(message)s"
+
+  handlers:
+    # Handlers pointing directly to the stdout/err of the SSHD process
+    # Used to push logs to the SSHD stdout/err from the tunnel script, where stdout/err go to the client
+    # This only works because all the processes run as the zenith user
+    tunnel_sshd_stdout:
+      class: logging.FileHandler
+      filename: /proc/1/fd/1
+      formatter: tunnel_sshd
+      filters:
+        # The is in the default filters
+        - less_than_warning
+    tunnel_sshd_stderr:
+      class: logging.FileHandler
+      filename: /proc/1/fd/2
+      formatter: tunnel_sshd
+      level: WARNING
+
+  loggers:
+    # Add the tunnel_sshd_* handlers to the tunnel logger
+    zenith.sshd.tunnel:
+      handlers:
+        - tunnel_client_stdout
+        - tunnel_client_stderr
+        - tunnel_sshd_stdout
+        - tunnel_sshd_stderr

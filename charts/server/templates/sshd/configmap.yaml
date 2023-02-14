@@ -12,7 +12,7 @@ metadata:
   name: {{ include "zenith.componentname" (list . "sshd-conf") }}
   labels: {{ include "zenith.componentLabels" (list . "sshd-conf") | nindent 4 }}
 data:
-  sshd.yaml: |
+  user-config.yaml: |
     {{-
       tpl (toYaml .Values.sshd.config) . |
         fromYaml |
