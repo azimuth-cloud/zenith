@@ -16,13 +16,16 @@ from pydantic import BaseModel, Extra, Field, conint, constr, root_validator, va
 import requests
 
 
-class LogShutdownHandler(logging.StreamHandler):
+class TunnelError(RuntimeError):
     """
-    Log handler that exits on critical errors.
+    Raised when there is an error with the tunnel.
     """
-    def emit(self, record):
-        if record.levelno >= logging.CRITICAL:
-            sys.exit(1)
+
+
+class TunnelExit(RuntimeError):
+    """
+    Raised to exit the tunnel without signifying an error.
+    """
 
 
 #: Type for a key in the authentication parameters
@@ -179,7 +182,7 @@ def get_tunnel_config(logger, timeout_secs):
                 else:
                     input_lines.append(line)
     except TimeoutError:
-        logger.critical("Timed out negotiating tunnel configuration")
+        raise TunnelError("Timed out negotiating tunnel configuration")
     # The configuration should be base64-encoded JSON
     config = json.loads(base64.decodebytes("".join(input_lines).encode()))
     # We confirm that we received the configuration by sending another marker
@@ -214,10 +217,10 @@ def consul_check_service_host_and_port(server_config, logger, tunnel):
     )
     response = requests.get(url, params = params)
     if 300 <= response.status_code < 200:
-        logger.critical("Failed to list Consul services")
+        raise TunnelError("Failed to list Consul services")
     # The response should be empty, otherwise the tunnel is not allowed
     if response.json():
-        logger.critical("Consul service already exists for specified port")
+        raise TunnelError("Consul service already exists for specified port")
     else:
         logger.debug("No existing Consul service found")
 
@@ -246,7 +249,7 @@ def consul_register_service(server_config, logger, tunnel, subdomain):
         if 200 <= response.status_code < 300:
             logger.info("TLS configuration updated")
         else:
-            logger.critical("Failed to update TLS configuration")
+            raise TunnelError("Failed to update TLS configuration")
     logger.debug("Registering service with Consul")
     # Build the service metadata object
     metadata = { server_config.backend_protocol_metadata_key: tunnel.config.backend_protocol }
@@ -301,7 +304,7 @@ def consul_register_service(server_config, logger, tunnel, subdomain):
     if 200 <= response.status_code < 300:
         logger.info("Registered service with Consul")
     else:
-        logger.critical("Failed to register service with Consul")
+        raise TunnelError("Failed to register service with Consul")
 
 
 def consul_deregister_service(server_config, logger, tunnel):
@@ -397,7 +400,7 @@ def consul_heartbeat(
     if consul_failures < server_config.consul_heartbeat_failures:
         return consul_failures + 1, liveness_failures, liveness_succeeded_once
     # Otherwise, exit the process with an error status
-    logger.critical(f"Failed to update Consul service health after {consul_failures} attempts")
+    raise TunnelError(f"Failed to update Consul service health after {consul_failures} attempts")
 
 
 def register_signal_handlers(server_config, logger, tunnel):
@@ -406,8 +409,7 @@ def register_signal_handlers(server_config, logger, tunnel):
     """
     def signal_handler(signum, frame):
         consul_deregister_service(server_config, logger, tunnel)
-        logger.info("Tunnel disconnected by client")
-        sys.exit()
+        raise TunnelExit()
 
     signal.signal(signal.SIGALRM, signal_handler)
     # The remote end hanging up should be a SIGHUP
@@ -469,8 +471,6 @@ def run(server_config, subdomain):
          intercept traffic.
     """
     actual_logger = logging.getLogger(__name__)
-    # Make sure that we exit on critical errors
-    actual_logger.addHandler(LogShutdownHandler())
     # Add the subdomain to the logging context
     logger = logging.LoggerAdapter(
         actual_logger,
@@ -506,6 +506,9 @@ def run(server_config, subdomain):
                 liveness_succeeded_once
             )
             time.sleep(heartbeat_interval)
+    except TunnelExit:
+        logger.info("Tunnel disconnected by client")
+        # This should lead to a clean exit
     except Exception:
-        logger.exception("Unexpected exception")
+        logger.exception("Exception raised by tunnel")
         raise
