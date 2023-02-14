@@ -206,7 +206,12 @@ def consul_check_service_host_and_port(server_config, logger, tunnel):
     This protects against the case where a badly behaved client reports a different port
     to the one that was assigned to them.
     """
-    logger.debug("Checking if Consul service exists for specified port")
+    logger.debug(
+        "Checking if Consul service exists for '{host}:{port}'".format(
+            host = server_config.service_host,
+            port = tunnel.config.allocated_port
+        )
+    )
     url = f"{server_config.consul_url}/v1/agent/services"
     params = dict(
         filter = (
@@ -220,7 +225,12 @@ def consul_check_service_host_and_port(server_config, logger, tunnel):
         raise TunnelError("Failed to list Consul services")
     # The response should be empty, otherwise the tunnel is not allowed
     if response.json():
-        raise TunnelError("Consul service already exists for specified port")
+        raise TunnelError(
+            "Consul service already exists for '{host}:{port}'".format(
+                host = server_config.service_host,
+                port = tunnel.config.allocated_port
+            )
+        )
     else:
         logger.debug("No existing Consul service found")
 
