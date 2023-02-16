@@ -94,14 +94,6 @@ class UpstreamSpec(schema.BaseModel):
                 raise ValueError("must be greater than 0")
 
 
-class AuthType(str, schema.Enum):
-    """
-    Enumeration of possible auth types for clients.
-    """
-    EXTERNAL = "external"
-    OIDC = "oidc"
-
-
 class ExternalAuthSpec(schema.BaseModel):
     """
     Model for the external auth section of a Zenith client spec.
@@ -125,16 +117,7 @@ class OIDCAuthSpec(schema.BaseModel):
     )
     credentials_secret_name: constr(regex = r"^[a-z0-9-]+$") = Field(
         ...,
-        description = (
-            "The name of the secret containing the OIDC credentials. "
-            "This can be either a client ID and secret or a token that Zenith can "
-            "use to register a new client using dynamic client registration, if "
-            "supported by the issuer."
-        )
-    )
-    client_registration_token_key: constr(min_length = 1) = Field(
-        "client-registration-token",
-        description = "The key of the client registration token within the credentials secret."
+        description = "The name of the secret containing the OIDC client ID and secret."
     )
     client_id_key: constr(min_length = 1) = Field(
         "client-id",
@@ -155,13 +138,6 @@ class AuthSpec(schema.BaseModel):
         description = (
             "Indicates whether to apply authentication for the service at "
             "the Zenith proxy."
-        )
-    )
-    type: t.Optional[AuthType] = Field(
-        None,
-        description = (
-            "The type of authentication to use. "
-            "If not given, the default authentication for the operator will be used."
         )
     )
     external: t.Optional[ExternalAuthSpec] = Field(
@@ -496,11 +472,6 @@ class Client(
             "name": "Skip Auth",
             "type": "boolean",
             "jsonPath": ".spec.auth.skip",
-        },
-        {
-            "name": "Auth Type",
-            "type": "string",
-            "jsonPath": ".spec.auth.type",
         },
         {
             "name": "MITM Enabled",

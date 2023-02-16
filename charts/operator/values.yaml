@@ -2,13 +2,6 @@
 # For all available options, see config.py in the operator source
 config: {}
 
-# Details of a secret containing the OIDC client registration token
-oidcClientRegistrationTokenSecret:
-  # The name of the secret
-  name:
-  # The key containing the token in the secret
-  key: client-registration-token
-
 # Details of a secret containing a kubeconfig file for a remote cluster
 # If given, this is used in preference to a service account
 kubeconfigSecret:

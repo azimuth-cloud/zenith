@@ -220,14 +220,6 @@ async def client_changed(instance, name, namespace, body, **kwargs):
     if instance.status.phase == api.ClientPhase.UNKNOWN:
         instance.status.phase = api.ClientPhase.PENDING
         await save_instance_status(instance)
-    # Make sure that the auth configuration is correct
-    auth_type = instance.spec.auth.type or api.AuthType(settings.default_auth_type)
-    if (
-        auth_type == api.AuthType.OIDC and
-        not instance.spec.auth.oidc and
-        not settings.default_oidc_issuer
-    ):
-        raise kopf.PermanentError(".spec.auth.oidc is required")
     # Make sure the specified service exists
     services = await ekclient.api("v1").resource("services")
     try:

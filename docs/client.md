@@ -17,6 +17,8 @@ over that tunnel is forwarded to the proxied service.
     - [Specifying the proxied service](#specifying-the-proxied-service)
     - [Specifying the protocol of the proxied service](#specifying-the-protocol-of-the-proxied-service)
     - [Specifying authentication parameters](#specifying-authentication-parameters)
+      - [OpenID Connect](#openid-connect)
+      - [External auth](#external-auth)
 
 ## Installation
 
@@ -162,23 +164,50 @@ implements TLS, then Zenith must be told to use HTTPS instead.
 
 #### Specifying authentication parameters
 
-Zenith is able to enforce authentication by calling out to an external auth service. When
-initiating a tunnel, the Zenith client can specify a dictionary of parameters that will be passed
-to the auth service as headers of the form `x-auth-{key}: {value}` and can be used by the
-authentication service to make a decision. For example, when used as part of the
-[Azimuth portal](https://github.com/stackhpc/azimuth) Zenith clients can specify the OpenStack
-project that they belong to and the Azimuth auth callout will ensure project membership before
-permitting a request to proceed.
+Zenith is able to enforce authentication, either using OpenID Connect (OIDC) or by calling out
+to an external auth service.
 
-The Zenith client can also opt out of the external auth, even when it is configured at the server.
-This can be useful for services that should be anonymously available or that enforce their
-own authentication.
+A Zenith client can also opt out of any authentication that is imposed at the server. This can
+be useful for services that should be anonymously available or that enforce their own authentication.
 
-  * `skip_auth`: Indicates if the external auth should be skipped for this client.
+  * `skip_auth`: Indicates if authentication should be skipped for this client.
       * CLI argument: *Not available as a CLI argument.*
       * Environment variable: `ZENITH_CLIENT__SKIP_AUTH`
       * Default: `false`
-  * `auth_external_params`: Indicates if the external auth should be skipped for this client.
+
+##### OpenID Connect
+
+The Zenith server supports using OpenID Connect (OIDC) to provide authentication for proxied
+services. This can be imposed on the server side using a discovery mechanism, but clients
+are able to override the OIDC parameters in order to use a specific OIDC issuer.
+
+In order to do this, the client must have a client ID and secret from the target OIDC issuer.
+Obtaining these credentials is out-of-scope of the Zenith components. The redirect URL of
+the client must be `https://{allocated FQDN}/_oidc/callback`.
+
+The given issuer URL should be such that the OpenID configuration can be discovered at
+ `{auth_oidc_issuer}/.well-known/openid-configuration`.
+
+  * `auth_oidc_issuer`: The URL of the OIDC issuer to use.
+      * CLI argument: *Not available as a CLI argument.*
+      * Environment variable: `ZENITH_CLIENT__AUTH_OIDC_ISSUER`
+      * Default: `None`
+  * `auth_oidc_client_id`: The client ID of the OIDC client to use.
+      * CLI argument: *Not available as a CLI argument.*
+      * Environment variable: `ZENITH_CLIENT__AUTH_OIDC_CLIENT_ID`
+      * Default: `None`
+  * `auth_oidc_client_secret`: The client secret of the OIDC client to use.
+      * CLI argument: *Not available as a CLI argument.*
+      * Environment variable: `ZENITH_CLIENT__AUTH_OIDC_CLIENT_SECRET`
+      * Default: `None`
+
+##### External auth
+
+When the server supports external auth, a Zenith client can specify a dictionary of parameters
+that will be passed to the auth service as headers of the form `x-auth-{key}: {value}`. The
+authentication service can then use these headers to make an authorization decision.
+
+  * `auth_external_params`: Parameters for the external auth service.
       * CLI argument: *Not available as a CLI argument.*
       * Environment variables of the form `ZENITH_CLIENT__AUTH_EXTERNAL_PARAMS__{KEY}`, e.g.
         `ZENITH_CLIENT__AUTH_EXTERNAL_PARAMS__OPENSTACK_PROJECT`
