@@ -100,6 +100,8 @@ def configure_tunnel(ssh_proc, config):
                     tunnel_config.update(auth_oidc_client_id = config.auth_oidc_client_id)
                 if config.auth_oidc_client_secret:
                     tunnel_config.update(auth_oidc_client_secret = config.auth_oidc_client_secret)
+                if config.auth_oidc_allowed_groups:
+                    tunnel_config.update(auth_oidc_allowed_groups = config.auth_oidc_allowed_groups)
                 if config.auth_external_params:
                     tunnel_config.update(auth_external_params = config.auth_external_params)
             if config.tls_cert_file:

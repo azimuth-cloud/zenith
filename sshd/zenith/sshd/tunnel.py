@@ -38,6 +38,8 @@ class TunnelExit(RuntimeError):
     Raised to exit the tunnel without signifying an error.
     """
 
+#: Type for an OIDC allowed group
+AllowedGroup = constr(regex = r"^[a-zA-Z0-9_/-$")
 
 #: Type for a key in the authentication parameters
 #: This will become a header name, so limit to lowercase alpha-numeric + -
@@ -72,6 +74,9 @@ class ClientConfig(BaseModel):
     auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = None
     #: The OIDC client secret to use
     auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = None
+    #: The OIDC groups that are allowed access to the the service
+    #: The user must have at least one of these groups in their groups claim
+    auth_oidc_allowed_groups: typing.List[AllowedGroup] = Field(default_factory = list)
     #: Parameters for the external authentication service (deprecated name)
     auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Parameters for the external authentication service
@@ -336,6 +341,7 @@ def consul_post_config(
                 "auth-oidc-issuer": tunnel.config.auth_oidc_issuer,
                 "auth-oidc-client-id": tunnel.config.auth_oidc_client_id,
                 "auth-oidc-client-secret": tunnel.config.auth_oidc_client_secret,
+                "auth-oidc-allowed-groups": tunnel.config.auth_oidc_allowed_groups,
             })
         elif tunnel.config.auth_external_params:
             config["auth-external-params"] = tunnel.config.auth_external_params

@@ -404,7 +404,7 @@ stringData:
   issuer-url: https://identity.company.org/oidc
   client-id: <client id>
   client-secret: <client secret>
-  # allowed-groups is a JSON-encoded list of group names to accept
+  # JSON-encoded list of group names that are permitted to access the service
   allowed-groups: |
     [
       "group1",

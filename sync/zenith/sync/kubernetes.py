@@ -1,8 +1,8 @@
 import asyncio
 import base64
-import dataclasses
 import hashlib
 import importlib.metadata
+import json
 import logging
 import random
 import os
@@ -213,7 +213,8 @@ class ServiceReconciler:
             return (
                 oidc_issuer,
                 service.config["auth-oidc-client-id"],
-                service.config["auth-oidc-client-secret"]
+                service.config["auth-oidc-client-secret"],
+                service.config.get("auth-oidc-allowed-groups", []),
             )
         # Otherwise, we need to wait for the discovery secret to become available
         secrets = await client.api("v1").resource("secrets")
@@ -226,10 +227,12 @@ class ServiceReconciler:
             key: base64.b64decode(value).decode()
             for key, value in secret.get("data", {}).items()
         }
+        allowed_groups_json = secret_data.get("allowed-groups")
         return (
             secret_data["issuer-url"],
             secret_data["client-id"],
-            secret_data["client-secret"]
+            secret_data["client-secret"],
+            json.loads(allowed_groups_json) if allowed_groups_json else [],
         )
 
     async def _reconcile_oidc_cookie_secret(self, client, service):
@@ -265,7 +268,7 @@ class ServiceReconciler:
                 raise
         return base64.b64decode(secret.data["cookie-secret"]).decode()
 
-    def _oauth2_proxy_alpha_config(self, issuer_url, client_id, client_secret):
+    def _oauth2_proxy_alpha_config(self, issuer_url, client_id, client_secret, allowed_groups):
         """
         Returns the OAuth2 proxy alpha config for the service, and the checksum
         of the config (the chart does not currently include an annotation for it).
@@ -300,6 +303,7 @@ class ServiceReconciler:
                     "provider": "oidc",
                     "clientID": client_id,
                     "clientSecret": client_secret,
+                    "allowedGroups": allowed_groups,
                     "loginURLParameters": self.config.ingress.oidc.forwarded_query_params,
                     "oidcConfig": {
                         "issuerURL": issuer_url,
@@ -383,6 +387,7 @@ class ServiceReconciler:
         issuer_url,
         client_id,
         client_secret,
+        allowed_groups,
         ingress_modifier
     ):
         """
@@ -395,7 +400,8 @@ class ServiceReconciler:
         config, config_checksum = self._oauth2_proxy_alpha_config(
             issuer_url,
             client_id,
-            client_secret
+            client_secret,
+            allowed_groups
         )
         # Work out if we are running under a secure connection
         secure = self.config.ingress.tls.enabled or "tls-cert" in service.config
@@ -524,9 +530,11 @@ class ServiceReconciler:
         # Note that in the case where OIDC authentication is not enabled, we want to ensure that
         # the OIDC proxy components are gone
         if use_oidc:
-            issuer_url, client_id, client_secret = await self._reconcile_oidc_credentials(
-                client,
-                service
+            issuer_url, client_id, client_secret, allowed_groups = (
+                await self._reconcile_oidc_credentials(
+                    client,
+                    service
+                )
             )
             auth_url, signin_url, response_headers, cookies = await self._reconcile_oidc_proxy(
                 client,
@@ -535,6 +543,7 @@ class ServiceReconciler:
                 issuer_url,
                 client_id,
                 client_secret,
+                allowed_groups,
                 ingress_modifier
             )
             ingress_modifier.configure_authentication(
