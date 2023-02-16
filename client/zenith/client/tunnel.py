@@ -9,8 +9,6 @@ import subprocess
 import sys
 import tempfile
 
-from .config import AuthType
-
 
 logger = logging.getLogger(__name__)
 
@@ -94,22 +92,15 @@ def configure_tunnel(ssh_proc, config):
             )
             if config.read_timeout:
                 tunnel_config.update(read_timeout = config.read_timeout)
-            if config.skip_auth:
-                tunnel_config.update(skip_auth = True)
-            else:
-                tunnel_config.update(auth_type = config.auth_type.value)
-                if config.auth_type == AuthType.OIDC:
+            tunnel_config.update(skip_auth = config.skip_auth)
+            if not config.skip_auth:
+                if config.auth_oidc_issuer:
                     tunnel_config.update(auth_oidc_issuer = config.auth_oidc_issuer)
-                    if config.auth_oidc_client_id:
-                        tunnel_config.update(
-                            auth_oidc_client_id = config.auth_oidc_client_id,
-                            auth_oidc_client_secret = config.auth_oidc_client_secret
-                        )
-                    elif config.auth_oidc_client_registration_token:
-                        tunnel_config.update(
-                            auth_oidc_client_registration_token = config.auth_oidc_client_registration_token
-                        )
-                elif config.auth_external_params:
+                if config.auth_oidc_client_id:
+                    tunnel_config.update(auth_oidc_client_id = config.auth_oidc_client_id)
+                if config.auth_oidc_client_secret:
+                    tunnel_config.update(auth_oidc_client_secret = config.auth_oidc_client_secret)
+                if config.auth_external_params:
                     tunnel_config.update(auth_external_params = config.auth_external_params)
             if config.tls_cert_file:
                 tunnel_config.update(

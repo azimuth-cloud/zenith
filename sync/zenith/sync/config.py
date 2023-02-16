@@ -100,6 +100,20 @@ class OIDCConfig(Section):
     """
     Model for the ingress OIDC configuration section.
     """
+    #: Indicates if discovery should be used for clients that don't specify an OIDC issuer
+    #: This allows an external controller to place secrets in the Zenith namespace
+    #: containing OIDC credentials to use for each service
+    discovery_enabled: bool = True
+    #: The template to use for the OAuth2 proxy release name
+    release_name_template: constr(min_length = 1) = "oidc-{service_name}"
+    #: The template to use for the names of discovery secrets
+    discovery_secret_name_template: constr(min_length = 1) = "oidc-discovery-{service_name}"
+    #: The template to use for the secret containing the cookie secret for the OAuth2 proxy
+    oauth2_proxy_cookie_secret_template: constr(min_length = 1) = "oidc-cookie-{service_name}"
+    #: The length of time for which OAuth2 proxy cookies should last
+    oauth2_proxy_cookie_lifetime: constr(regex = r"^[1-9][0-9]*[smh]$") = "3h"
+    #: The path prefix to use for OAuth2 proxy endpoints
+    oauth2_proxy_path_prefix: constr(regex = r"^/[a-z0-9_/-]+") = "/_oidc"
     #: The chart repository containing the proxy chart
     oauth2_proxy_chart_repo: AnyHttpUrl = "https://oauth2-proxy.github.io/manifests"
     #: The name of the proxy chart
@@ -193,6 +207,9 @@ class KubernetesConfig(Section):
     """
     Model for the Kubernetes configuration section.
     """
+    #: The field manager name to use for server-side apply
+    easykube_field_manager: constr(min_length = 1) = "zenith-sync"
+
     #: The DNS domain for cluster services
     cluster_services_domain: str = "svc.cluster.local"
     #: The namespace that the sync component is running in
@@ -205,8 +222,8 @@ class KubernetesConfig(Section):
     service_name_label: str = "zenith.stackhpc.com/service-name"
     #: The annotation used to record that a secret is a mirror of another secret
     tls_mirror_annotation: str = "zenith.stackhpc.com/mirrors"
-    #: The number of times that a failed reconciliation will be retried before giving up
-    reconciliation_retries: conint(gt = 0) = 3
+    #: The maximum delay between retries when backing off
+    reconciliation_max_backoff: conint(gt = 0) = 60
     #: The ingress configuration
     ingress: IngressConfig
     #: The Helm client configuration

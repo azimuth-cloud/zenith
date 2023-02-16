@@ -3,8 +3,6 @@ import enum
 import pathlib
 import typing
 
-import yaml
-
 from pydantic import Field, FilePath, AnyHttpUrl, conint, constr, validator
 
 from configomatic import Configuration, LoggingConfiguration
@@ -16,16 +14,6 @@ AuthParamsValue = constr(max_length = 1024)
 
 #: Type for an RFC3986 compliant URL path component
 UrlPath = constr(regex = r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
-
-
-class AuthType(str, enum.Enum):
-    """
-    Enumeration of possible auth types for clients.
-    """
-    #: Indicates that external authentication should be used, if configured
-    EXTERNAL = "external"
-    #: Indicates that OIDC authentication should be used
-    OIDC = "oidc"
 
 
 def base64_encoded_content(path):
@@ -108,17 +96,12 @@ class ConnectConfig(Configuration):
     read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
-    #: The type of authentication to use
-    auth_type: AuthType = AuthType.EXTERNAL
     #: The URL of the OIDC issuer to use (only used when auth_type == "oidc")
     auth_oidc_issuer: typing.Optional[AnyHttpUrl] = None
     #: The OIDC client ID, if known
     auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = None
     #: The OIDC client secret, required if client ID is given
     auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = None
-    #: The token to use to register an OIDC client using dynamic client registration
-    #: Only used if no client ID is given
-    auth_oidc_client_registration_token: typing.Optional[constr(min_length = 1)] = None
     #: Parameters for the proxy authentication service
     auth_external_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Path to a file containing a TLS certificate chain to use

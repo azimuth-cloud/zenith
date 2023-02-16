@@ -20,6 +20,26 @@ class ServiceWatcher:
         self._queues = {}
         self._running = False
 
+    async def _log_response(self, response):
+        """
+        HTTPX response hook that logs responses.
+        """
+        logger.info(
+            "Consul request: \"%s %s\" %s",
+            response.request.method,
+            response.request.url,
+            response.status_code
+        )
+
+    def _client(self):
+        """
+        Returns the HTTPX client to use for Consul.
+        """
+        return httpx.AsyncClient(
+            base_url = self.config.url,
+            event_hooks = { "response": [self._log_response] }
+        )
+
     async def _config(self, client, instance):
         """
         Fetches the configuration from Consul for the given instance.
@@ -58,7 +78,7 @@ class ServiceWatcher:
                     break
         # If the index goes backwards, reset it to zero
         # The index must also be greater than zero
-        next_index = max(next_index if index is None or next_index >= index else 0, 0)
+        next_index = max(next_index if next_index >= index else 0, 0)
         # Return the result tuple
         return (response.json(), next_index)
 
@@ -183,7 +203,7 @@ class ServiceWatcher:
         """
         Starts the watcher and runs until cancelled.
         """
-        async with httpx.AsyncClient(base_url = self.config.url) as client:
+        async with self._client() as client:
             logger.info(
                 "Initialised Consul client [url: %s, service_tag: %s]",
                 self.config.url,

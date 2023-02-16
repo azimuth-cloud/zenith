@@ -1,23 +1,104 @@
 import asyncio
 import base64
+import dataclasses
 import hashlib
 import importlib.metadata
 import logging
+import random
 import os
 
-import httpx
 import yaml
 
 from easykube import Configuration, ApiError, PRESENT
 
 from pyhelm3 import Client as HelmClient
 
-from .model import EventKind
+from .model import Event, EventKind, Service
 from .ingress_modifier import INGRESS_MODIFIERS_ENTRY_POINT_GROUP
 
 
 # Initialise the easykube config from the environment
 ekconfig = Configuration.from_environment()
+
+
+class EventQueue(asyncio.Queue):
+    """
+    Customised queue implementation that understands service events.
+
+    A new event for a service replaces those that are retries, as they
+    are no longer up-to-date.
+    """
+    def __init__(self, max_backoff, maxsize = 0):
+        super().__init__(maxsize)
+        self._max_backoff = max_backoff
+
+    def _init(self, maxsize):
+        self._queue = []
+        # The requeue tasks are indexed by service
+        # This allows us to cancel them when a new event comes in
+        self._requeue_tasks = {}
+
+    def _put(self, item):
+        if isinstance(item, Event):
+            incoming_event, incoming_retries = item, 0
+        else:
+            incoming_event, incoming_retries = item
+        # Cancel any requeue tasks for the service before pushing the new event
+        requeue_task = self._requeue_tasks.pop(incoming_event.service.name, None)
+        if requeue_task and not requeue_task.done():
+            requeue_task.cancel()
+        # If there is an existing event for the the service in the queue, find it
+        # We will only keep one from the existing event and the incoming one
+        # The one that we keep will be the one with the fewest retries
+        # Whichever event we keep will be moved to the back of the queue
+        # This ensures that "stable" services are dealt with first
+        try:
+            existing_idx = next(
+                idx
+                for idx, (event, _) in enumerate(self._queue)
+                if event.service.name == incoming_event.service.name
+            )
+        except StopIteration:
+            # If there is no existing event, just append the incoming event
+            self._queue.append((incoming_event, incoming_retries))
+        else:
+            existing_event, existing_retries = self._queue.pop(existing_idx)
+            if incoming_retries <= existing_retries:
+                self._queue.append((incoming_event, incoming_retries))
+            else:
+                self._queue.append((existing_event, existing_retries))
+
+    def _get(self):
+        return self._queue.pop(0)
+
+    def requeue(self, event, retries):
+        """
+        Requeues the given event with the given number of retries.
+        """
+        service = event.service.name
+        # Cancel any existing requeue task
+        existing_task = self._requeue_tasks.pop(service, None)
+        if existing_task and not existing_task.done():
+            existing_task.cancel()
+        # Launch a new background task to requeue the event after a backoff
+        # We use an exponential backoff
+        backoff = min(2**retries + random.uniform(0, 1), self._max_backoff)
+        task = self._requeue_tasks[service] = asyncio.create_task(asyncio.sleep(backoff))
+        # We use a done callback to put the event back onto the queue
+        # It is important that this happens _outside_ the task as the put cancels the running task
+        def done_callback(task):
+            # If the task was cancelled, there is nothing to do
+            try:
+                _ = task.result()
+            except asyncio.CancelledError:
+                return
+            # If the task completed successfully, requeue the event
+            # If the queue is full, schedule another requeue attempt
+            try:
+                self.put_nowait((event, retries + 1))
+            except asyncio.QueueFull:
+                self.requeue(event, retries + 1)
+        task.add_done_callback(done_callback)
 
 
 class ServiceReconciler:
@@ -34,9 +115,6 @@ class ServiceReconciler:
             unpack_directory = config.helm_client.unpack_directory
         )
         self._logger = logging.getLogger(__name__)
-
-    def _log(self, level, *args, **kwargs):
-        getattr(self._logger, level)(*args, **kwargs)
 
     def _labels(self, name):
         """
@@ -66,12 +144,12 @@ class ServiceReconciler:
             # If the service pushed a TLS certificate, use it even if auto-TLS is disabled
             tls_secret_name = f"tls-{service.name}"
             # Make a secret with the certificate in to pass to the ingress
-            secrets = await client.api("v1").resource("secrets")
-            await secrets.create_or_replace(
-                tls_secret_name,
+            await client.apply_object(
                 self._adopt(
                     service,
                     {
+                        "apiVersion": "v1",
+                        "kind": "Secret",
                         "metadata": {
                             "name": tls_secret_name,
                         },
@@ -81,7 +159,8 @@ class ServiceReconciler:
                             "tls.key": service.config["tls-key"],
                         },
                     }
-                )
+                ),
+                force = True
             )
         elif self.config.ingress.tls.enabled:
             # If TLS is enabled, set a secret name even if the secret doesn't exist
@@ -101,12 +180,12 @@ class ServiceReconciler:
         if "tls-client-ca" in service.config:
             # First, make a secret containing the CA certificate
             client_ca_secret = f"tls-client-ca-{service.name}"
-            secrets = await client.api("v1").resource("secrets")
-            await secrets.create_or_replace(
-                client_ca_secret,
+            await client.apply_object(
                 self._adopt(
                     service,
                     {
+                        "apiVersion": "v1",
+                        "kind": "Secret",
                         "metadata": {
                             "name": client_ca_secret,
                         },
@@ -114,7 +193,8 @@ class ServiceReconciler:
                             "ca.crt": service.config["tls-client-ca"]
                         }
                     }
-                )
+                ),
+                force = True
             )
             # Apply controller-specific modifications for client certificate handling
             ingress_modifier.configure_tls_client_certificates(
@@ -123,97 +203,69 @@ class ServiceReconciler:
                 client_ca_secret
             )
 
-    async def _reconcile_oidc_secret(self, release_name, client, service, service_domain):
+    async def _reconcile_oidc_credentials(self, client, service):
         """
-        Reconciles the secret for the oauth2-proxy for the service.
+        Returns the OIDC issuer, client ID and secret for the given service.
         """
-        issuer = service.config["auth-oidc-issuer"]
-        # We want the secret name to be unique for each issuer, mainly so that a new client
-        # is created if the issuer is changed and dynamic client registration is in use
-        # To do this, we hash the issuer and put the first 8 characters in the secret name
-        issuer_hash = hashlib.sha256(issuer.encode()).hexdigest()
-        secret_name = f"{release_name}-{issuer_hash[:8]}"
-        # Read the existing secret so that we can reuse the values in the Helm release
+        oidc_issuer = service.config.get("auth-oidc-issuer")
+        # If the issuer is present in the config, then a client ID and secret should also be there
+        if oidc_issuer:
+            return (
+                oidc_issuer,
+                service.config["auth-oidc-client-id"],
+                service.config["auth-oidc-client-secret"]
+            )
+        # Otherwise, we need to wait for the discovery secret to become available
         secrets = await client.api("v1").resource("secrets")
-        # If the secret already exists, use it
+        secret = await secrets.fetch(
+            self.config.ingress.oidc.discovery_secret_name_template.format(
+                service_name = service.name
+            )
+        )
+        secret_data = {
+            key: base64.b64decode(value).decode()
+            for key, value in secret.get("data", {}).items()
+        }
+        return (
+            secret_data["issuer-url"],
+            secret_data["client-id"],
+            secret_data["client-secret"]
+        )
+
+    async def _reconcile_oidc_cookie_secret(self, client, service):
+        """
+        Returns the cookie secret for the OAuth2 proxy for the service.
+        """
+        secrets = await client.api("v1").resource("secrets")
+        secret_name = self.config.ingress.oidc.oauth2_proxy_cookie_secret_template.format(
+            service_name = service.name
+        )
         try:
             secret = await secrets.fetch(secret_name)
         except ApiError as exc:
-            existing_data = {}
-            if exc.status_code != 404:
+            if exc.status_code == 404:
+                cookie_secret = base64.urlsafe_b64encode(os.urandom(32)).decode()
+                secret = await client.apply_object(
+                    self._adopt(
+                        service,
+                        {
+                            "apiVersion": "v1",
+                            "kind": "Secret",
+                            "metadata": {
+                                "name": secret_name,
+                            },
+                            "stringData": {
+                                "cookie-secret": cookie_secret,
+                            },
+                        }
+                    ),
+                    force = True
+                )
+            else:
                 raise
-        else:
-            existing_data = {
-                key: base64.b64decode(value).decode()
-                for key, value in secret.get("data", {}).items()
-            }
-        # Calculate the next data based on the tunnel configuration
-        next_data = existing_data.copy()
-        # Generate a random cookie secret if required
-        if "cookie-secret" not in next_data:
-            next_data["cookie-secret"] = base64.urlsafe_b64encode(os.urandom(32)).decode()
-        # If the client specified a client ID, always use it
-        if "auth-oidc-client-id" in service.config:
-            next_data["client-id"] = service.config["auth-oidc-client-id"]
-            next_data["client-secret"] = service.config["auth-oidc-client-secret"]
-        # Register a new client using dynamic client registration if there is no existing client
-        elif "client-id" not in next_data:
-            self._log(
-                "info",
-                f"Registering OIDC client for {service.name} at {issuer}"
-            )
-            async with httpx.AsyncClient(base_url = issuer) as http:
-                # Get the registration endpoint from the discovery URL
-                response = await http.get("/.well-known/openid-configuration")
-                response.raise_for_status()
-                registration_endpoint = response.json()["registration_endpoint"]
-                headers = {}
-                if "auth-oidc-client-registration-token" in service.config:
-                    token = service.config["auth-oidc-client-registration-token"]
-                    headers["Authorization"] = f"Bearer {token}"
-                # Get the redirect URI that will be used for the client
-                redirect_scheme = (
-                    "https"
-                    if self.config.ingress.tls.enabled or "tls-cert" in service.config
-                    else "http"
-                )
-                redirect_uri = f"{redirect_scheme}://{service_domain}/_oidc/callback"
-                response = await http.post(
-                    registration_endpoint,
-                    headers = headers,
-                    json = {
-                        "application_type": "web",
-                        "response_types": ["code"],
-                        "grant_types": ["authorization_code"],
-                        "redirect_uris": [redirect_uri],
-                        # Send the service FQDN as the home URL
-                        "client_uri": f"{redirect_scheme}://{service_domain}",
-                    }
-                )
-                response.raise_for_status()
-                # Set the client ID and secret from the response
-                next_data["client-id"] = response.json()["client_id"]
-                next_data["client-secret"] = response.json()["client_secret"]
-                next_data["redirect-uri"] = redirect_uri
-        # Patch the secret if required
-        if next_data != existing_data:
-            secret = await secrets.create_or_patch(
-                secret_name,
-                {
-                    "metadata": {
-                        "name": secret_name,
-                    },
-                    "stringData": next_data,
-                }
-            )
-        return (
-            next_data["cookie-secret"],
-            next_data["client-id"],
-            next_data["client-secret"],
-            next_data["redirect-uri"]
-        )
+        return base64.b64decode(secret.data["cookie-secret"]).decode()
 
-    def _oauth2_proxy_alpha_config(self, service, client_id, client_secret):
+    def _oauth2_proxy_alpha_config(self, issuer_url, client_id, client_secret):
         """
         Returns the OAuth2 proxy alpha config for the service, and the checksum
         of the config (the chart does not currently include an annotation for it).
@@ -230,12 +282,6 @@ class ServiceReconciler:
                     "name": "X-Remote-Group",
                     "values": [
                         { "claim": "groups" }
-                    ],
-                },
-                {
-                    "name": "X-Access-Token",
-                    "values": [
-                        { "claim": "access_token" }
                     ],
                 },
             ],
@@ -256,19 +302,10 @@ class ServiceReconciler:
                     "clientSecret": client_secret,
                     "loginURLParameters": self.config.ingress.oidc.forwarded_query_params,
                     "oidcConfig": {
-                        "issuerURL": service.config["auth-oidc-issuer"],
-                        "insecureAllowUnverifiedEmail": (
-                            # If email addresses are not required at all, then they don't need to be verified
-                            not service.config.get("auth-oidc-require-email", False) or
-                            service.config.get("auth-oidc-allow-unverified-email", True)
-                        ),
-                        # If email addresses are not explicitly required, don't require them to be present
-                        # This means using a claim that is always available, like 'sub'
-                        "emailClaim": (
-                            "email"
-                            if service.config.get("auth-oidc-require-email", False)
-                            else "sub"
-                        ),
+                        "issuerURL": issuer_url,
+                        "insecureAllowUnverifiedEmail": True,
+                        # Use a claim that is always available, in case email is not
+                        "emailClaim": "sub",
                         "audienceClaims": ["aud"],
                     },
                 },
@@ -278,18 +315,91 @@ class ServiceReconciler:
         checksum = hashlib.sha256(yaml.safe_dump(config).encode()).hexdigest()
         return config, checksum
 
-    async def _reconcile_oidc_proxy(self, release_name, client, service, service_domain):
+    async def _reconcile_oidc_ingress(
+        self,
+        release_name,
+        client,
+        service,
+        service_domain,
+        ingress_modifier
+    ):
+        """
+        Reconciles the ingress for the OIDC authentication for the service.
+        """
+        # Work out if there is a TLS secret we should use for the _oidc ingress
+        tls_secret_name = None
+        if "tls-cert" in service.config:
+            tls_secret_name = f"tls-{service.name}"
+        elif self.config.ingress.tls.enabled:
+            tls_secret_name = self.config.ingress.tls.secret_name or f"tls-{service.name}"
+        # Create an ingress without authentication for the _oidc path
+        oidc_ingress = {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "Ingress",
+            "metadata": {
+                "name": release_name,
+                "labels": {},
+                "annotations": {},
+            },
+            "spec": {
+                "ingressClassName": self.config.ingress.class_name,
+                "rules": [
+                    {
+                        "host": service_domain,
+                        "http": {
+                            "paths": [
+                                {
+                                    "path": self.config.ingress.oidc.oauth2_proxy_path_prefix,
+                                    "pathType": "Prefix",
+                                    "backend": {
+                                        "service": {
+                                            "name": release_name,
+                                            "port": {
+                                                "name": "http",
+                                            },
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                ],
+                "tls": (
+                    [{ "hosts": [service_domain], "secretName": tls_secret_name }]
+                    if tls_secret_name
+                    else []
+                ),
+            },
+        }
+        ingress_modifier.configure_defaults(oidc_ingress)
+        oidc_ingress["metadata"]["annotations"].update(self.config.ingress.annotations)
+        await client.apply_object(self._adopt(service, oidc_ingress), force = True)
+
+    async def _reconcile_oidc_proxy(
+        self,
+        client,
+        service,
+        service_domain,
+        issuer_url,
+        client_id,
+        client_secret,
+        ingress_modifier
+    ):
         """
         Reconciles the oauth2-proxy release to do OIDC authentication for the service.
         """
-        cookie_secret, client_id, client_secret, redirect_uri = await self._reconcile_oidc_secret(
-            release_name,
-            client,
-            service,
-            service_domain
+        release_name = self.config.ingress.oidc.release_name_template.format(
+            service_name = service.name
         )
-        config, config_checksum = self._oauth2_proxy_alpha_config(service, client_id, client_secret)
-        # Ensure that the OIDC
+        cookie_secret = await self._reconcile_oidc_cookie_secret(client, service)
+        config, config_checksum = self._oauth2_proxy_alpha_config(
+            issuer_url,
+            client_id,
+            client_secret
+        )
+        # Work out if we are running under a secure connection
+        secure = self.config.ingress.tls.enabled or "tls-cert" in service.config
+        # Ensure that the OAuth2 proxy release exists
         _ = await self._helm_client.ensure_release(
             release_name,
             await self._helm_client.get_chart(
@@ -314,18 +424,18 @@ class ServiceReconciler:
                 },
                 "proxyVarsAsSecrets": False,
                 "extraArgs": {
-                    "proxy-prefix": "/_oidc",
+                    "proxy-prefix": self.config.ingress.oidc.oauth2_proxy_path_prefix,
                     "cookie-secret": cookie_secret,
-                    "cookie-expire": service.config.get("auth-oidc-cookie-expire", "24h"),
+                    "cookie-expire": self.config.ingress.oidc.oauth2_proxy_cookie_lifetime,
                     # If the ingress is not using TLS, we have to allow the cookie on insecure connections
-                    "cookie-secure": (
-                        "true"
-                        if self.config.ingress.tls.enabled or "tls-cert" in service.config
-                        else "false"
-                    ),
+                    "cookie-secure": "true" if secure else "false",
                     "whitelist-domain": service_domain,
                     "email-domain": "*",
-                    "redirect-url": redirect_uri,
+                    "redirect-url": "{scheme}://{host}{prefix}/callback".format(
+                        scheme = "https" if secure else "http",
+                        prefix = self.config.ingress.oidc.oauth2_proxy_path_prefix,
+                        host = service_domain
+                    ),
                 },
                 # We will always manage our own ingress for the _oidc path
                 "ingress": {
@@ -338,121 +448,105 @@ class ServiceReconciler:
             namespace = self.config.target_namespace
             # We don't need to wait, we just need to know that Helm created the resources
         )
+        # Create the ingresses
+        await self._reconcile_oidc_ingress(
+            release_name,
+            client,
+            service,
+            service_domain,
+            ingress_modifier
+        )
+        # Return the auth details for the main ingress
+        return (
+            "http://{name}.{namespace}.{domain}{prefix}/auth".format(
+                name = release_name,
+                namespace = self.config.target_namespace,
+                domain = self.config.cluster_services_domain,
+                prefix = self.config.ingress.oidc.oauth2_proxy_path_prefix
+            ),
+            "{scheme}://{host}{prefix}/start??rd=$escaped_request_uri&$args".format(
+                scheme = "https" if secure else "http",
+                host = service_domain,
+                prefix = self.config.ingress.oidc.oauth2_proxy_path_prefix
+            ),
+            # Copy the remote user and group headers from the auth response onto the main response
+            ["X-Remote-User", "X-Remote-Group"],
+            # oauth2-proxy uses cookie splitting for large OIDC tokens
+            # Make sure that we copy a reasonable number of split cookies to the main response
+            [f"_oauth2_proxy_{i}" for i in range(1, 4)],
+        )
 
-    async def _reconcile_oidc_ingress(
-        self,
-        release_name,
-        client,
-        service,
-        service_domain,
-        ingress_modifier
-    ):
+    async def _remove_oidc_proxy(self, client, service):
         """
-        Reconciles the ingress for the OIDC authentication for the service.
+        Removes the oauth2-proxy release and associated resources for the service.
         """
-        # Work out if there is a TLS secret we should use for the _oidc ingress
-        tls_secret_name = None
-        if "tls-cert" in service.config:
-            tls_secret_name = f"tls-{service.name}"
-        elif self.config.ingress.tls.enabled:
-            tls_secret_name = self.config.ingress.tls.secret_name or f"tls-{service.name}"
-        # Create an ingress without authentication for the _oidc path
-        oidc_ingress = {
-            "metadata": {
-                "name": release_name,
-                "labels": {},
-                "annotations": {},
-            },
-            "spec": {
-                "ingressClassName": self.config.ingress.class_name,
-                "rules": [
-                    {
-                        "host": service_domain,
-                        "http": {
-                            "paths": [
-                                {
-                                    "path": "/_oidc",
-                                    "pathType": "Prefix",
-                                    "backend": {
-                                        "service": {
-                                            "name": release_name,
-                                            "port": {
-                                                "name": "http",
-                                            },
-                                        },
-                                    },
-                                },
-                            ],
-                        },
-                    },
-                ],
-                "tls": (
-                    [{ "hosts": [service_domain], "secretName": tls_secret_name }]
-                    if tls_secret_name
-                    else []
-                ),
-            },
-        }
-        ingress_modifier.configure_defaults(oidc_ingress)
-        oidc_ingress["metadata"]["annotations"].update(self.config.ingress.annotations)
+        release_name = self.config.ingress.oidc.release_name_template.format(
+            service_name = service.name
+        )
+        # Remove the ingress first
         ingresses = await client.api("networking.k8s.io/v1").resource("ingresses")
-        await ingresses.create_or_replace(release_name, self._adopt(service, oidc_ingress))
+        await ingresses.delete(release_name)
+        # The the Helm release
+        await self._helm_client.uninstall_release(
+            release_name,
+            namespace = self.config.target_namespace
+        )
+        # Then the cookie secret
+        secrets = await client.api("v1").resource("secrets")
+        secret_name = self.config.ingress.oidc.oauth2_proxy_cookie_secret_template.format(
+            service_name = service.name
+        )
+        await secrets.delete(secret_name)
 
     async def _apply_auth(self, client, service, service_domain, ingress, ingress_modifier):
         """
         Apply any authentication configuration defined in the configuration and/or
         service to the ingress.
         """
+        # Decide what authentication to apply
+        # This is done with the following precedence:
+        #   1. If the client opted out of auth, no auth is applied
+        #   2. If the client specified OIDC credentials, use them
+        #   3. If OIDC discovery is enabled, use that
+        #      This allows an external controller to place secrets into the Zenith namespace
+        #      containing OIDC credentials for each service
+        #   4. If external auth is configured, use that
+        #   5. No auth is applied
         skip_auth = service.config.get("skip-auth", False)
-        auth_type = service.config.get("auth-type", "external")
-        # If OIDC is enabled, we create an oauth2-proxy instance to delegate the auth to
-        # If it is not enabled, we need to make sure that the instance does not exist
-        oidc_release_name = f"oidc-{service.name}"
-        if not skip_auth and auth_type == "oidc":
-            await self._reconcile_oidc_proxy(
-                oidc_release_name,
-                client,
-                service,
-                service_domain
+        use_oidc = (
+            not skip_auth and (
+                service.config.get("auth-oidc-issuer") or
+                self.config.ingress.oidc.discovery_enabled
             )
-            await self._reconcile_oidc_ingress(
-                oidc_release_name,
+        )
+        use_external = not skip_auth and not use_oidc and self.config.ingress.external_auth.url
+        # Apply/unapply OIDC authentication as required
+        # Note that in the case where OIDC authentication is not enabled, we want to ensure that
+        # the OIDC proxy components are gone
+        if use_oidc:
+            issuer_url, client_id, client_secret = await self._reconcile_oidc_credentials(
+                client,
+                service
+            )
+            auth_url, signin_url, response_headers, cookies = await self._reconcile_oidc_proxy(
                 client,
                 service,
                 service_domain,
+                issuer_url,
+                client_id,
+                client_secret,
                 ingress_modifier
             )
-            # Check if the ingress has TLS enabled so we know what scheme to use for the signin URL
-            ingress_scheme = (
-                "https"
-                if self.config.ingress.tls.enabled or "tls-cert" in service.config
-                else "http"
-            )
-            # Configure authentication on the main ingress
             ingress_modifier.configure_authentication(
                 ingress,
-                "http://{name}.{namespace}.{domain}/_oidc/auth".format(
-                    name = oidc_release_name,
-                    namespace = self.config.target_namespace,
-                    domain = self.config.cluster_services_domain
-                ),
-                f"{ingress_scheme}://$host/_oidc/start??rd=$escaped_request_uri&$args",
-                response_headers = ["X-Remote-User", "X-Remote-Group", "X-Access-Token"],
-                # oauth2-proxy uses cookie splitting for large OIDC tokens
-                # Make sure that we copy a reasonable number of split cookies to the main response
-                response_cookies = [f"_oauth2_proxy_{i}" for i in range(1, 4)]
+                auth_url,
+                signin_url,
+                response_headers = response_headers,
+                response_cookies = cookies
             )
         else:
-            # Remove the ingress for the _oidc path
-            ingresses = await client.api("networking.k8s.io/v1").resource("ingresses")
-            await ingresses.delete(oidc_release_name)
-            # Remove the Helm release for the oauth2-proxy
-            _ = await self._helm_client.uninstall_release(
-                oidc_release_name,
-                namespace = self.config.target_namespace
-            )
-        # If external auth is enabled, we need to configure the ingress
-        if not skip_auth and auth_type == "external" and self.config.ingress.external_auth.url:
+            await self._remove_oidc_proxy(client, service)
+        if use_external:
             # Determine what headers to set/override on the auth request
             #   Start with the fixed defaults
             request_headers = dict(self.config.ingress.external_auth.request_headers)
@@ -475,14 +569,14 @@ class ServiceReconciler:
         Reconciles a service with Kubernetes.
         """
         endpoints = ", ".join(f"{ep.address}:{ep.port}" for ep in service.endpoints)
-        self._log("info", f"Reconciling {service.name} [{endpoints}]")
+        self._logger.info(f"Reconciling {service.name} [{endpoints}]")
         # First create or update the corresponding service
-        services = await client.api("v1").resource("services")
-        await services.create_or_replace(
-            service.name,
+        await client.apply_object(
             self._adopt(
                 service,
                 {
+                    "apiVersion": "v1",
+                    "kind": "Service",
                     "metadata": {
                         "name": service.name,
                     },
@@ -496,15 +590,16 @@ class ServiceReconciler:
                         ],
                     },
                 }
-            )
+            ),
+            force = True
         )
         # Then create or update the endpoints object
-        endpoints = await client.api("v1").resource("endpoints")
-        await endpoints.create_or_replace(
-            service.name,
+        await client.apply_object(
             self._adopt(
                 service,
                 {
+                    "apiVersion": "v1",
+                    "kind": "Endpoints",
                     "metadata": {
                         "name": service.name,
                     },
@@ -524,11 +619,14 @@ class ServiceReconciler:
                         for endpoint in service.endpoints
                     ],
                 }
-            )
+            ),
+            force = True
         )
         # Finally, create or update the ingress object
         service_domain = f"{service.name}.{self.config.ingress.base_domain}"
         ingress = {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "Ingress",
             "metadata": {
                 "name": service.name,
                 "labels": {},
@@ -573,7 +671,7 @@ class ServiceReconciler:
             try:
                 read_timeout = int(read_timeout)
             except ValueError:
-                self._log("warn", "Given read timeout is not a valid integer")
+                self._logger.warn("Given read timeout is not a valid integer")
             else:
                 ingress_modifier.configure_read_timeout(ingress, read_timeout)
         # Apply any TLS configuration
@@ -581,14 +679,13 @@ class ServiceReconciler:
         # Apply any auth configuration
         await self._apply_auth(client, service, service_domain, ingress, ingress_modifier)
         # Create or update the ingress
-        ingresses = await client.api("networking.k8s.io/v1").resource("ingresses")
-        await ingresses.create_or_replace(service.name, self._adopt(service, ingress))
+        await client.apply_object(self._adopt(service, ingress), force = True)
 
     async def _remove_service(self, client, name):
         """
         Removes a service from Kubernetes.
         """
-        self._log("info", f"Removing {name}")
+        self._logger.info(f"Removing {name}")
         # We have to delete the corresponding endpoints, services, ingresses and secrets
         ingresses = await client.api("networking.k8s.io/v1").resource("ingresses")
         await ingresses.delete_all(labels = self._labels(name))
@@ -607,64 +704,51 @@ class ServiceReconciler:
             namespace = self.config.target_namespace
         )
 
-    async def _try_reconcile_service(self, client, service, ingress_modifier):
+    async def _populate_queue(self, client, source, queue):
         """
-        Tries to reconcile the specified service, logging any errors that occur.
+        Pushes service events from the given source onto the given queue.
         """
-        attempt = 1
-        while True:
-            try:
-                await self._reconcile_service(client, service, ingress_modifier)
-            except Exception as exc:
-                if attempt == self.config.reconciliation_retries:
-                    message = "Failed to reconcile {} after {} attempts - giving up".format(
-                        service.name,
-                        self.config.reconciliation_retries
-                    )
-                    self._log("exception", message)
-                    return
-                else:
-                    message = "Failed to reconcile {} on attempt {} - retrying".format(
-                        service.name,
-                        attempt
-                    )
-                    self._log("exception", message)
-                    attempt = attempt + 1
-            else:
-                return
+        initial_services, events, _ = await source.subscribe()
+        # Before beginning to process events from the iterator, put events onto the queue
+        # to reconcile the initial state
+        services = await client.api("v1").resource("services")
+        existing_services = {
+            service["metadata"]["name"]
+            async for service in services.list(labels = self._labels(PRESENT))
+        }
+        for service in initial_services:
+            await queue.put(Event(EventKind.UPDATED, service))
+        for name in existing_services.difference(s.name for s in initial_services):
+            await queue.put(Event(EventKind.DELETED, Service(name)))
+        # Then just push events from Consul onto the queue
+        async for event in events:
+            await queue.put(event)
 
-    async def _try_remove_service(self, client, name):
+    async def _consume_queue(self, client, queue, ingress_modifier):
         """
-        Tries to remove the specified service, logging any errors that occur.
+        Pulls service events off the queue and executes them in order, requeueing if necessary.
         """
-        attempt = 1
         while True:
+            event, retries = await queue.get()
             try:
-                await self._remove_service(client, name)
-            except Exception as exc:
-                if attempt == self.config.reconciliation_retries:
-                    message = "Failed to remove {} after {} attempts - giving up".format(
-                        name,
-                        self.config.reconciliation_retries
-                    )
-                    self._log("exception", message)
-                    return
+                if event.kind == EventKind.DELETED:
+                    await self._remove_service(client, event.service.name)
                 else:
-                    message = "Failed to remove {} on attempt {} - retrying".format(
-                        name,
-                        attempt
-                    )
-                    self._log("exception", message)
-                    attempt = attempt + 1
-            else:
-                return
+                    await self._reconcile_service(client, event.service, ingress_modifier)
+            except Exception:
+                self._logger.exception(f"Error reconciling service '{event.service.name}'")
+                queue.requeue(event, retries)
 
     async def run(self, source):
         """
         Run the reconciler against services from the given service source.
         """
-        self._log("info", f"Reconciling services [namespace: {self.config.target_namespace}]")
-        async with ekconfig.async_client(default_namespace = self.config.target_namespace) as client:
+        self._logger.info(f"Reconciling services [namespace: {self.config.target_namespace}]")
+        client = ekconfig.async_client(
+            default_field_manager = self.config.easykube_field_manager,
+            default_namespace = self.config.target_namespace
+        )
+        async with client:
             # Before we process the service, retrieve information about the ingress class
             ingress_classes = await client.api("networking.k8s.io/v1").resource("ingressclasses")
             ingress_class = await ingress_classes.fetch(self.config.ingress.class_name)
@@ -675,29 +759,21 @@ class ServiceReconciler:
                 for ep in entry_points
                 if ep.name == ingress_class["spec"]["controller"]
             )
-            initial_services, events, _ = await source.subscribe()
-            # Before we start listening to events, we reconcile the existing services
-            # We also remove any services that exist that are not part of the initial set
-            # The returned value from the list operation is an async generator, which we must resolve
-            services = await client.api("v1").resource("services")
-            existing_services = {
-                service["metadata"]["name"]
-                async for service in services.list(labels = self._labels(PRESENT))
-            }
-            tasks = [
-                self._try_reconcile_service(client, service, ingress_modifier)
-                for service in initial_services
-            ] + [
-                self._try_remove_service(client, name)
-                for name in existing_services.difference(s.name for s in initial_services)
-            ]
-            await asyncio.gather(*tasks)
-            # Once the initial state has been synchronised, start processing events
-            async for event in events:
-                if event.kind == EventKind.DELETED:
-                    await self._try_remove_service(client, event.service.name)
-                else:
-                    await self._try_reconcile_service(client, event.service, ingress_modifier)
+            # Create the queue that we will use to process events
+            queue = EventQueue(self.config.reconciliation_max_backoff)
+            # If there are no problems, the queue populator and queue consumer will run forever
+            # So wait for the first one to exit, then make sure any exceptions are raised
+            done, not_done = await asyncio.wait(
+                [
+                    self._populate_queue(client, source, queue),
+                    self._consume_queue(client, queue, ingress_modifier),
+                ],
+                return_when = asyncio.FIRST_COMPLETED
+            )
+            for task in not_done:
+                task.cancel()
+            for task in done:
+                task.result()
 
 
 class TLSSecretMirror:
@@ -717,12 +793,13 @@ class TLSSecretMirror:
             self.config.ingress.tls.secret_name,
             self.config.target_namespace
         )
-        secrets = await client.api("v1").resource("secrets")
-        await secrets.create_or_replace(
-            self.config.ingress.tls.secret_name,
+        await client.apply_object(
             {
+                "apiVersion": "v1",
+                "kind": "Secret",
                 "metadata": {
                     "name": self.config.ingress.tls.secret_name,
+                    "namespace": self.config.target_namespace,
                     "labels": {
                         self.config.created_by_label: "zenith-sync",
                     },
@@ -736,7 +813,7 @@ class TLSSecretMirror:
                 "type": source_object["type"],
                 "data": source_object["data"],
             },
-            namespace = self.config.target_namespace
+            force = True
         )
 
     async def _delete_mirror(self, client):
@@ -759,7 +836,8 @@ class TLSSecretMirror:
         Run the TLS secret mirror.
         """
         if self.config.ingress.tls.enabled and self.config.ingress.tls.secret_name:
-            async with ekconfig.async_client() as client:
+            client = ekconfig.async_client(default_field_manager = self.config.easykube_field_manager)
+            async with client:
                 self._logger.info(
                     "Mirroring TLS secret [secret: %s, from: %s, to: %s]",
                     self.config.ingress.tls.secret_name,
