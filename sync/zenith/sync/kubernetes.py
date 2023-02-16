@@ -310,6 +310,7 @@ class ServiceReconciler:
                         "insecureAllowUnverifiedEmail": True,
                         # Use a claim that is always available, in case email is not
                         "emailClaim": "sub",
+                        "groupsClaim": "groups",
                         "audienceClaims": ["aud"],
                     },
                 },
@@ -442,6 +443,7 @@ class ServiceReconciler:
                         prefix = self.config.ingress.oidc.oauth2_proxy_path_prefix,
                         host = service_domain
                     ),
+                    "silence-ping-logging": "true",
                 },
                 # We will always manage our own ingress for the _oidc path
                 "ingress": {
