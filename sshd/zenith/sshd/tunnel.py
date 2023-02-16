@@ -39,7 +39,7 @@ class TunnelExit(RuntimeError):
     """
 
 #: Type for an OIDC allowed group
-AllowedGroup = constr(regex = r"^[a-zA-Z0-9_/-$")
+AllowedGroup = constr(regex = r"^[a-zA-Z0-9_/-]+$")
 
 #: Type for a key in the authentication parameters
 #: This will become a header name, so limit to lowercase alpha-numeric + -
