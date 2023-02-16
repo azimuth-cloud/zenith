@@ -178,8 +178,9 @@ be useful for services that should be anonymously available or that enforce thei
 ##### OpenID Connect
 
 The Zenith server supports using OpenID Connect (OIDC) to provide authentication for proxied
-services. This can be imposed on the server side using a discovery mechanism, but clients
-are able to override the OIDC parameters in order to use a specific OIDC issuer.
+services. This can be imposed on the server side using a discovery mechanism (see 
+[Deploying and configuring a Zenith server](./server.md)), but clients are able to override
+the OIDC parameters in order to use a specific OIDC issuer.
 
 In order to do this, the client must have a client ID and secret from the target OIDC issuer.
 Obtaining these credentials is out-of-scope of the Zenith components. The redirect URL of

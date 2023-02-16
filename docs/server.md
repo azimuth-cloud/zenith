@@ -30,7 +30,9 @@ for the vast majority of cases. For more advanced configuration requirements, se
   - [Using a wildcard certificate managed by cert-manager](#using-a-wildcard-certificate-managed-by-cert-manager)
   - [Using per-subdomain certificates managed by cert-manager](#using-per-subdomain-certificates-managed-by-cert-manager)
 - [Reserved subdomains](#reserved-subdomains)
-- [External auth](#external-auth)
+- [Authentication](#authentication)
+  - [OpenID Connect](#openid-connect)
+  - [External auth service](#external-auth-service)
 - [Using non-standard images](#using-non-standard-images)
 - [Managing resource consumption](#managing-resource-consumption)
 - [Customising the Consul deployment](#customising-the-consul-deployment)
@@ -370,10 +372,76 @@ registrar:
     reservedSubdomains: [portal, metrics]
 ```
 
-## External auth
+## Authentication
 
-Zenith is capable of enforcing authentication and authorization for incoming requests by
-consuming a pre-existing external auth service using an
+Zenith is capable of enforcing authentication and authorization for incoming requests using
+either OpenID Connect or an external auth service.
+
+### OpenID Connect
+
+Zenith is able to natively apply [OpenID Connect (OIDC)](https://openid.net/connect/)
+authentication, with group-based authorization, for proxied services. This is implemented
+using [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy).
+
+Where clients have a specific OIDC issuer and client credentials that they want to use,
+they can specify those when initiating a connection (see
+[Configuring the Zenith client](./client.md)). If given, client-specified credentials
+are used even if discovery credentials are also present.
+
+However Zenith also supports discovery of OIDC credentials on the server side for the
+case where the server wishes to impose OIDC authentication (except where the client
+opts out of authentication completely). This mode allows an external controller to place
+secrets in the `zenith-services` namespace containing OIDC credentials for a service:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  # The name is important
+  name: oidc-discovery-{service subdomain}
+  namespace: zenith-services
+stringData:
+  issuer-url: https://identity.company.org/oidc
+  client-id: <client id>
+  client-secret: <client secret>
+  # allowed-groups is a JSON-encoded list of group names to accept
+  allowed-groups: |
+    [
+      "group1",
+      "group2
+    ]
+```
+
+The client must be created with `http(s)://{service FQDN}/_oidc/callback` as the redirect
+URI.
+
+OIDC discovery is off by default. To enable it, use the following configuration:
+
+```yaml
+sync:
+  kubernetes:
+    ingress:
+      oidc:
+        discoveryEnabled: true
+```
+
+> **WARNING**
+>
+> When OIDC credential discovery is enabled, the creation of ingress resources for a
+> service is delayed until the OIDC credential becomes available. This means that if
+> the controller that writes the discovery secrets suffers a problem, services that
+> are using OIDC credential discovery will remain unavailable until the problem is
+> resolved.
+>
+> The unavailability of an OIDC credential for one service _will not_ block other
+> services from becoming available.
+
+
+### External auth service
+
+To support authentication methods other than OpenID Connect, Zenith is able to enforce
+authentication and authorization for incoming requests by consuming a pre-existing
+external auth service using an
 [auth subrequest](http://nginx.org/en/docs/http/ngx_http_auth_request_module.html).
 
 When external auth is configured, the `Ingress` resources that Zenith creates are
@@ -383,10 +451,6 @@ original request, and the auth service should make a decision about whether the 
 is permitted and return either a 401 (if no or invalid credentials are given), 403 (if
 valid credentials are given but permission is denied) or 200 (if the request should be
 allowed to proceed).
-
-This functionality is intended to allow Zenith to integrate with other systems such as the
-[Azimuth portal](https://github.com/stackhpc/azimuth). Zenith itself does not provide an
-implementation for the authentication/authorization service.
 
 External auth is enabled by specifying the URL of the auth service. If the auth service
 is running in the same Kubernetes cluster, it can be a fully-qualified service URL
@@ -398,7 +462,7 @@ sync:
   config:
     kubernetes:
       ingress:
-        auth:
+        externalAuth:
           url: http://auth-service.other-namespace.svc.cluster.local:8080/auth/verify/
 ```
 
@@ -414,7 +478,7 @@ sync:
   config:
     kubernetes:
       ingress:
-        auth:
+        externalAuth:
           url: ...
           signinUrl: https://auth.apps.example.cloud/login
           # The URL parameter that will contain the original URL

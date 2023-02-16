@@ -103,7 +103,7 @@ class OIDCConfig(Section):
     #: Indicates if discovery should be used for clients that don't specify an OIDC issuer
     #: This allows an external controller to place secrets in the Zenith namespace
     #: containing OIDC credentials to use for each service
-    discovery_enabled: bool = True
+    discovery_enabled: bool = False
     #: The template to use for the OAuth2 proxy release name
     release_name_template: constr(min_length = 1) = "oidc-{service_name}"
     #: The template to use for the names of discovery secrets

@@ -81,6 +81,8 @@ sync:
         #   annotations:
         # # The OIDC auth configuration
         # oidc:
+        #   # Indicates if OIDC credential discovery should be enabled
+        #   discoveryEnabled: true
         #   # The Helm chart to use for the oauth2-proxy that provides OIDC auth for services
         #   oauth2ProxyChartRepo:
         #   oauth2ProxyChartName:
