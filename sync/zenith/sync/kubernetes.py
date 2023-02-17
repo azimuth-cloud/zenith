@@ -446,6 +446,8 @@ class ServiceReconciler:
                         host = service_domain
                     ),
                     "silence-ping-logging": "true",
+                    # Skip the "proceed to provider" screen on a re-authenticate
+                    "skip-provider-button": "true",
                 },
                 # We will always manage our own ingress for the _oidc path
                 "ingress": {
