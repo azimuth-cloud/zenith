@@ -62,6 +62,8 @@ class EventQueue(asyncio.Queue):
             # If there is no existing event, just append the incoming event
             self._queue.append((incoming_event, incoming_retries))
         else:
+            # Otherwise, append the event with the least retries
+            # If the retries are equal, we keep the incoming event
             existing_event, existing_retries = self._queue.pop(existing_idx)
             if incoming_retries <= existing_retries:
                 self._queue.append((incoming_event, incoming_retries))
@@ -742,7 +744,8 @@ class ServiceReconciler:
         while True:
             event, retries = await queue.get()
             try:
-                if event.kind == EventKind.DELETED:
+                # When a service has no active endpoints, we want to remove it
+                if event.kind == EventKind.DELETED or not event.service.endpoints:
                     await self._remove_service(client, event.service.name)
                 else:
                     await self._reconcile_service(client, event.service, ingress_modifier)
