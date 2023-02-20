@@ -487,7 +487,7 @@ def consul_heartbeat(
     status = "passing"
     if tunnel.config.liveness_path:
         try:
-            liveness_check(tunnel)
+            liveness_check(logger, tunnel)
         except LivenessCheckFailed as exc:
             logger.warning(f"Liveness check failed: {exc}")
             liveness_failures = liveness_failures + 1
