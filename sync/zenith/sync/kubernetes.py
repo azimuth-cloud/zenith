@@ -436,6 +436,7 @@ class ServiceReconciler:
                     "proxy-prefix": self.config.ingress.oidc.oauth2_proxy_path_prefix,
                     "cookie-secret": cookie_secret,
                     "cookie-expire": self.config.ingress.oidc.oauth2_proxy_cookie_lifetime,
+                    "cookie-refresh": self.config.ingress.oidc.oauth2_proxy_cookie_refresh,
                     # If the ingress is not using TLS, we have to allow the cookie on insecure connections
                     "cookie-secure": "true" if secure else "false",
                     "whitelist-domain": service_domain,

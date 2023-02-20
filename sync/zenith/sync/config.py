@@ -111,7 +111,14 @@ class OIDCConfig(Section):
     #: The template to use for the secret containing the cookie secret for the OAuth2 proxy
     oauth2_proxy_cookie_secret_template: constr(min_length = 1) = "oidc-cookie-{service_name}"
     #: The length of time for which OAuth2 proxy cookies should last
-    oauth2_proxy_cookie_lifetime: constr(regex = r"^[1-9][0-9]*[smh]$") = "3h"
+    #:   This determines the length of time until a user is forced to reauthenticate
+    oauth2_proxy_cookie_lifetime: constr(regex = r"^[1-9][0-9]*[smh]$") = "24h"
+    #: The length of time after which an OAuth2 proxy cookie should be refreshed
+    #:   This determines the length of time until a user's permissions are re-checked,
+    #:   i.e. the length of time that a user *who already has a valid cookie* will be
+    #:   able to continue using the service after their access has been removed at the
+    #:   OIDC provider
+    oauth2_proxy_cookie_refresh: constr(regex = r"^[1-9][0-9]*[smh]$") = "1h"
     #: The path prefix to use for OAuth2 proxy endpoints
     oauth2_proxy_path_prefix: constr(regex = r"^/[a-z0-9_/-]+") = "/_oidc"
     #: The chart repository containing the proxy chart
