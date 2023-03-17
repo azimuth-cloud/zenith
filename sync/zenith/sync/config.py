@@ -1,7 +1,8 @@
 import re
 import typing as t
+import typing_extensions as te
 
-from pydantic import Field, AnyHttpUrl
+from pydantic import Field, AnyHttpUrl, conint, constr
 
 from configomatic import Configuration, Section, LoggingConfiguration
 
@@ -18,8 +19,8 @@ class ConsulConfig(Section):
     blocking_query_timeout: int = 300
     #: The tag to use to filter out Zenith services
     service_tag: str = "zenith-service"
-    #: The prefix to use when looking for TLS configurations in the KV store
-    tls_key_prefix: str = "zenith/services"
+    #: The prefix to use when looking for tunnel configurations in the KV store
+    config_key_prefix: str = "zenith/services"
 
     @property
     def url(self):
@@ -78,12 +79,69 @@ class DomainName(str):
         return cls(".".join(DNSLabel.validate(dns_label) for dns_label in dns_labels))
 
 
-class AuthConfig(Section):
+class ForwardedQueryParamRule(te.TypedDict, total = False):
     """
-    Model for the ingress authentication and authorization configuration section.
+    Model for a forwarded query parameter rule.
+    """
+    value: constr(min_length = 1)
+    pattern: constr(min_length = 1)
+
+
+class ForwardedQueryParam(te.TypedDict, total = False):
+    """
+    Model for a forwarded query parameter.
+    """
+    name: constr(min_length = 1)
+    default: t.List[constr(min_length = 1)]
+    allow: t.List[ForwardedQueryParamRule]
+
+
+class OIDCConfig(Section):
+    """
+    Model for the ingress OIDC configuration section.
+    """
+    #: Indicates if discovery should be used for clients that don't specify an OIDC issuer
+    #: This allows an external controller to place secrets in the Zenith namespace
+    #: containing OIDC credentials to use for each service
+    discovery_enabled: bool = False
+    #: The template to use for the OAuth2 proxy release name
+    release_name_template: constr(min_length = 1) = "oidc-{service_name}"
+    #: The template to use for the names of discovery secrets
+    discovery_secret_name_template: constr(min_length = 1) = "oidc-discovery-{service_name}"
+    #: The template to use for the secret containing the cookie secret for the OAuth2 proxy
+    oauth2_proxy_cookie_secret_template: constr(min_length = 1) = "oidc-cookie-{service_name}"
+    #: The length of time for which OAuth2 proxy cookies should last
+    #:   This determines the length of time until a user is forced to reauthenticate
+    oauth2_proxy_cookie_lifetime: constr(regex = r"^[1-9][0-9]*[smh]$") = "24h"
+    #: The length of time after which an OAuth2 proxy cookie should be refreshed
+    #:   This determines the length of time until a user's permissions are re-checked,
+    #:   i.e. the length of time that a user *who already has a valid cookie* will be
+    #:   able to continue using the service after their access has been removed at the
+    #:   OIDC provider
+    oauth2_proxy_cookie_refresh: constr(regex = r"^[1-9][0-9]*[smh]$") = "1h"
+    #: The path prefix to use for OAuth2 proxy endpoints
+    oauth2_proxy_path_prefix: constr(regex = r"^/[a-z0-9_/-]+") = "/_oidc"
+    #: The chart repository containing the proxy chart
+    oauth2_proxy_chart_repo: AnyHttpUrl = "https://oauth2-proxy.github.io/manifests"
+    #: The name of the proxy chart
+    oauth2_proxy_chart_name: constr(min_length = 1) = "oauth2-proxy"
+    #: The version of the proxy chart
+    oauth2_proxy_chart_version: constr(min_length = 1) = "6.8.0"
+    #: Default values for the proxy release
+    oauth2_proxy_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
+    #: The query parameters that are passed to the IDP in the authorize request
+    #: For example, Keycloak allows a kc_idp_hint parameter that can be used to
+    #: pre-select an identity provider
+    #: See https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/alpha-config#loginurlparameter
+    forwarded_query_params: t.List[ForwardedQueryParam] = Field(default_factory = list)
+
+
+class ExternalAuthConfig(Section):
+    """
+    Model for the ingress external auth configuration section.
     """
     #: The external authentication URL
-    #: If not supplied, no authentication is applied to proxied requests
+    #: If not supplied, no external auth is applied
     #: This URL is called as a subrequest, and so will receive the original request body
     #: and headers. If it returns a response with a 2xx status code, the request proceeds
     #: to the upstream. If it returns a 401 or a 403, the access is denied.
@@ -99,10 +157,6 @@ class AuthConfig(Section):
     request_headers: t.Dict[str, str] = Field(default_factory = dict)
     #: List of headers from the authentication response to add to the upstream request
     response_headers: t.List[str] = Field(default_factory = list)
-    #: The metadata item to look for to indicate that auth should be skipped
-    skip_auth_metadata_key: str = "skip-auth"
-    #: The prefix to filter for metadata items containing authentication parameters
-    param_metadata_prefix: str = "auth-"
     #: The additional prefix to use when passing authentication parameters to the auth service
     param_header_prefix: str = "x-"
 
@@ -129,20 +183,42 @@ class IngressConfig(Section):
     class_name: str = "nginx"
     #: Annotations to add to all ingress resources
     annotations: t.Dict[str, str] = Field(default_factory = dict)
-    #: The metadata key to use for the backend protocol
-    backend_protocol_metadata_key: str = "backend-protocol"
-    #: The metadata key to use for the read timeout
-    read_timeout_metadata_key: str = "read-timeout"
     #: The TLS configuration
     tls: TLSConfig = Field(default_factory = TLSConfig)
-    #: The auth configuration
-    auth: AuthConfig = Field(default_factory = AuthConfig)
+    #: The OIDC configuration
+    oidc: OIDCConfig = Field(default_factory = OIDCConfig)
+    #: The external auth configuration
+    external_auth: ExternalAuthConfig = Field(default_factory = ExternalAuthConfig)
+
+
+class HelmClientConfiguration(Section):
+    """
+    Configuration for the Helm client.
+    """
+    #: The default timeout to use with Helm releases
+    #: Can be an integer number of seconds or a duration string like 5m, 5h
+    default_timeout: t.Union[int, constr(min_length = 1)] = "5m"
+    #: The executable to use
+    #: By default, we assume Helm is on the PATH
+    executable: constr(min_length = 1) = "helm"
+    #: The maximum number of revisions to retain in the history of releases
+    history_max_revisions: int = 10
+    #: Indicates whether to verify TLS when pulling charts
+    insecure_skip_tls_verify: bool = False
+    #: The directory to use for unpacking charts
+    #: By default, the system temporary directory is used
+    unpack_directory: t.Optional[str] = None
 
 
 class KubernetesConfig(Section):
     """
     Model for the Kubernetes configuration section.
     """
+    #: The field manager name to use for server-side apply
+    easykube_field_manager: constr(min_length = 1) = "zenith-sync"
+
+    #: The DNS domain for cluster services
+    cluster_services_domain: str = "svc.cluster.local"
     #: The namespace that the sync component is running in
     self_namespace: str
     #: The namespace to create Zenith service resources in
@@ -153,8 +229,12 @@ class KubernetesConfig(Section):
     service_name_label: str = "zenith.stackhpc.com/service-name"
     #: The annotation used to record that a secret is a mirror of another secret
     tls_mirror_annotation: str = "zenith.stackhpc.com/mirrors"
+    #: The maximum delay between retries when backing off
+    reconciliation_max_backoff: conint(gt = 0) = 60
     #: The ingress configuration
     ingress: IngressConfig
+    #: The Helm client configuration
+    helm_client: HelmClientConfiguration = Field(default_factory = HelmClientConfiguration)
 
 
 class SyncConfig(Configuration):

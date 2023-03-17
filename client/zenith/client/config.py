@@ -1,4 +1,5 @@
 import base64
+import enum
 import pathlib
 import typing
 
@@ -95,8 +96,17 @@ class ConnectConfig(Configuration):
     read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
+    #: The URL of the OIDC issuer to use (only used when auth_type == "oidc")
+    auth_oidc_issuer: typing.Optional[AnyHttpUrl] = None
+    #: The OIDC client ID, if known
+    auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = None
+    #: The OIDC client secret, required if client ID is given
+    auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = None
+    #: The OIDC groups that are allowed access to the the service
+    #: The user must have at least one of these groups in their groups claim
+    auth_oidc_allowed_groups: typing.List[constr(regex = r"^[a-zA-Z0-9_/-]+$")] = Field(default_factory = list)
     #: Parameters for the proxy authentication service
-    auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
+    auth_external_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Path to a file containing a TLS certificate chain to use
     tls_cert_file: typing.Optional[FilePath] = None
     #: Base64-encoded TLS certificate to use
@@ -110,17 +120,29 @@ class ConnectConfig(Configuration):
     #: Base64-encoded CA to use to validate TLS client certificates
     tls_client_ca_data: typing.Optional[str] = None
 
-    @validator("auth_params", pre = True)
-    def pre_validate_auth_params(cls, value):
+    @validator("auth_oidc_allowed_groups", pre = True)
+    def pre_validate_auth_oidc_allowed_groups(cls, v):
+        """
+        Applies pre-validation to the allowed groups.
+        """
+        # In order to properly support allowed groups from an environment variable,
+        # we also support using a comma-separated string
+        if isinstance(v, str):
+            return v.split(",")
+        else:
+            return v
+
+    @validator("auth_external_params", pre = True)
+    def pre_validate_auth_external_params(cls, v):
         """
         Applies pre-validation to the auth params.
         """
         # In order to properly support keys coming from environment variables, we need
         # to replace underscores with hyphens in the keys
-        if isinstance(value, dict):
-            return { k.replace("_", "-"): v for k, v in value.items() }
+        if isinstance(v, dict):
+            return { k.replace("_", "-"): v for k, v in v.items() }
         else:
-            return value
+            return v
 
     @validator("ssh_private_key_data", always = True)
     def validate_ssh_private_key_data(cls, v, *, values):

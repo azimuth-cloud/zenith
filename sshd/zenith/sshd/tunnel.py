@@ -8,12 +8,23 @@ import socket
 import sys
 import time
 import typing
-import uuid
 
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-from pydantic import BaseModel, Extra, Field, conint, constr, root_validator, validator
+
+from pydantic import (
+    BaseModel,
+    Extra,
+    Field,
+    AnyHttpUrl,
+    conint,
+    constr,
+    validator
+)
+
 import requests
+
+from .config import SSHDConfig
 
 
 class TunnelError(RuntimeError):
@@ -27,6 +38,8 @@ class TunnelExit(RuntimeError):
     Raised to exit the tunnel without signifying an error.
     """
 
+#: Type for an OIDC allowed group
+AllowedGroup = constr(regex = r"^[a-zA-Z0-9_/-]+$")
 
 #: Type for a key in the authentication parameters
 #: This will become a header name, so limit to lowercase alpha-numeric + -
@@ -55,8 +68,19 @@ class ClientConfig(BaseModel):
     read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
-    #: Parameters for the proxy authentication service
+    #: The URL of the OIDC issuer to use
+    auth_oidc_issuer: typing.Optional[AnyHttpUrl] = None
+    #: The OIDC client ID to use
+    auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = None
+    #: The OIDC client secret to use
+    auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = None
+    #: The OIDC groups that are allowed access to the the service
+    #: The user must have at least one of these groups in their groups claim
+    auth_oidc_allowed_groups: typing.List[AllowedGroup] = Field(default_factory = list)
+    #: Parameters for the external authentication service (deprecated name)
     auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
+    #: Parameters for the external authentication service
+    auth_external_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Base64-encoded TLS certificate to use
     tls_cert: typing.Optional[str] = None
     #: Base64-encoded TLS private key to use (corresponds to TLS cert)
@@ -70,16 +94,7 @@ class ClientConfig(BaseModel):
     #: The number of liveness checks that can fail before the tunnel is considered unhealthy
     liveness_failures: conint(gt = 0) = 3
 
-    @root_validator()
-    def validate(cls, values):
-        # Chain file and key file must be given together or not at all
-        tls_cert = values.get("tls_cert")
-        tls_key = values.get("tls_key")
-        if tls_cert and not tls_key:
-            raise ValueError("TLS key is required if TLS cert is specified")
-        return values
-
-    @validator("allocated_port")
+    @validator("allocated_port", always = True)
     def validate_port(cls, v):
         """
         Validate the given input as a port.
@@ -100,6 +115,47 @@ class ClientConfig(BaseModel):
             else:
                 raise ValueError("Given port is not in use")
 
+    @validator("auth_external_params", pre = True, always = True)
+    def validate_auth_external_params(cls, v, values, **kwargs):
+        """
+        Makes sure that the old name for external auth params is respected.
+        """
+        return v or values.get("auth_params", {})
+
+    @validator("auth_oidc_issuer")
+    def validate_auth_oidc_issuer(cls, v, values, **kwargs):
+        """
+        Validates that the OIDC issuer supports discovery.
+        """
+        issuer_url = v.rstrip("/")
+        response = requests.get(f"{issuer_url}/.well-known/openid-configuration")
+        if 200 <= response.status_code < 300:
+            return v
+        else:
+            raise ValueError("OIDC issuer does not support discovery")
+
+    @validator("auth_oidc_client_id", always = True)
+    def validate_auth_oidc_client_id(cls, v, values, **kwargs):
+        """
+        Validates that an OIDC client id is given when an OIDC issuer is present.
+        """
+        skip_auth = values.get("skip_auth", False)
+        oidc_issuer = values.get("auth_oidc_issuer")
+        if not skip_auth and oidc_issuer and not v:
+            raise ValueError("required for OIDC authentication")
+        return v
+
+    @validator("auth_oidc_client_secret", always = True)
+    def validate_auth_oidc_client_secret(cls, v, values, **kwargs):
+        """
+        Validates that a client secret is given when a client ID is present.
+        """
+        skip_auth = values.get("skip_auth", False)
+        oidc_issuer = values.get("auth_oidc_issuer")
+        if not skip_auth and oidc_issuer and not v:
+            raise ValueError("required for OIDC authentication")
+        return v
+
     @validator("tls_cert")
     def validate_tls_cert(cls, v):
         """
@@ -109,13 +165,17 @@ class ClientConfig(BaseModel):
         _ = load_pem_x509_certificate(base64.b64decode(v))
         return v
 
-    @validator("tls_key")
-    def validate_tls_key(cls, v):
+    @validator("tls_key", always = True)
+    def validate_tls_key(cls, v, values, **kwargs):
         """
         Validate the given value by decoding it and trying to load it as a
         PEM-encoded private key.
         """
-        _ = load_pem_private_key(base64.b64decode(v), None)
+        tls_cert = values.get("tls_cert")
+        if tls_cert and not v:
+            raise ValueError("required if TLS cert is specified")
+        if v:
+            _ = load_pem_private_key(base64.b64decode(v), None)
         return v
 
     @validator("tls_client_ca")
@@ -147,7 +207,7 @@ def raise_timeout_error(signum, frame):
 
 
 @contextlib.contextmanager
-def timeout(seconds):
+def timeout(seconds: int):
     """
     Context manager / decorator that imposes a timeout on the wrapped code.
     """
@@ -160,7 +220,7 @@ def timeout(seconds):
         signal.signal(signal.SIGALRM, previous)
 
 
-def get_tunnel_config(logger, timeout_secs):
+def get_tunnel_config(logger: logging.Logger, server_config: SSHDConfig) -> Tunnel:
     """
     Returns a config object for the tunnel.
     """
@@ -168,7 +228,7 @@ def get_tunnel_config(logger, timeout_secs):
     # A well behaved client should take very little time to negotiate the tunnel config
     # So we timeout if it takes too long
     try:
-        with timeout(timeout_secs):
+        with timeout(server_config.configure_timeout):
             # The configuration should be sent as JSON to stdin in response to the
             # marker "SEND_CONFIGURATION"
             # It could be one or multiple lines, but the line "END_CONFIGURATION" should
@@ -187,19 +247,45 @@ def get_tunnel_config(logger, timeout_secs):
     config = json.loads(base64.decodebytes("".join(input_lines).encode()))
     # We confirm that we received the configuration by sending another marker
     print("RECEIVED_CONFIGURATION")
-    logger.info(f"Received tunnel configuration: {json.dumps(config)}")
+    logger.info("Received tunnel configuration")
     sys.stdout.flush()
-    tunnel_id = str(uuid.uuid4())
-    logger.info(f"Assigned tunnel id: {tunnel_id}")
-    return Tunnel(
-        # Generate a unique ID for the tunnel
-        id = tunnel_id,
-        # Try to parse and validate the received configuration
-        config = ClientConfig.parse_obj(config)
+    # Parse the client data into a config object
+    # This will raise validation errors if the config is incorrect
+    tunnel_config = ClientConfig.parse_obj(config)
+    logger.info(f"Allocated port for tunnel: {tunnel_config.allocated_port}")
+    # Work out the TTL to use for the Consul session
+    # This is the length of time after which keys created by the tunnel will be deleted if
+    # we stop renewing the session
+    # We use twice the heartbeat duration, which depends on the configured liveness check
+    if tunnel_config.liveness_path:
+        consul_session_ttl = tunnel_config.liveness_period * 2
+    else:
+        consul_session_ttl = server_config.consul_heartbeat_interval * 2
+    # Start a Consul session for the tunnel
+    logger.debug("Starting Consul session for tunnel")
+    response = requests.put(
+        f"{server_config.consul_url}/v1/session/create",
+        json = {
+            # Delete keys held by the session when the TTL expires
+            "Behavior": "delete",
+            # The TTL for the session - we must renew the session within this limit
+            "TTL": f"{consul_session_ttl}s",
+        }
     )
+    if 200 <= response.status_code < 300:
+        # The ID of the tunnel is the session ID
+        tunnel_id = response.json()["ID"]
+        logger.info(f"Assigned tunnel id: {tunnel_id}")
+        return Tunnel(id = tunnel_id, config = tunnel_config)
+    else:
+        raise TunnelError("Failed to start Consul session for tunnel")
 
 
-def consul_check_service_host_and_port(server_config, logger, tunnel):
+def consul_check_service_host_and_port(
+    server_config: SSHDConfig,
+    logger: logging.Logger,
+    tunnel: Tunnel
+):
     """
     Checks that there is not already an existing service with the same host and port.
 
@@ -221,57 +307,75 @@ def consul_check_service_host_and_port(server_config, logger, tunnel):
         )
     )
     response = requests.get(url, params = params)
-    if 300 <= response.status_code < 200:
-        raise TunnelError("Failed to list Consul services")
-    # The response should be empty, otherwise the tunnel is not allowed
-    if response.json():
-        raise TunnelError(
-            "Consul service already exists for '{host}:{port}'".format(
-                host = server_config.service_host,
-                port = tunnel.config.allocated_port
+    if 200 <= response.status_code < 300:
+        # The response should be empty, otherwise the tunnel is not allowed
+        if response.json():
+            raise TunnelError(
+                "Consul service already exists for '{host}:{port}'".format(
+                    host = server_config.service_host,
+                    port = tunnel.config.allocated_port
+                )
             )
-        )
+        else:
+            logger.debug("No existing Consul service found")
     else:
-        logger.debug("No existing Consul service found")
+        raise TunnelError("Failed to list Consul services")
 
 
-def consul_register_service(server_config, logger, tunnel, subdomain):
+def consul_post_config(
+    server_config: SSHDConfig,
+    logger: logging.Logger,
+    tunnel: Tunnel
+):
     """
-    Registers the service with Consul.
+    Posts any configuration for the tunnel to the KV store.
     """
-    # First, try to post any TLS configuration to the KV store
-    tls_config = {}
+    # Build the service metadata object
+    config = { "backend-protocol": tunnel.config.backend_protocol }
+    if tunnel.config.read_timeout:
+        config["read-timeout"] = tunnel.config.read_timeout
+    config["skip-auth"] = tunnel.config.skip_auth
+    if not tunnel.config.skip_auth:
+        if tunnel.config.auth_oidc_issuer:
+            config.update({
+                "auth-oidc-issuer": tunnel.config.auth_oidc_issuer,
+                "auth-oidc-client-id": tunnel.config.auth_oidc_client_id,
+                "auth-oidc-client-secret": tunnel.config.auth_oidc_client_secret,
+                "auth-oidc-allowed-groups": tunnel.config.auth_oidc_allowed_groups,
+            })
+        elif tunnel.config.auth_external_params:
+            config["auth-external-params"] = tunnel.config.auth_external_params
     if tunnel.config.tls_cert:
-        tls_config.update({
+        config.update({
             "tls-cert": tunnel.config.tls_cert,
             "tls-key": tunnel.config.tls_key,
         })
     if tunnel.config.tls_client_ca:
-        tls_config["tls-client-ca"] = tunnel.config.tls_client_ca
-    if tls_config:
-        logger.debug("Posting TLS configuration to Consul")
-        url = "{consul_url}/v1/kv/{key_prefix}/{tunnel_id}".format(
-            consul_url = server_config.consul_url,
-            key_prefix = server_config.consul_key_prefix,
-            tunnel_id = tunnel.id
-        )
-        response = requests.put(url, json = tls_config)
-        if 200 <= response.status_code < 300:
-            logger.info("TLS configuration updated")
-        else:
-            raise TunnelError("Failed to update TLS configuration")
+        config["tls-client-ca"] = tunnel.config.tls_client_ca
+    logger.debug("Posting tunnel configuration to Consul")
+    # Associate the config key with the tunnel's session
+    url = "{consul_url}/v1/kv/{key_prefix}/{tunnel_id}?acquire={tunnel_id}".format(
+        consul_url = server_config.consul_url,
+        key_prefix = server_config.consul_key_prefix,
+        tunnel_id = tunnel.id
+    )
+    response = requests.put(url, json = config)
+    if 200 <= response.status_code < 300:
+        logger.info("Tunnel configuration posted to Consul")
+    else:
+        raise TunnelError("Failed to post tunnel configuration to Consul")
+
+
+def consul_register_service(
+    server_config: SSHDConfig,
+    logger: logging.Logger,
+    tunnel: Tunnel,
+    subdomain: str
+):
+    """
+    Registers the service with Consul.
+    """
     logger.debug("Registering service with Consul")
-    # Build the service metadata object
-    metadata = { server_config.backend_protocol_metadata_key: tunnel.config.backend_protocol }
-    if tunnel.config.read_timeout:
-        metadata[server_config.read_timeout_metadata_key] = str(tunnel.config.read_timeout)
-    if tunnel.config.skip_auth:
-        metadata[server_config.skip_auth_metadata_key] = "1"
-    elif tunnel.config.auth_params:
-        metadata.update({
-            f"{server_config.auth_param_metadata_prefix}{key}": value
-            for key, value in tunnel.config.auth_params.items()
-        })
     # Work out the TTL to use
     # This is the length of time after which a service will be moved into the critical state
     # if we stop posting status updates
@@ -293,8 +397,6 @@ def consul_register_service(server_config, logger, tunnel, subdomain):
             "Port": tunnel.config.allocated_port,
             # Tag the service as a Zenith service
             "Tags": [server_config.service_tag],
-            # Associate any required metadata
-            "Meta": metadata,
             # Specify a TTL check
             "Check": {
                 # Use the unique ID for the tunnel as the check id
@@ -317,7 +419,11 @@ def consul_register_service(server_config, logger, tunnel, subdomain):
         raise TunnelError("Failed to register service with Consul")
 
 
-def consul_deregister_service(server_config, logger, tunnel):
+def consul_deregister_service(
+    server_config: SSHDConfig,
+    logger: logging.Logger,
+    tunnel: Tunnel
+):
     """
     Deregisters the service in Consul.
 
@@ -325,10 +431,9 @@ def consul_deregister_service(server_config, logger, tunnel):
     after the deregister interval anyway, but this speeds up the process in the
     case where the client disconnects or we are given a chance to exit gracefully.
 
-    We also attempt to remove any TLS configuration for the tunnel. We don't mind
-    too much if this fails, e.g. if there is no TLS configuration - because each
-    tunnel gets a unique id, the worst case scenario is that an unused TLS
-    configuration is left behind in Consul.
+    We also attempt to remove any configuration for the tunnel. We don't mind too much
+    if any of these requests fail because the service has a TTL and the config key is
+    associated with a session that also has a TTL.
     """
     logger.debug("Removing service from Consul")
     requests.put(f"{server_config.consul_url}/v1/agent/service/deregister/{tunnel.id}")
@@ -338,6 +443,8 @@ def consul_deregister_service(server_config, logger, tunnel):
         key_prefix = server_config.consul_key_prefix,
         tunnel_id = tunnel.id
     ))
+    logger.debug("Terminating Consul session")
+    requests.put(f"{server_config.consul_url}/v1/session/destroy/{tunnel.id}")
 
 
 class LivenessCheckFailed(Exception):
@@ -346,7 +453,7 @@ class LivenessCheckFailed(Exception):
     """
 
 
-def liveness_check(logger, tunnel):
+def liveness_check(logger:logging.Logger, tunnel: Tunnel):
     """
     Executes a liveness check for the tunnel and raises an exception with a message on failure.
     """
@@ -367,12 +474,12 @@ def liveness_check(logger, tunnel):
 
 
 def consul_heartbeat(
-    server_config,
-    logger,
-    tunnel,
-    consul_failures,
-    liveness_failures,
-    liveness_succeeded_once
+    server_config: SSHDConfig,
+    logger: logging.Logger,
+    tunnel: Tunnel,
+    consul_failures: int,
+    liveness_failures: int,
+    liveness_succeeded_once: bool
 ):
     """
     Updates the health check for the service depending on a query to the liveness endpoint.
@@ -393,19 +500,23 @@ def consul_heartbeat(
         elif liveness_failures > 0:
             # We want services to stay in the critical state until they succeed at least once
             status = "warning" if liveness_succeeded_once else "critical"
-    logger.debug(f"Updating Consul service health to '{status}'")
-    # Post the service information to consul
-    response = requests.put(
+    # Post the service information to Consul and renew the session
+    logger.debug(f"Updating Consul service status to '{status}'")
+    status_response = requests.put(
         f"{server_config.consul_url}/v1/agent/check/update/{tunnel.id}",
         json = { "Status": status }
     )
-    if 200 <= response.status_code < 300:
-        logger.info(f"Updated Consul service health to '{status}'")
-        # Reset the Consul failures on success
+    logger.debug(f"Renewing Consul session")
+    renew_response = requests.put(f"{server_config.consul_url}/v1/session/renew/{tunnel.id}")
+    # Reset the Consul failures on success
+    if 200 <= status_response.status_code < 300 and 200 <= renew_response.status_code < 300:
+        logger.info(f"Updated Consul service status to '{status}'")
+        logger.info("Renewed Consul session for tunnel")
         return 0, liveness_failures, liveness_succeeded_once
+    elif status_response.status_code < 200 or status_response.status_code >= 300:
+        logger.warning("Failed to update Consul service status")
     else:
-        # If we failed to update the health status, emit a warning
-        logger.warning("Failed to update Consul service health")
+        logger.warning("Failed to renew Consul session for tunnel")
     # Increment the failures if less than the limit
     if consul_failures < server_config.consul_heartbeat_failures:
         return consul_failures + 1, liveness_failures, liveness_succeeded_once
@@ -413,7 +524,11 @@ def consul_heartbeat(
     raise TunnelError(f"Failed to update Consul service health after {consul_failures} attempts")
 
 
-def register_signal_handlers(server_config, logger, tunnel):
+def register_signal_handlers(
+    server_config: SSHDConfig,
+    logger: logging.Logger,
+    tunnel: Tunnel
+):
     """
     Registers signal handlers for each of the exit signals we care about.
     """
@@ -428,7 +543,7 @@ def register_signal_handlers(server_config, logger, tunnel):
     signal.signal(signal.SIGTERM, signal_handler)
 
 
-def run(server_config, subdomain):
+def run(server_config: SSHDConfig, subdomain: str):
     """
     This function is called when a user connects over SSH, and is responsible for
     registering the mapping of a subdomain to the port for a reverse SSH tunnel
@@ -481,20 +596,21 @@ def run(server_config, subdomain):
          intercept traffic.
     """
     actual_logger = logging.getLogger(__name__)
-    # Add the subdomain to the logging context
+    # Add the subdomain to the logging context
     logger = logging.LoggerAdapter(
         actual_logger,
         {"subdomain": subdomain, "tunnelid": ""}
     )
     logger.info("Initiating tunnel")
     try:
-        tunnel = get_tunnel_config(logger, server_config.configure_timeout)
+        tunnel = get_tunnel_config(logger, server_config)
         # Now we know the tunnel id, replace the logger
         logger = logging.LoggerAdapter(
             actual_logger,
             {"subdomain": subdomain, "tunnelid": tunnel.id}
         )
         consul_check_service_host_and_port(server_config, logger, tunnel)
+        consul_post_config(server_config, logger, tunnel)
         consul_register_service(server_config, logger, tunnel, subdomain)
         register_signal_handlers(server_config, logger, tunnel)
         # We need to send a regular heartbeat to Consul
@@ -521,4 +637,4 @@ def run(server_config, subdomain):
         # This should lead to a clean exit
     except Exception:
         logger.exception("Exception raised by tunnel")
-        raise
+        sys.exit(1)

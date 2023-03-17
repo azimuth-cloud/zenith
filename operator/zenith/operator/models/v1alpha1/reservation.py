@@ -2,10 +2,10 @@ import typing as t
 
 from pydantic import Extra, Field, constr
 
-from ..schema import BaseModel, Enum
+from kube_custom_resource import CustomResource, schema
 
 
-class ReservationSpec(BaseModel):
+class ReservationSpec(schema.BaseModel):
     """
     Model for the spec of a reservation.
     """
@@ -27,7 +27,7 @@ class ReservationSpec(BaseModel):
     )
 
 
-class ReservationPhase(str, Enum):
+class ReservationPhase(str, schema.Enum):
     """
     Enum of the possible choices for the phase of a reservation.
     """
@@ -37,7 +37,7 @@ class ReservationPhase(str, Enum):
     UNKNOWN = "Unknown"
 
  
-class ReservationStatus(BaseModel):
+class ReservationStatus(schema.BaseModel):
     """
     Model for the status of a reservation.
     """
@@ -62,7 +62,27 @@ class ReservationStatus(BaseModel):
     )
 
 
-class Reservation(BaseModel):
+class Reservation(
+    CustomResource,
+    subresources = {"status": {}},
+    printer_columns = [
+        {
+            "name": "Secret",
+            "type": "string",
+            "jsonPath": ".spec.credentialSecretName",
+        },
+        {
+            "name": "Phase",
+            "type": "string",
+            "jsonPath": ".status.phase",
+        },
+        {
+            "name": "FQDN",
+            "type": "string",
+            "jsonPath": ".status.fqdn",
+        },
+    ]
+):
     """
     Model for a Zenith reservation.
     """

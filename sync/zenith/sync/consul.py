@@ -20,11 +20,32 @@ class ServiceWatcher:
         self._queues = {}
         self._running = False
 
-    async def _tls_config(self, client, instance):
+    async def _log_response(self, response):
         """
-        Fetches the TLS configuration from Consul for the given instance.
+        HTTPX response hook that logs responses.
         """
-        url = f"/v1/kv/{self.config.tls_key_prefix}/{instance['Service']['ID']}?raw=true"
+        logger.info(
+            "Consul request: \"%s %s\" %s",
+            response.request.method,
+            response.request.url,
+            response.status_code
+        )
+
+    def _client(self):
+        """
+        Returns the HTTPX client to use for Consul.
+        """
+        return httpx.AsyncClient(
+            base_url = self.config.url,
+            event_hooks = { "response": [self._log_response] }
+        )
+
+    async def _config(self, client, instance):
+        """
+        Fetches the configuration from Consul for the given instance.
+        """
+        service_id = instance["Service"]["ID"]
+        url = f"/v1/kv/{self.config.config_key_prefix}/{service_id}?raw=true"
         response = await client.get(url)
         if 200 <= response.status_code < 300:
             return response.json()
@@ -57,7 +78,7 @@ class ServiceWatcher:
                     break
         # If the index goes backwards, reset it to zero
         # The index must also be greater than zero
-        next_index = max(next_index if index is None or next_index >= index else 0, 0)
+        next_index = max(next_index if next_index >= index else 0, 0)
         # Return the result tuple
         return (response.json(), next_index)
 
@@ -83,16 +104,10 @@ class ServiceWatcher:
         """
         # The return value from the health endpoint for the service is a list of instances
         instances, next_idx = await self._wait(client, f"/v1/health/service/{name}", index)
-        # Request the TLS configurations for each instance in parallel
-        tls_configs = await asyncio.gather(*[self._tls_config(client, i) for i in instances])
+        # Request the configurations for each instance in parallel
+        configs = await asyncio.gather(*[self._config(client, i) for i in instances])
         service = Service(
             name = name,
-            # Merge the metadata from the instances together
-            metadata = {
-                k: v
-                for instance in instances
-                for k, v in (instance["Service"].get("Meta") or {}).items()
-            },
             # Get the address and port of each instance for which all the checks are passing
             endpoints = [
                 Endpoint(
@@ -103,8 +118,8 @@ class ServiceWatcher:
                 # Allow instances in the warning state as a grace period for health checks
                 if all(c["Status"] in {"passing", "warning"} for c in instance["Checks"])
             ],
-            # Merge the TLS configuration associated with each instance
-            tls = { k: v for tls_config in tls_configs for k, v in tls_config.items() }
+            # Merge the configurations associated with each instance
+            config = { k: v for config in configs for k, v in config.items() }
         )
         return service, next_idx
 
@@ -188,7 +203,7 @@ class ServiceWatcher:
         """
         Starts the watcher and runs until cancelled.
         """
-        async with httpx.AsyncClient(base_url = self.config.url) as client:
+        async with self._client() as client:
             logger.info(
                 "Initialised Consul client [url: %s, service_tag: %s]",
                 self.config.url,
