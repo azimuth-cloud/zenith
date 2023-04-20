@@ -33,20 +33,24 @@ def generate_random_subdomain():
     The subdomain must be a valid Kubernetes service name, so must be at most 63 characters long,
     consist of lowercase letters, numbers and hyphens (-) only, and start with a letter.
 
-    In additional, the FQDN (i.e. subdomain + base domain) must be at most 64 characters to fit
+    In addition, the FQDN (i.e. subdomain + base domain) must be at most 64 characters to fit
     in the CN of an SSL certificate when ACME issuing is used. Given that the base domain must be
     at least one character, plus a dot to separate the subdomain, this means that when a subdomain
     passes this test it automatically passes the length test for a Kubernetes service.
     """
+    subdomain_len = min(
+        # FQDN constraint: {subdomain}.{base_domain} must be at most 64 characters
+        63 - len(settings.base_domain),
+        # Absolute constraint, primarily to ensure valid Helm release names
+        settings.subdomain_max_length
+    )
     return "".join(
         # Domains must start with a letter
         [secrets.choice(string.ascii_lowercase)] +
         [
             # The rest of the characters are numbers or letters
             secrets.choice(string.ascii_lowercase + string.digits)
-            # We want to use all the available randomness in the subdomain
-            # 62 = FQDN max length (64) - joining dot (1) - first character (1)
-            for _ in range(62 - len(settings.base_domain))
+            for _ in range(subdomain_len - 1)
         ]
     )
 

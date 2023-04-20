@@ -715,8 +715,11 @@ class ServiceReconciler:
         secrets = await client.api("v1").resource("secrets")
         await secrets.delete_all(labels = self._labels(name))
         # Remove any OIDC components that were created
+        release_name = self.config.ingress.oidc.release_name_template.format(
+            service_name = name
+        )
         await self._helm_client.uninstall_release(
-            f"oidc-{name}",
+            release_name,
             namespace = self.config.target_namespace
         )
 
