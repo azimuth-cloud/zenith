@@ -1,4 +1,6 @@
 {{- define "zenith.sshd.defaults" -}}
+consulAddress: {{ tpl .Values.common.consul.address . | quote }}
+consulPort: {{ .Values.common.consul.port }}
 consulKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
 serviceTag: {{ .Values.common.consul.serviceTag | quote }}
 # Use the internal service for the registrar
