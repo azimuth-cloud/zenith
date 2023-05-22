@@ -1,9 +1,9 @@
 logging:
   formatters:
     # Format for logs from tunnels that are logged in SSHD
-    # Make sure to include the subdomain
+    # Make sure to include the subdomain and tunnel ID
     tunnel_sshd:
-      format: "[%(levelname)s] [%(subdomain)s] [%(tunnelid)s] %(message)s"
+      format: "[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(subdomain)s{%(tunnelid)s} %(message)s"
 
   handlers:
     # Handlers pointing directly to the stdout/err of the SSHD process
@@ -23,10 +23,11 @@ logging:
       level: WARNING
 
   loggers:
-    # Add the tunnel_sshd_* handlers to the tunnel logger
+    # Add the tunnel_sshd_stdout/err handlers to the tunnel logger
+    # The stdout/err handlers are used to send logs to the client
     zenith.sshd.tunnel:
       handlers:
-        - tunnel_client_stdout
-        - tunnel_client_stderr
+        - stdout
+        - stderr
         - tunnel_sshd_stdout
         - tunnel_sshd_stderr

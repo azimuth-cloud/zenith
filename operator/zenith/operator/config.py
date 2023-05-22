@@ -3,7 +3,7 @@ import typing as t
 
 from pydantic import Field, AnyHttpUrl, conint, constr
 
-from configomatic import Configuration as BaseConfiguration, LoggingConfiguration
+from configomatic import Configuration as BaseConfiguration
 
 
 class ContainerImagePullPolicy(str, enum.Enum):
@@ -23,9 +23,6 @@ class Configuration(BaseConfiguration):
         default_path = "/etc/zenith/operator.yaml"
         path_env_var = "ZENITH_OPERATOR_CONFIG"
         env_prefix = "ZENITH_OPERATOR"
-
-    #: The logging configuration
-    logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
 
     #: The API group of the cluster CRDs
     api_group: constr(min_length = 1) = "zenith.stackhpc.com"

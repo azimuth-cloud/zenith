@@ -1,7 +1,7 @@
 anyio==3.6.2
 certifi==2022.12.7
 cffi==1.15.1
-configomatic @ git+https://github.com/stackhpc/configomatic.git@3a7e88693e8f44530ac4f1f5ee3d64977cf3784d
+configomatic @ git+https://github.com/stackhpc/configomatic.git@8b81e8f216762b2e1664f60681c4a8e618ab151d
 cryptography==39.0.1
 fastapi==0.92.0
 h11==0.14.0
