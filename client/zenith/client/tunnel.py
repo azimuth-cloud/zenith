@@ -26,7 +26,7 @@ def get_allocated_port(output):
             # If the line is not the one we need, send it to stderr
             print(line, file = sys.stderr)
     else:
-        logger.error("[CLIENT] No port received from server")
+        logger.error("No port received from server")
         sys.exit(1)
 
 
@@ -42,7 +42,7 @@ def wait_for_marker(output, marker):
             # If the line is not the one we need, send it to stdout
             print(line)
     else:
-        logger.error("[CLIENT] Unable to find marker '%s'", marker)
+        logger.error("Unable to find marker '%s'", marker)
         sys.exit(1)
 
 
@@ -131,9 +131,9 @@ def configure_tunnel(ssh_proc, config):
             ssh_proc.stdin.flush()
             # Wait for the server to confirm that it received the config
             wait_for_marker(ssh_proc.stdout, "RECEIVED_CONFIGURATION")
-            logger.info("[CLIENT] Tunnel configured successfully")
+            logger.info("Tunnel configured successfully")
     except TimeoutError:
-        logger.error("[CLIENT] Timed out negotiating tunnel configuration")
+        logger.error("Timed out negotiating tunnel configuration")
         # Terminate the SSH process before exiting
         ssh_proc.terminate()
         sys.exit(1)
@@ -152,7 +152,7 @@ def ssh_identity(config):
     ssh_private_key_file_name = None
     with tempfile.NamedTemporaryFile(delete = False) as ssh_private_key_file:
         ssh_private_key_file_name = ssh_private_key_file.name
-        logger.info("[CLIENT] Writing SSH private key data to temporary file")
+        logger.info("Writing SSH private key data to temporary file")
         # If the private key data was given, use it (it is base64-encoded)
         ssh_private_key_file.write(base64.b64decode(config.ssh_private_key_data))
     # Make sure the key file has the correct permissions
@@ -174,10 +174,10 @@ def create(config):
     # If running as root and another user has been specified, switch to that user
     if config.run_as_user:
         if os.getuid() == 0:
-            logger.info("[CLIENT] Switching to uid '%d'", config.run_as_user)
+            logger.info("Switching to uid '%d'", config.run_as_user)
             os.setuid(config.run_as_user)
         else:
-            logger.warn("[CLIENT] Cannot switch user - not running as root")
+            logger.warn("Cannot switch user - not running as root")
 
     with ssh_identity(config) as ssh_identity_path:
         # Derive the SSH command to use from the configuration
@@ -212,8 +212,8 @@ def create(config):
             f"zenith@{config.server_address}",
         ]
 
-        logger.info("[CLIENT] Spawning SSH process")
-        logger.debug("[CLIENT] SSH command - %s", " ".join(ssh_command))
+        logger.info("Spawning SSH process")
+        logger.debug("SSH command - %s", " ".join(ssh_command))
 
         # Open the SSH process
         ssh_proc = subprocess.Popen(
@@ -225,7 +225,7 @@ def create(config):
             stderr = subprocess.STDOUT
         )
 
-        logger.info("[CLIENT] Negotiating tunnel configuration")
+        logger.info("Negotiating tunnel configuration")
 
         configure_tunnel(ssh_proc, config)
 
@@ -237,10 +237,10 @@ def create(config):
         ssh_proc.wait()
 
         if ssh_proc.returncode == 0:
-            logger.info("[CLIENT] SSH process exited cleanly")
+            logger.info("SSH process exited cleanly")
         else:
             logger.error(
-                "[CLIENT] SSH process exited with non-zero exit code (%d)",
+                "SSH process exited with non-zero exit code (%d)",
                 ssh_proc.returncode
             )
 
