@@ -775,7 +775,7 @@ class ServiceReconciler:
         # This dictionary stores a map of service names to the current task for the service
         service_tasks = {}
         initial_services, events, _ = await source.subscribe()
-        # Before beginning to process events from the iterator, schedule tasks to reconcile
+        # Before beginning to process events from the queue, schedule tasks to reconcile
         # the initial state
         services = await client.api("v1").resource("services")
         existing_services = {
