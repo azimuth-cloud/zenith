@@ -24,7 +24,7 @@ class Service:
     #: The healthy endpoints for the service
     endpoints: typing.Iterable[Endpoint] = dataclasses.field(default_factory = list)
     #: The configuration for the service
-    config: typing.Mapping[str, str] = dataclasses.field(default_factory = dict)
+    config: typing.Mapping[str, typing.Any] = dataclasses.field(default_factory = dict)
 
 
 @enum.unique

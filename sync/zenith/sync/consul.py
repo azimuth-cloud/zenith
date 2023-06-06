@@ -7,9 +7,6 @@ import httpx
 from .model import Endpoint, Service, EventKind, Event
 
 
-logger = logging.getLogger(__name__)
-
-
 class ServiceWatcher:
     """
     Allows clients to watch changes to the set of services in Consul.
@@ -19,26 +16,7 @@ class ServiceWatcher:
         self._services = {}
         self._queues = {}
         self._running = False
-
-    async def _log_response(self, response):
-        """
-        HTTPX response hook that logs responses.
-        """
-        logger.info(
-            "Consul request: \"%s %s\" %s",
-            response.request.method,
-            response.request.url,
-            response.status_code
-        )
-
-    def _client(self):
-        """
-        Returns the HTTPX client to use for Consul.
-        """
-        return httpx.AsyncClient(
-            base_url = self.config.url,
-            event_hooks = { "response": [self._log_response] }
-        )
+        self._logger = logging.getLogger(__name__)
 
     async def _config(self, client, instance):
         """
@@ -48,34 +26,50 @@ class ServiceWatcher:
         url = f"/v1/kv/{self.config.config_key_prefix}/{service_id}?raw=true"
         response = await client.get(url)
         if 200 <= response.status_code < 300:
+            self._logger.info("Found config for service instance %s", service_id)
             return response.json()
         elif response.status_code == 404:
+            self._logger.info("No config for service instance %s", service_id)
             # Not found is fine - just return an empty configuration
             return {}
-        response.raise_for_status()
+        else:
+            self._logger.error("Error fetching config for service instance %s", service_id)
+            response.raise_for_status()
 
     async def _wait(self, client, path, index = 0):
         """
         Fetches the path using a blocking query using the given index and returns a
         (result, next index) tuple.
         """
-        params = { "index": index, "wait": f"{self.config.blocking_query_timeout}s" }
         while True:
+            self._logger.info("Starting blocking query for %s", path)
             try:
                 response = await client.get(
                     path,
-                    params = params,
+                    params = {
+                        "index": index,
+                        "wait": f"{self.config.blocking_query_timeout}s",
+                    },
                     timeout = self.config.blocking_query_timeout + 1
                 )
             except httpx.ReadTimeout:
-                # Ignore read timeouts and just continue with the same index
+                self._logger.info("Blocking query timed out for %s - restarting", path)
+                # On a read timeout, reset the index and try again
+                index = 0
                 continue
-            else:
-                response.raise_for_status()
+            if 200 <= response.status_code < 300:
                 next_index = int(response.headers['X-Consul-Index'])
-                # If the index hasn't changed, do another iteration
+                self._logger.info(
+                    "Blocking query successful for %s (index %d)",
+                    path,
+                    next_index
+                )
+                # Exit if the index has changed, otherwise go round again
                 if next_index != index:
                     break
+            else:
+                self._logger.error("Blocking query failed for %s", path)
+                response.raise_for_status()
         # If the index goes backwards, reset it to zero
         # The index must also be greater than zero
         next_index = max(next_index if next_index >= index else 0, 0)
@@ -87,6 +81,7 @@ class ServiceWatcher:
         Waits for the list of services to change using a blocking query at the given index
         and returns a set of service names that match the given tag.
         """
+        self._logger.info("Watching for changes to service list")
         services, next_idx = await self._wait(client, "/v1/catalog/services", index)
         return (
             {
@@ -102,6 +97,7 @@ class ServiceWatcher:
         Waits for the specified service to change using a blocking query at the given
         index and returns a service instance.
         """
+        self._logger.info("Watching for changes to %s", name)
         # The return value from the health endpoint for the service is a list of instances
         instances, next_idx = await self._wait(client, f"/v1/health/service/{name}", index)
         # Request the configurations for each instance in parallel
@@ -135,7 +131,7 @@ class ServiceWatcher:
         """
         Subscribe to changes to the set of services.
 
-        Returns a tuple of (current services, async iterator of events, unsubscribe function).
+        Returns a tuple of (current services, queue of events, unsubscribe function).
         """
         # Wait for the watcher to be running before subscribing
         while not self._running:
@@ -146,30 +142,28 @@ class ServiceWatcher:
         queue = self._queues[watch_id] = asyncio.Queue()
         # Freeze the current state as the initial state for the subscriber
         services = tuple(self._services.values())
-        # Simple async iterator that just yields events from our queue
-        async def events():
-            while True:
-                yield (await queue.get())
         # The unsubscribe function just detachs the queue
         def unsubscribe():
             self._queues.pop(watch_id, None)
-        return (services, events(), unsubscribe)
+        return (services, queue, unsubscribe)
 
     async def _step(self, client, services_task, service_tasks):
         """
         Executes one step of the iteration, 
         """
+        self._logger.info("Waiting for next task to complete")
         # Wait for the first task to complete
-        done, _ = await asyncio.wait(
-            set([services_task]).union(service_tasks.values()),
-            return_when = asyncio.FIRST_COMPLETED
-        )
+        tasks = set([services_task]).union(service_tasks.values())
+        done, _ = await asyncio.wait(tasks, return_when = asyncio.FIRST_COMPLETED)
+        self._logger.info("Processing %d completed tasks", len(done))
         for completed_task in done:
             if completed_task == services_task:
+                self._logger.info("Service list query task completed")
                 # Process any new or removed services if the list changed
                 names, idx = completed_task.result()
                 known_names = set(self._services.keys())
                 for name in names.difference(known_names):
+                    self._logger.info("Emitting created event for %s", name)
                     service, service_idx = await self._wait_service(client, name)
                     self._services[name] = service
                     self._emit(EventKind.CREATED, service)
@@ -177,22 +171,21 @@ class ServiceWatcher:
                         self._wait_service(client, name, service_idx)
                     )
                 for name in known_names.difference(names):
+                    self._logger.info("Emitting deleted event for %s", name)
                     self._services.pop(name)
                     self._emit(EventKind.DELETED, Service(name = name))
                     service_tasks.pop(name).cancel()
                 services_task = asyncio.create_task(self._wait_services(client, idx))
             else:
+                self._logger.info("Service query task completed")
                 # If the completed task was a service health task, process the update
                 service, service_idx = completed_task.result()
+                self._logger.info("Service query task completed for %s", service.name)
                 # We should only handle updates for services we know about
                 if service.name in self._services:
-                    previous = self._services[service.name]
+                    self._logger.info("Emitting updated event for %s", service.name)
                     self._services[service.name] = service
-                    # Only emit the event if the service (as we present it) has changed
-                    # For instance, Consul will notify us when a new but unhealthy
-                    # instance is added, but we don't care until it is healthy
-                    if previous != service:
-                        self._emit(EventKind.UPDATED, service)
+                    self._emit(EventKind.UPDATED, service)
                     service_tasks[service.name] = asyncio.create_task(
                         self._wait_service(client, service.name, service_idx)
                     )
@@ -203,8 +196,8 @@ class ServiceWatcher:
         """
         Starts the watcher and runs until cancelled.
         """
-        async with self._client() as client:
-            logger.info(
+        async with httpx.AsyncClient(base_url = self.config.url) as client:
+            self._logger.info(
                 "Initialised Consul client [url: %s, service_tag: %s]",
                 self.config.url,
                 self.config.service_tag
