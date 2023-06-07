@@ -38,24 +38,6 @@ class ServiceReconciler:
         )
         self._logger = logging.getLogger(__name__)
 
-    def _labels(self, name):
-        """
-        Returns the labels that identify a resource as belonging to a service.
-        """
-        return {
-            self.config.created_by_label: "zenith-sync",
-            self.config.service_name_label: name,
-        }
-
-    def _adopt(self, service, resource):
-        """
-        Adopts the given resource for the service.
-        """
-        metadata = resource.setdefault("metadata", {})
-        labels = metadata.setdefault("labels", {})
-        labels.update(self._labels(service.name))
-        return resource
-
     async def _reconcile_oidc_credentials(self, client, service):
         """
         Returns the OIDC issuer, client ID and secret for the given service.
@@ -108,19 +90,20 @@ class ServiceReconciler:
             if exc.status_code == 404:
                 cookie_secret = base64.urlsafe_b64encode(os.urandom(32)).decode()
                 secret = await client.apply_object(
-                    self._adopt(
-                        service,
-                        {
-                            "apiVersion": "v1",
-                            "kind": "Secret",
-                            "metadata": {
-                                "name": secret_name,
+                    {
+                        "apiVersion": "v1",
+                        "kind": "Secret",
+                        "metadata": {
+                            "name": secret_name,
+                            "labels": {
+                                self.config.created_by_label: "zenith-sync",
+                                self.config.service_name_label: service.name,
                             },
-                            "stringData": {
-                                "cookie-secret": cookie_secret,
-                            },
-                        }
-                    ),
+                        },
+                        "stringData": {
+                            "cookie-secret": cookie_secret,
+                        },
+                    },
                     force = True
                 )
             else:
@@ -396,12 +379,65 @@ class ServiceReconciler:
             default_namespace = self.config.target_namespace
         )
 
+    # TODO(mkjpryor)
+    # deprecate and remove this method once all deployments have been upgraded
+    async def _remove_legacy_resources(self, client):
+        """
+        Removes legacy resources from pre-Helm days.
+        """
+        # We can detect legacy resources because they will have the label that indicates
+        # they were created by zenith-sync rather than Helm
+        labels = { self.config.created_by_label: "zenith-sync" }
+
+        self._logger.info("Removing legacy ingresses")
+        ingresses = await client.api("networking.k8s.io/v1").resource("ingresses")
+        await ingresses.delete_all(labels = labels)
+
+        self._logger.info("Removing legacy endpoints")
+        endpoints = await client.api("v1").resource("endpoints")
+        await endpoints.delete_all(labels = labels)
+
+        self._logger.info("Removing legacy services")
+        services = await client.api("v1").resource("services")
+        await services.delete_all(labels = labels)
+
+        # For secrets, we want to be a little more particular and leave behind
+        # the cookie secrets, which are still managed by zenith-sync
+        # Deleting the cookie secrets here would mean that all the OIDC proxy sessions
+        # would become invalidated every time zenith-sync restarts
+        self._logger.info("Removing legacy secrets")
+        secrets = await client.api("v1").resource("secrets")
+        async for secret in secrets.list(labels = labels):
+            if "cookie-secret" not in secret.data:
+                await secrets.delete(secret.metadata.name)
+
+        # We also want to remove all the Helm releases for OIDC proxies, as these are
+        # now provisioned as part of the zenith-service chart
+        self._logger.info("Removing legacy Helm releases")
+        target_chart = await self._helm_client.get_chart(
+            self.config.service_chart_name,
+            repo = self.config.service_chart_repo,
+            version = self.config.service_chart_version
+        )
+        releases = await self._helm_client.list_releases(
+            all = True,
+            max_releases = 0,
+            namespace = self.config.target_namespace
+        )
+        for release in releases:
+            revision = await release.current_revision()
+            chart = await revision.chart_metadata()
+            if chart.name != target_chart.metadata.name:
+                await release.uninstall(wait = True)
+
     async def run(self, source):
         """
         Run the reconciler against services from the given service source.
         """
         self._logger.info(f"Reconciling services [namespace: {self.config.target_namespace}]")
         async with self._client() as client:
+            # Before we start doing anything, we need to clean up legacy resources
+            await self._remove_legacy_resources(client)
             # This dictionary stores a map of service names to the current task for the service
             service_tasks = {}
             initial_services, events, _ = await source.subscribe()
