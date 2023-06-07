@@ -1,31 +1,31 @@
 aiohttp==3.8.4
 aiosignal==1.3.1
-anyio==3.6.2
+anyio==3.7.0
 async-timeout==4.0.2
-attrs==22.2.0
-certifi==2022.12.7
+attrs==23.1.0
+certifi==2023.5.7
 cffi==1.15.1
-charset-normalizer==3.0.1
+charset-normalizer==3.1.0
 click==8.1.3
 configomatic @ git+https://github.com/stackhpc/configomatic.git@8b81e8f216762b2e1664f60681c4a8e618ab151d
-cryptography==39.0.1
-easykube @ git+https://github.com/stackhpc/easykube.git@bf6e154736b7e8c541743911e9774fa5268889b5
+cryptography==41.0.1
+easykube @ git+https://github.com/stackhpc/easykube.git@594e65190e6f13d66f069feaece534f7595c1656
+exceptiongroup==1.1.1
 frozenlist==1.3.3
 h11==0.14.0
-httpcore==0.16.3
-httpx==0.23.3
+httpcore==0.17.2
+httpx==0.24.1
 idna==3.4
 iso8601==1.1.0
 Jinja2==3.1.2
-kopf==1.36.0
+kopf==1.36.1
 kube-custom-resource @ git+https://github.com/stackhpc/kube-custom-resource.git@106a72837395ba871c6fcb13992a38478c50ae7a
-MarkupSafe==2.1.2
+MarkupSafe==2.1.3
 multidict==6.0.4
 pycparser==2.21
-pydantic==1.10.5
-python-json-logger==2.0.6
+pydantic==1.10.8
+python-json-logger==2.0.7
 PyYAML==6.0
-rfc3986==1.5.0
 sniffio==1.3.0
-typing_extensions==4.5.0
-yarl==1.8.2
+typing_extensions==4.6.3
+yarl==1.9.2

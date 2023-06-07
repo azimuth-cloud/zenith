@@ -21,86 +21,10 @@ from .ingress_modifier import INGRESS_MODIFIERS_ENTRY_POINT_GROUP
 ekconfig = Configuration.from_environment()
 
 
-class EventQueue(asyncio.Queue):
+class RetryRequired(Exception):
     """
-    Customised queue implementation that understands service events.
-
-    A new event for a service replaces those that are retries, as they
-    are no longer up-to-date.
+    Raised to explicitly request a retry with a warning message.
     """
-    def __init__(self, max_backoff, maxsize = 0):
-        super().__init__(maxsize)
-        self._max_backoff = max_backoff
-
-    def _init(self, maxsize):
-        self._queue = []
-        # The requeue tasks are indexed by service
-        # This allows us to cancel them when a new event comes in
-        self._requeue_tasks = {}
-
-    def _put(self, item):
-        if isinstance(item, Event):
-            incoming_event, incoming_retries = item, 0
-        else:
-            incoming_event, incoming_retries = item
-        # Cancel any requeue tasks for the service before pushing the new event
-        requeue_task = self._requeue_tasks.pop(incoming_event.service.name, None)
-        if requeue_task and not requeue_task.done():
-            requeue_task.cancel()
-        # If there is an existing event for the the service in the queue, find it
-        # We will only keep one from the existing event and the incoming one
-        # The one that we keep will be the one with the fewest retries
-        # Whichever event we keep will be moved to the back of the queue
-        # This ensures that "stable" services are dealt with first
-        try:
-            existing_idx = next(
-                idx
-                for idx, (event, _) in enumerate(self._queue)
-                if event.service.name == incoming_event.service.name
-            )
-        except StopIteration:
-            # If there is no existing event, just append the incoming event
-            self._queue.append((incoming_event, incoming_retries))
-        else:
-            # Otherwise, append the event with the least retries
-            # If the retries are equal, we keep the incoming event
-            existing_event, existing_retries = self._queue.pop(existing_idx)
-            if incoming_retries <= existing_retries:
-                self._queue.append((incoming_event, incoming_retries))
-            else:
-                self._queue.append((existing_event, existing_retries))
-
-    def _get(self):
-        return self._queue.pop(0)
-
-    def requeue(self, event, retries):
-        """
-        Requeues the given event with the given number of retries.
-        """
-        service = event.service.name
-        # Cancel any existing requeue task
-        existing_task = self._requeue_tasks.pop(service, None)
-        if existing_task and not existing_task.done():
-            existing_task.cancel()
-        # Launch a new background task to requeue the event after a backoff
-        # We use an exponential backoff
-        backoff = min(2**retries + random.uniform(0, 1), self._max_backoff)
-        task = self._requeue_tasks[service] = asyncio.create_task(asyncio.sleep(backoff))
-        # We use a done callback to put the event back onto the queue
-        # It is important that this happens _outside_ the task as the put cancels the running task
-        def done_callback(task):
-            # If the task was cancelled, there is nothing to do
-            try:
-                _ = task.result()
-            except asyncio.CancelledError:
-                return
-            # If the task completed successfully, requeue the event
-            # If the queue is full, schedule another requeue attempt
-            try:
-                self.put_nowait((event, retries + 1))
-            except asyncio.QueueFull:
-                self.requeue(event, retries + 1)
-        task.add_done_callback(done_callback)
 
 
 class ServiceReconciler:
@@ -220,11 +144,17 @@ class ServiceReconciler:
             )
         # Otherwise, we need to wait for the discovery secret to become available
         secrets = await client.api("v1").resource("secrets")
-        secret = await secrets.fetch(
-            self.config.ingress.oidc.discovery_secret_name_template.format(
-                service_name = service.name
+        try:
+            secret = await secrets.fetch(
+                self.config.ingress.oidc.discovery_secret_name_template.format(
+                    service_name = service.name
+                )
             )
-        )
+        except ApiError as exc:
+            if exc.status_code == 404:
+                raise RetryRequired("oidc discovery secret not available")
+            else:
+                raise
         secret_data = {
             key: base64.b64decode(value).decode()
             for key, value in secret.get("data", {}).items()
@@ -723,41 +653,153 @@ class ServiceReconciler:
             namespace = self.config.target_namespace
         )
 
-    async def _populate_queue(self, client, source, queue):
+    async def _next_event(self, events):
         """
-        Pushes service events from the given source onto the given queue.
+        Returns the next event from the event queue.
         """
-        initial_services, events, _ = await source.subscribe()
-        # Before beginning to process events from the iterator, put events onto the queue
-        # to reconcile the initial state
-        services = await client.api("v1").resource("services")
-        existing_services = {
-            service["metadata"]["name"]
-            async for service in services.list(labels = self._labels(PRESENT))
-        }
-        for service in initial_services:
-            await queue.put(Event(EventKind.UPDATED, service))
-        for name in existing_services.difference(s.name for s in initial_services):
-            await queue.put(Event(EventKind.DELETED, Service(name)))
-        # Then just push events from Consul onto the queue
-        async for event in events:
-            await queue.put(event)
+        return await events.get()
 
-    async def _consume_queue(self, client, queue, ingress_modifier):
+    async def _wait_for_retry(self, retries):
         """
-        Pulls service events off the queue and executes them in order, requeueing if necessary.
+        Waits with an exponential backoff based on the number of retries.
         """
+        backoff = 2**retries + random.uniform(0, 1)
+        clamped_backoff = min(backoff, self.config.reconciliation_max_backoff)
+        await asyncio.sleep(clamped_backoff)
+        return retries + 1
+
+    async def _process_event(self, client, ingress_modifier, event):
+        """
+        Processes a single event from the queue, with retries.
+        """
+        retries = 0
         while True:
-            event, retries = await queue.get()
             try:
                 # When a service has no active endpoints, we want to remove it
                 if event.kind == EventKind.DELETED or not event.service.endpoints:
                     await self._remove_service(client, event.service.name)
                 else:
                     await self._reconcile_service(client, event.service, ingress_modifier)
+            except RetryRequired as exc:
+                # If a retry is explicitly requested, just issue a warning
+                self._logger.warning(
+                    "Retry required for %s event for %s - %s",
+                    event.kind.name,
+                    event.service.name,
+                    str(exc)
+                )
+                # If a retry is explicitly requested then retry after a backoff
+                retries = await self._wait_for_retry(retries)
             except Exception:
-                self._logger.exception(f"Error reconciling service '{event.service.name}'")
-                queue.requeue(event, retries)
+                self._logger.exception(
+                    "Error processing %s event for %s",
+                    event.kind.name,
+                    event.service.name
+                )
+                # We want to retry after a backoff
+                retries = await self._wait_for_retry(retries)
+            except asyncio.CancelledError:
+                self._logger.info(
+                    "Processing of %s event for %s was cancelled",
+                    event.kind.name,
+                    event.service.name
+                )
+                raise
+            else:
+                self._logger.info(
+                    "Reconciled %s event for %s successfully",
+                    event.kind.name,
+                    event.service.name
+                )
+                # If the event was processed successfully, we are done
+                return event.service.name
+
+    async def _step(self, client, ingress_modifier, events, next_event_task, service_tasks):
+        """
+        Performs a single execution step.
+        """
+        self._logger.info("Waiting for next task to complete")
+        # Wait for the first task to complete
+        tasks = set([next_event_task]).union(service_tasks.values())
+        done, _ = await asyncio.wait(tasks, return_when = asyncio.FIRST_COMPLETED)
+        self._logger.info("Processing %d completed tasks", len(done))
+        # Adjust the tasks for the next step as required
+        for completed_task in done:
+            if completed_task == next_event_task:
+                self._logger.info("Next event task completed")
+                # We have received a new event
+                event = completed_task.result()
+                self._logger.info(
+                    "Received %s event for %s",
+                    event.kind.name,
+                    event.service.name
+                )
+                # First, cancel any running task for the same service
+                existing_task = service_tasks.pop(event.service.name, None)
+                if existing_task and not existing_task.done():
+                    self._logger.info("Cancelling existing task for %s", event.service.name)
+                    existing_task.cancel()
+                    # Wait for the task to actually finish cancelling
+                    try:
+                        await asyncio.wait_for(existing_task, 10)
+                    except asyncio.CancelledError:
+                        pass
+                self._logger.info(
+                    "Registering task to process %s event for %s",
+                    event.kind.name,
+                    event.service.name
+                )
+                # Create a new task to watch for the next event
+                next_event_task = asyncio.create_task(self._next_event(events))
+                # Register a task to process the new event
+                coro = self._process_event(client, ingress_modifier, event)
+                service_tasks[event.service.name] = asyncio.create_task(coro)
+            else:
+                self._logger.info("Event processing task completed")
+                service_name = completed_task.result()
+                self._logger.info("Event processing task completed for %s", service_name)
+                # It is possible that the task has been replaced by the code above
+                # So check for that and only pop the task if it is completed
+                if service_tasks[service_name].done():
+                    self._logger.info(
+                        "Discarding completed processing task for %s",
+                        service_name
+                    )
+                    service_tasks.pop(service_name)
+        return next_event_task, service_tasks
+
+    async def _run(self, client, ingress_modifier, source):
+        """
+        Runs the execution loop for processing service events.
+        """
+        # This dictionary stores a map of service names to the current task for the service
+        service_tasks = {}
+        initial_services, events, _ = await source.subscribe()
+        # Before beginning to process events from the queue, schedule tasks to reconcile
+        # the initial state
+        services = await client.api("v1").resource("services")
+        existing_services = {
+            service["metadata"]["name"]
+            async for service in services.list(labels = self._labels(PRESENT))
+        }
+        for service in initial_services:
+            event = Event(EventKind.UPDATED, service)
+            coro = self._process_event(client, ingress_modifier, event)
+            service_tasks[service.name] = asyncio.create_task(coro)
+        for name in existing_services.difference(s.name for s in initial_services):
+            event = Event(EventKind.DELETED, Service(name))
+            coro = self._process_event(client, ingress_modifier, event)
+            service_tasks[name] = asyncio.create_task(coro)
+        # Create a task to watch for the next event
+        next_event_task = asyncio.create_task(self._next_event(events))
+        while True:
+            next_event_task, service_tasks = await self._step(
+                client,
+                ingress_modifier,
+                events,
+                next_event_task,
+                service_tasks
+            )
 
     async def run(self, source):
         """
@@ -779,21 +821,7 @@ class ServiceReconciler:
                 for ep in entry_points
                 if ep.name == ingress_class["spec"]["controller"]
             )
-            # Create the queue that we will use to process events
-            queue = EventQueue(self.config.reconciliation_max_backoff)
-            # If there are no problems, the queue populator and queue consumer will run forever
-            # So wait for the first one to exit, then make sure any exceptions are raised
-            done, not_done = await asyncio.wait(
-                [
-                    self._populate_queue(client, source, queue),
-                    self._consume_queue(client, queue, ingress_modifier),
-                ],
-                return_when = asyncio.FIRST_COMPLETED
-            )
-            for task in not_done:
-                task.cancel()
-            for task in done:
-                task.result()
+            await self._run(client, ingress_modifier, source)
 
 
 class TLSSecretMirror:
