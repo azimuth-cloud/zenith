@@ -254,7 +254,7 @@ class ServiceReconciler:
             wait = True
         )
 
-    async def _remove_service(self, name):
+    async def _remove_service(self, client, name):
         """
         Removes a service from Kubernetes.
         """
@@ -265,6 +265,12 @@ class ServiceReconciler:
             namespace = self.config.target_namespace,
             wait = True
         )
+        # Delete the OIDC cookie secret if required
+        secrets = await client.api("v1").resource("secrets")
+        secret_name = self.config.ingress.oidc.oauth2_proxy_cookie_secret_template.format(
+            service_name = name
+        )
+        await secrets.delete(secret_name)
 
     async def _next_event(self, events):
         """
@@ -290,7 +296,7 @@ class ServiceReconciler:
             try:
                 # When a service has no active endpoints, we want to remove it
                 if event.kind == EventKind.DELETED or not event.service.endpoints:
-                    await self._remove_service(event.service.name)
+                    await self._remove_service(client, event.service.name)
                 else:
                     await self._reconcile_service(client, event.service)
             except RetryRequired as exc:
