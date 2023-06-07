@@ -1,0 +1,16 @@
+apiVersion: v2
+name: zenith-service
+description: Helm chart for deploying components for a Zenith service.
+type: application
+# The version and appVersion are updated by the chart build script
+version: 0.1.0
+appVersion: main
+
+dependencies:
+  - alias: oidc
+    # Until https://github.com/oauth2-proxy/manifests/pull/153 is merged,
+    # use releases from our branch
+    repository: https://mkjpryor.github.io/manifests
+    name: oauth2-proxy
+    version: 6.13.1-stackhpc.1
+    condition: oidc.enabled

@@ -202,7 +202,7 @@ class HelmClientConfiguration(Section):
     #: By default, we assume Helm is on the PATH
     executable: constr(min_length = 1) = "helm"
     #: The maximum number of revisions to retain in the history of releases
-    history_max_revisions: int = 10
+    history_max_revisions: int = 3
     #: Indicates whether to verify TLS when pulling charts
     insecure_skip_tls_verify: bool = False
     #: The directory to use for unpacking charts
@@ -223,6 +223,16 @@ class KubernetesConfig(Section):
     self_namespace: str
     #: The namespace to create Zenith service resources in
     target_namespace: str = "zenith-services"
+
+    #: The chart repository containing the service chart
+    service_chart_repo: AnyHttpUrl = "https://stackhpc.github.io/zenith"
+    #: The name of the service chart
+    service_chart_name: constr(min_length = 1) = "zenith-service"
+    #: The version of the service chart
+    service_chart_version: constr(min_length = 1) = "main"
+    #: Default values for releases of the service chart
+    service_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
+
     #: The label used to indicate a managed resource
     created_by_label: str = "app.kubernetes.io/created-by"
     #: The label used to indicate the corresponding Zenith service for a resource
