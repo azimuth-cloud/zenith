@@ -8,5 +8,6 @@ subsets:
   - addresses:
       - ip: {{ .address }}
     ports:
-      - port: {{ .port }}
+      - name: dynamic
+        port: {{ .port }}
   {{- end }}

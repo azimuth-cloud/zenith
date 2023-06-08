@@ -5,6 +5,7 @@ metadata:
   labels: {{ include "zenith-service.labels" . | nindent 4 }}
 spec:
   ports:
-    - protocol: TCP
+    - name: dynamic
+      protocol: TCP
       port: 80
       targetPort: dynamic
