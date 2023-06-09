@@ -104,31 +104,10 @@ class OIDCConfig(Section):
     #: This allows an external controller to place secrets in the Zenith namespace
     #: containing OIDC credentials to use for each service
     discovery_enabled: bool = False
-    #: The template to use for the OAuth2 proxy release name
-    release_name_template: constr(min_length = 1) = "oidc-{service_name}"
     #: The template to use for the names of discovery secrets
     discovery_secret_name_template: constr(min_length = 1) = "oidc-discovery-{service_name}"
     #: The template to use for the secret containing the cookie secret for the OAuth2 proxy
     oauth2_proxy_cookie_secret_template: constr(min_length = 1) = "oidc-cookie-{service_name}"
-    #: The length of time for which OAuth2 proxy cookies should last
-    #:   This determines the length of time until a user is forced to reauthenticate
-    oauth2_proxy_cookie_lifetime: constr(regex = r"^[1-9][0-9]*[smh]$") = "24h"
-    #: The length of time after which an OAuth2 proxy cookie should be refreshed
-    #:   This determines the length of time until a user's permissions are re-checked,
-    #:   i.e. the length of time that a user *who already has a valid cookie* will be
-    #:   able to continue using the service after their access has been removed at the
-    #:   OIDC provider
-    oauth2_proxy_cookie_refresh: constr(regex = r"^[1-9][0-9]*[smh]$") = "1h"
-    #: The path prefix to use for OAuth2 proxy endpoints
-    oauth2_proxy_path_prefix: constr(regex = r"^/[a-z0-9_/-]+") = "/_oidc"
-    #: The chart repository containing the proxy chart
-    oauth2_proxy_chart_repo: AnyHttpUrl = "https://oauth2-proxy.github.io/manifests"
-    #: The name of the proxy chart
-    oauth2_proxy_chart_name: constr(min_length = 1) = "oauth2-proxy"
-    #: The version of the proxy chart
-    oauth2_proxy_chart_version: constr(min_length = 1) = "6.8.0"
-    #: Default values for the proxy release
-    oauth2_proxy_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
     #: The query parameters that are passed to the IDP in the authorize request
     #: For example, Keycloak allows a kc_idp_hint parameter that can be used to
     #: pre-select an identity provider
@@ -179,8 +158,6 @@ class IngressConfig(Section):
     """
     #: Base domain for the proxied services
     base_domain: DomainName
-    #: The ingress class to use when creating ingress resources
-    class_name: str = "nginx"
     #: Annotations to add to all ingress resources
     annotations: t.Dict[str, str] = Field(default_factory = dict)
     #: The TLS configuration
@@ -202,7 +179,7 @@ class HelmClientConfiguration(Section):
     #: By default, we assume Helm is on the PATH
     executable: constr(min_length = 1) = "helm"
     #: The maximum number of revisions to retain in the history of releases
-    history_max_revisions: int = 10
+    history_max_revisions: int = 3
     #: Indicates whether to verify TLS when pulling charts
     insecure_skip_tls_verify: bool = False
     #: The directory to use for unpacking charts
@@ -217,12 +194,20 @@ class KubernetesConfig(Section):
     #: The field manager name to use for server-side apply
     easykube_field_manager: constr(min_length = 1) = "zenith-sync"
 
-    #: The DNS domain for cluster services
-    cluster_services_domain: str = "svc.cluster.local"
     #: The namespace that the sync component is running in
     self_namespace: str
     #: The namespace to create Zenith service resources in
     target_namespace: str = "zenith-services"
+
+    #: The chart repository containing the service chart
+    service_chart_repo: AnyHttpUrl = "https://stackhpc.github.io/zenith"
+    #: The name of the service chart
+    service_chart_name: constr(min_length = 1) = "zenith-service"
+    #: The version of the service chart
+    service_chart_version: constr(min_length = 1) = "main"
+    #: Default values for releases of the service chart
+    service_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
+
     #: The label used to indicate a managed resource
     created_by_label: str = "app.kubernetes.io/created-by"
     #: The label used to indicate the corresponding Zenith service for a resource

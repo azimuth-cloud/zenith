@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+  annotations:
+    {{- include "zenith-service.ingress.annotations" . | fromYaml | toYaml | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.global.secure }}
+  tls:
+    - hosts:
+        - {{ .Values.global.domain }}
+      secretName: {{ include "zenith-service.ingress.tls.secretName" . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.global.domain | required "domain is required" }}
+      http:
+        paths:
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port:
+                  name: dynamic

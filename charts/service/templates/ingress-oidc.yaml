@@ -1,0 +1,39 @@
+{{-
+  if and
+    .Values.oidc.enabled
+    (not .Values.oidc.ingress.enabled)
+}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-oidc
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    {{- if .Values.global.secure }}
+    {{- if not .Values.ingress.tls.existingCertificate.cert }}
+    {{- with .Values.ingress.tls.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.global.secure }}
+  tls:
+    - hosts:
+        - {{ .Values.global.domain }}
+      secretName: {{ include "zenith-service.ingress.tls.secretName" . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.global.domain }}
+      http:
+        paths:
+          - path: {{ index .Values.oidc.extraArgs "proxy-prefix" }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ printf "%s-oidc" .Release.Name }}
+                port:
+                  name: http
+{{- end }}
