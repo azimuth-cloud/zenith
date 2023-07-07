@@ -1,5 +1,7 @@
 # Configuration for the Zenith client
 zenithClient:
+  # Indicates if the Zenith client should be in debug mode
+  debug: false
   # The base64-encoded SSH private key data for the client
   # The SSH key should already be associated with a Zenith subdomain
   sshPrivateKeyData:

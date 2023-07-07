@@ -211,6 +211,9 @@ def create(config):
             str(config.server_port),
             f"zenith@{config.server_address}",
         ]
+        # Add verbosity flags to the command in debug mode
+        if config.debug:
+            ssh_command.insert(-1, "-vvv")
 
         logger.info("Spawning SSH process")
         logger.debug("SSH command - %s", " ".join(ssh_command))

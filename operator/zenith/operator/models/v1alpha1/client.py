@@ -399,6 +399,10 @@ class ClientSpec(schema.BaseModel):
         default_factory = AuthSpec,
         description = "The auth configuration for the Zenith client."
     )
+    debug: bool = Field(
+        default = settings.default_debug,
+        description = "Indicates if the Zenith client should be in debug mode."
+    )
     resources: ContainerResources = Field(
         default_factory = ContainerResources,
         description = "The resources for the Zenith client container."

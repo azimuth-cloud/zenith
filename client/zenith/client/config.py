@@ -1,5 +1,4 @@
 import base64
-import enum
 import pathlib
 import typing
 
@@ -60,6 +59,9 @@ class ConnectConfig(Configuration):
 
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
+
+    #: Indicates whether we are in debug mode
+    debug: bool = False
 
     #: The SSH executable to use
     ssh_executable: str = "ssh"

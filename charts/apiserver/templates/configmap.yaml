@@ -4,6 +4,10 @@ metadata:
   name: {{ include "zenith.fullname" . }}
 data:
   client-apiserver.yaml: |
+    {{- if .Values.zenithClient.debug }}
+    debug: true
+    {{- end }}
+
     {{- with .Values.zenithClient }}
     ssh_private_key_data: {{ .sshPrivateKeyData | required "zenithClient.sshPrivateKeyData is required" | quote }}
     server_address: {{ .server.host | required "zenithClient.server.host is required" }}

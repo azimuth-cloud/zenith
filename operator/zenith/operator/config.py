@@ -49,5 +49,8 @@ class Configuration(BaseConfiguration):
     #: The default external auth parameters for created clients
     default_external_auth_params: t.Dict[str, str] = Field(default_factory = dict)
 
+    #: The default debug status for clients if not specified
+    default_debug: bool = False
+
 
 settings = Configuration()
