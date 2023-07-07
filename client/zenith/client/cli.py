@@ -63,6 +63,12 @@ def init(config_path, **kwargs):
 @click.option("--server-port", type = int, help = "The port of the target Zenith server.")
 @click.option("--forward-to-host", help = "The address to forward tunnel traffic to.")
 @click.option("--forward-to-port", type = int, help = "The port to forward tunnel traffic to.")
+@click.option(
+    "--debug",
+    is_flag = True,
+    default = None,
+    help = "Print extra information for debugging."
+)
 def connect(config_path, **kwargs):
     """
     Connect to a Zenith server and establish a secure tunnel.
@@ -72,5 +78,16 @@ def connect(config_path, **kwargs):
     """
     config_kwargs = { k: v for k, v in kwargs.items() if v is not None }
     config = ConnectConfig(_path = config_path, **config_kwargs)
-    config.logging.apply()
+    # If debug mode is enabled, set the log level of the root logger to DEBUG
+    if config.debug:
+        logging_overrides = {
+            "loggers": {
+                "": {
+                    "level": "DEBUG",
+                },
+            },
+        }
+    else:
+        logging_overrides = {}
+    config.logging.apply(logging_overrides)
     run_connect(config)
