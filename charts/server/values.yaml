@@ -293,3 +293,35 @@ metrics:
     tolerations: []
     # Customise affinity rules for sync pods
     affinity: {}
+  # Configuration for the Helm exporter
+  helmExporter:
+    # The image to use for the Helm exporter
+    # We use a synced version to avoid a dependency on Docker Hub
+    # When we sync, we retag with the commit SHA for consistency
+    image:
+      repository: ghcr.io/stackhpc/helm-exporter
+      pullPolicy: IfNotPresent
+      tag: ""  # Defaults to appVersion if not given
+    imagePullSecrets: []
+    # Customise pod-level security context for sync pods
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+    # Customise container-level security context for sync pods
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      readOnlyRootFilesystem: true
+    # Resources for sync containers
+    resources: {}
+    # Customise annotations for sync pods
+    podAnnotations: {}
+    # Customise node selector for sync pods
+    nodeSelector: {}
+    # Customise tolerations for sync pods
+    tolerations: []
+    # Customise affinity rules for sync pods
+    affinity: {}

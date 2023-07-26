@@ -1,0 +1,123 @@
+{{- if .Values.metrics.enabled -}}
+{{- $keyPrefix := default .Values.common.consul.registrarKeyPrefix .Values.registrar.config.consulKeyPrefix }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "zenith.componentname" (list . "metrics") }}
+  labels: {{ include "zenith.componentLabels" (list . "metrics") | nindent 4 }}
+spec:
+  groups:
+    - name: zenith.recording-rules
+      rules:
+        # This metric indicates if a service has been initialised
+        - record: zenith_service_initialised
+          expr: >-
+            sum(label_replace(consul_catalog_kv, "service_name", "$1", "key", "{{ $keyPrefix }}/subdomains/(.+)")) by(service_name) > bool 0
+
+        # This metric indicates the number of clients in each status in Consul
+        - record: zenith_service_client_status
+          expr: >-
+            sum(topk(1, consul_health_service_status) by(service_id, status)) by(service_name, status)
+
+        # This metric indicates the status of the Helm release
+        - record: zenith_service_helm_status
+          expr: >-
+            count(topk(1, label_replace(helm_chart_info, "service_name", "$1", "release", "(.+)")) by(service_name, status)) by(service_name, status)
+
+    # Zenith service alerts
+    - name: zenith.alerts
+      rules:
+        - alert: ZenithServiceNotInitialised
+          expr: zenith_service_initialised == 0
+          for: 1h
+          annotations:
+            description: >-
+              Zenith service {{ "{{" }} $labels.service_name {{ "}}" }} has not been initialised for more than one hour.
+            summary: >-
+              Zenith service has not been initialised for more than one hour.
+          labels:
+            severity: warning
+
+        # This alert fires when a service has no passing clients
+        - alert: ZenithServiceHasNoHealthyClients
+          expr: sum(zenith_service_client_status{status="passing"}) by(service_name) == 0
+          for: 15m
+          annotations:
+            description: >-
+              Zenith service {{ "{{" }} $labels.service_name {{ "}}" }} has had no
+              healthy clients for more than 15 minutes.
+            summary: >-
+              Zenith service has had no healthy clients for more than 15 minutes.
+          labels:
+            severity: critical
+
+        # This alert fires when a service has at least one client that is not passing
+        # It only fires when there is at least one passing client (see above)
+        # Since this is a scenario that occurs when clients reconnect after a restart
+        # or an upgrade of the server, the trigger time should be greater than the
+        # DeregisterCriticalServiceAfter property of the service as set by SSHD
+        # By default, this is 600 seconds
+        - alert: ZenithServiceHasUnhealthyClients
+          expr: >-
+            (sum(zenith_service_client_status{status="passing"}) by(service_name) > bool 0) *
+              (sum(zenith_service_client_status{status!="passing"}) by(service_name) > bool 0)
+              > 0
+          for: 15m
+          annotations:
+            description: |-
+              Zenith service {{ "{{" }} $labels.service_name {{ "}}" }} has had at least
+              one unhealthy client for more than 15 minutes.
+            summary: >-
+              Zenith service has had at least one unhealthy client for more than 15 minutes.
+          labels:
+            severity: warning
+
+        # This alert fires when a service has a healthy client but no Helm release
+        # This indicates a failure in the sync process
+        - alert: ZenithClientNotSynced
+          expr: >-
+            count(zenith_service_client_status) by(service_name) unless count(zenith_service_helm_status) by(service_name)
+          for: 15m
+          annotations:
+            description: |-
+              Zenith service {{ "{{" }} $labels.service_name {{ "}}" }} has not been synced.
+            summary: >-
+              Zenith service has not been synced.
+          labels:
+            severity: critical
+
+        # This alert fires when a Helm release for a service is not in the deployed state
+        - alert: ZenithClientSyncFailed
+          expr: >-
+            count(zenith_service_helm_status{status!="deployed"}) by(service_name) > 0
+          for: 15m
+          annotations:
+            description: |-
+              Zenith service {{ "{{" }} $labels.service_name {{ "}}" }} has not synced correctly.
+            summary: >-
+              Zenith service has not synced correctly.
+          labels:
+            severity: critical
+
+    # Basic Consul alerts
+    - name: consul.alerts
+      rules:
+        - alert: ConsulDown
+          expr: min(consul_up) == 0
+          for: 15m
+          annotations:
+            description: Consul has been reporting as down for more than 15 minutes.
+            summary: Consul has been reporting as down for more than 15 minutes.
+          labels:
+            severity: warning
+
+        - alert: ConsulNodeUnhealthy
+          expr: sum(consul_health_node_status{status!="passing"}) by (node) > 0
+          for: 15m
+          annotations:
+            description: >-
+              Consul node {{ "{{" }} $labels.node {{ "}}" }} has been unhealthy for more than 15 minutes.
+            summary: Consul node has been unhealthy for more than 15 minutes.
+          labels:
+            severity: warning
+{{- end }}

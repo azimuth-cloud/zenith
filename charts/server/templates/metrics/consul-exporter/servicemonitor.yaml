@@ -1,4 +1,5 @@
 {{- if .Values.metrics.enabled -}}
+{{- $keyPrefix := default .Values.common.consul.registrarKeyPrefix .Values.registrar.config.consulKeyPrefix }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

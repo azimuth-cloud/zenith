@@ -1,4 +1,5 @@
 {{- if .Values.metrics.enabled -}}
+{{- $keyPrefix := default .Values.common.consul.registrarKeyPrefix .Values.registrar.config.consulKeyPrefix }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,6 +33,7 @@ spec:
           imagePullPolicy: {{ .Values.metrics.consulExporter.image.pullPolicy }}
           args:
             - "--consul.server={{ .Values.common.consul.address }}:{{ .Values.common.consul.port }}"
+            - "--kv.prefix={{ $keyPrefix }}/subdomains"
           ports:
             - name: http
               containerPort: 9107
@@ -40,13 +42,13 @@ spec:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 30
+            initialDelaySeconds: 10
             timeoutSeconds: 10
           readinessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 30
+            initialDelaySeconds: 10
             timeoutSeconds: 10
           resources: {{ toYaml .Values.metrics.consulExporter.resources | nindent 12 }}
       {{- with .Values.metrics.consulExporter.nodeSelector }}
