@@ -270,11 +270,10 @@ metrics:
   consulExporter:
     # The image to use for the consul exporter
     # We use a synced version to avoid a dependency on Docker Hub
-    # When we sync, we retag with the commit SHA for consistency
     image:
-      repository: ghcr.io/stackhpc/consul-exporter
+      repository: ghcr.io/stackhpc/zenith/consul-exporter
       pullPolicy: IfNotPresent
-      tag: ""  # Defaults to appVersion if not given
+      tag: v0.9.0
     imagePullSecrets: []
     # Customise pod-level security context for sync pods
     podSecurityContext:
@@ -302,11 +301,10 @@ metrics:
   helmExporter:
     # The image to use for the Helm exporter
     # We use a synced version to avoid a dependency on Docker Hub
-    # When we sync, we retag with the commit SHA for consistency
     image:
-      repository: ghcr.io/stackhpc/helm-exporter
+      repository: ghcr.io/stackhpc/zenith/helm-exporter
       pullPolicy: IfNotPresent
-      tag: ""  # Defaults to appVersion if not given
+      tag: 1.2.10
     imagePullSecrets: []
     # Customise pod-level security context for sync pods
     podSecurityContext:
