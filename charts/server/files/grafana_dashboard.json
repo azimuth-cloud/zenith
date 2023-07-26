@@ -21,7 +21,7 @@
       }
     ]
   },
-  "editable": false,
+  "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": 40,
@@ -370,7 +370,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
@@ -379,56 +379,8 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "critical"
-            },
-            "properties": [
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "text",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 1
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "maintenance"
-            },
-            "properties": [
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "text",
-                      "value": null
-                    },
-                    {
-                      "color": "light-blue",
-                      "value": 1
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "passing"
+              "id": "byFrameRefID",
+              "options": "A"
             },
             "properties": [
               {
@@ -451,8 +403,32 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "warning"
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
             },
             "properties": [
               {
@@ -466,6 +442,30 @@
                     },
                     {
                       "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "light-blue",
                       "value": 1
                     }
                   ]
@@ -505,12 +505,57 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(zenith_service_client_status) by(status)",
+          "expr": "sum(zenith_service_client_status{status=\"passing\"}) or vector(0)",
           "format": "time_series",
           "instant": true,
-          "legendFormat": "__auto",
+          "legendFormat": "passing",
           "range": false,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(zenith_service_client_status{status=\"critical\"}) or vector(0)",
+          "format": "time_series",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "critical",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(zenith_service_client_status{status=\"warning\"}) or vector(0)",
+          "format": "time_series",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "warning",
+          "range": false,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(zenith_service_client_status{status=\"maintenance\"}) or vector(0)",
+          "format": "time_series",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "maintenance",
+          "range": false,
+          "refId": "D"
         }
       ],
       "title": "Clients by status",
@@ -1153,6 +1198,6 @@
   "timezone": "utc",
   "title": "Zenith / Services",
   "uid": "7nRNEF34k",
-  "version": 2,
+  "version": 5,
   "weekStart": ""
 }
