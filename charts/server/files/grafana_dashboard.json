@@ -24,7 +24,7 @@
   "editable": false,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 37,
+  "id": 40,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -59,7 +59,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 4,
         "w": 6,
         "x": 0,
         "y": 0
@@ -172,7 +172,7 @@
         ]
       },
       "gridPos": {
-        "h": 6,
+        "h": 4,
         "w": 9,
         "x": 6,
         "y": 0
@@ -302,7 +302,7 @@
         ]
       },
       "gridPos": {
-        "h": 6,
+        "h": 4,
         "w": 9,
         "x": 15,
         "y": 0
@@ -476,10 +476,10 @@
         ]
       },
       "gridPos": {
-        "h": 11,
+        "h": 8,
         "w": 8,
         "x": 0,
-        "y": 6
+        "y": 4
       },
       "id": 23,
       "options": {
@@ -507,9 +507,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_client_status) by(status)",
           "format": "time_series",
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -737,10 +737,10 @@
         ]
       },
       "gridPos": {
-        "h": 11,
+        "h": 8,
         "w": 16,
         "x": 8,
-        "y": 6
+        "y": 4
       },
       "id": 29,
       "options": {
@@ -768,9 +768,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"deployed\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "deployed",
-          "range": true,
+          "range": false,
           "refId": "A"
         },
         {
@@ -782,9 +782,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"failed\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "failed",
-          "range": true,
+          "range": false,
           "refId": "B"
         },
         {
@@ -796,9 +796,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"pending-install\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "pending-install",
-          "range": true,
+          "range": false,
           "refId": "C"
         },
         {
@@ -810,9 +810,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"pending-upgrade\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "pending-upgrade",
-          "range": true,
+          "range": false,
           "refId": "D"
         },
         {
@@ -824,9 +824,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"pending-rollback\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "pending-rollback",
-          "range": true,
+          "range": false,
           "refId": "E"
         },
         {
@@ -838,9 +838,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"uninstalling\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "uninstalling",
-          "range": true,
+          "range": false,
           "refId": "F"
         },
         {
@@ -852,9 +852,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"uninstalled\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "uninstalled",
-          "range": true,
+          "range": false,
           "refId": "G"
         },
         {
@@ -866,9 +866,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"superseded\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "superseded",
-          "range": true,
+          "range": false,
           "refId": "H"
         },
         {
@@ -880,9 +880,9 @@
           "exemplar": false,
           "expr": "sum(zenith_service_helm_status{status=\"unknown\"}) or vector(0)",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "unknown",
-          "range": true,
+          "range": false,
           "refId": "I"
         }
       ],
@@ -1010,7 +1010,7 @@
         "h": 13,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 12
       },
       "id": 31,
       "options": {
@@ -1153,6 +1153,6 @@
   "timezone": "utc",
   "title": "Zenith / Services",
   "uid": "7nRNEF34k",
-  "version": 4,
+  "version": 2,
   "weekStart": ""
 }
