@@ -1,0 +1,13 @@
+{{- if and .Values.metrics.enabled .Values.metrics.dashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+metadata:
+  name: {{ include "zenith.componentname" (list . "metrics") }}
+  labels:
+    {{- include "zenith.componentLabels" (list . "metrics") | nindent 4 }}
+    {{- toYaml .Values.metrics.dashboard.labels | nindent 4 }}
+data:
+  zenith_dashboard.json: |
+    {{- .Files.Get "files/grafana_dashboard.json" | nindent 4 }}
+{{- end }}

@@ -261,6 +261,11 @@ registrar:
 
 metrics:
   enabled: false
+  # Configuration for the dashboard
+  dashboard:
+    enabled: true
+    labels:
+      grafana_dashboard: "1"
   # Configuration for the consul exporter
   consulExporter:
     # The image to use for the consul exporter
