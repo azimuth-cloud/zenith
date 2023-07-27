@@ -2,7 +2,6 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-metadata:
   name: {{ include "zenith.componentname" (list . "metrics") }}
   labels:
     {{- include "zenith.componentLabels" (list . "metrics") | nindent 4 }}
