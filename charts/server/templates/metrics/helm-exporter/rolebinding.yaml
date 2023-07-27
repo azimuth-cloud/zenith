@@ -1,0 +1,18 @@
+{{- if .Values.metrics.enabled -}}
+# This role binding allows the helm-exporter service account in the release namespace
+# to list Helm release secrets in the target namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "zenith.componentname" (list . "helm-exporter") }}
+  labels: {{ include "zenith.componentLabels" (list . "helm-exporter") | nindent 4 }}
+  namespace: {{ .Values.sync.config.kubernetes.targetNamespace }}
+subjects:
+  - kind: ServiceAccount
+    namespace: {{ .Release.Namespace }}
+    name: {{ include "zenith.componentname" (list . "helm-exporter") }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "zenith.componentname" (list . "helm-exporter") }}
+{{- end }}

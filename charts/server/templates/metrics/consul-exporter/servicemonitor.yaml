@@ -1,0 +1,17 @@
+{{- if .Values.metrics.enabled -}}
+{{- $keyPrefix := default .Values.common.consul.registrarKeyPrefix .Values.registrar.config.consulKeyPrefix }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "zenith.componentname" (list . "consul-exporter") }}
+  labels: {{ include "zenith.componentLabels" (list . "consul-exporter") | nindent 4 }}
+spec:
+  selector:
+    matchLabels: {{ include "zenith.componentSelectorLabels" (list . "consul-exporter") | nindent 6 }}
+  endpoints:
+    - port: http
+  namespaceSelector:
+    matchNames:
+      # Restrict the ServiceMonitor to the relevant namespace
+      - {{ .Release.Namespace }}
+{{- end }}

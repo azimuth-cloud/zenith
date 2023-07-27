@@ -1,0 +1,15 @@
+{{- if .Values.metrics.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zenith.componentname" (list . "consul-exporter") }}
+  labels: {{ include "zenith.componentLabels" (list . "consul-exporter") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9107
+      targetPort: http
+      protocol: TCP
+  selector: {{ include "zenith.componentSelectorLabels" (list . "consul-exporter") | nindent 4 }}
+{{- end }}

@@ -1,0 +1,69 @@
+{{- if .Values.metrics.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zenith.componentname" (list . "helm-exporter") }}
+  labels: {{ include "zenith.componentLabels" (list . "helm-exporter") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{ include "zenith.componentSelectorLabels" (list . "helm-exporter") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{ include "zenith.componentSelectorLabels" (list . "helm-exporter") | nindent 8 }}
+      annotations:
+        {{- with .Values.metrics.helmExporter.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "zenith.componentname" (list . "helm-exporter") }}
+      {{- with .Values.metrics.helmExporter.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{ toYaml .Values.metrics.helmExporter.podSecurityContext | nindent 8 }}
+      containers:
+        - name: helm-exporter
+          securityContext: {{ toYaml .Values.metrics.helmExporter.securityContext | nindent 12 }}
+          image: {{
+            printf
+              "%s:%s"
+              .Values.metrics.helmExporter.image.repository
+              (default .Chart.AppVersion .Values.metrics.helmExporter.image.tag)
+          }}
+          imagePullPolicy: {{ .Values.metrics.helmExporter.image.pullPolicy }}
+          args:
+            # We are only worried about the info metric for releases in the target namespace
+            - "-info-metric=true"
+            - "-outdated-metric=false"
+            - "-timestamp-metric=false"
+            - "-latest-chart-version=false"
+            - "-status-in-metric=true"
+            - "-namespaces"
+            - {{ .Values.sync.config.kubernetes.targetNamespace | quote }}
+          ports:
+            - name: http
+              containerPort: 9571
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+          resources: {{ toYaml .Values.metrics.helmExporter.resources | nindent 12 }}
+      {{- with .Values.metrics.helmExporter.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.metrics.helmExporter.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.metrics.helmExporter.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
