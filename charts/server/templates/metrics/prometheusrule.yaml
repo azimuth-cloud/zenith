@@ -59,9 +59,10 @@ spec:
         # By default, this is 600 seconds
         - alert: ZenithServiceHasUnhealthyClients
           expr: >-
-            (sum(zenith_service_client_status{status="passing"}) by(service_name) > bool 0) *
+            (
+              (sum(zenith_service_client_status{status="passing"}) by(service_name) > bool 0) *
               (sum(zenith_service_client_status{status!="passing"}) by(service_name) > bool 0)
-              > 0
+            ) > 0
           for: 15m
           annotations:
             description: |-
@@ -76,10 +77,11 @@ spec:
         # This indicates a failure in the sync process
         - alert: ZenithClientNotSynced
           expr: >-
-            sum(zenith_service_client_status{status="passing"}) by(service_name)
+            (
+              sum(zenith_service_client_status{status="passing"}) by(service_name)
               unless
               count(zenith_service_helm_status) by(service_name)
-              > 0
+            ) > 0
           for: 15m
           annotations:
             description: |-
