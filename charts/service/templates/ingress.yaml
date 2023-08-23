@@ -4,7 +4,7 @@ metadata:
   name: {{ .Release.Name }}
   labels: {{ include "zenith-service.labels" . | nindent 4 }}
   annotations:
-    {{- include "zenith-service.ingress.annotations" . | fromYaml | toYaml | nindent 4 }}
+    {{- include "zenith-service.ingress.annotations" . | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.global.secure }}
