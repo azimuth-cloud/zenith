@@ -21,7 +21,7 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 Annotations for the ingress resource.
 */}}
 {{- define "zenith-service.ingress.annotations" -}}
-{{- toYaml .Values.ingress.annotations }}
+{{ toYaml .Values.ingress.annotations }}
 nginx.ingress.kubernetes.io/backend-protocol: {{ quote .Values.protocol }}
 {{- with .Values.readTimeout }}
 nginx.ingress.kubernetes.io/proxy-read-timeout: {{ quote . }}
@@ -43,7 +43,7 @@ Annotations for TLS.
 {{- define "zenith-service.ingress.tls.annotations" -}}
 {{- if not .Values.ingress.tls.existingCertificate.cert }}
 {{- with .Values.ingress.tls.annotations }}
-{{- toYaml . }}
+{{ toYaml . }}
 {{- end }}
 {{- end }}
 {{- if .Values.ingress.tls.clientCA }}
