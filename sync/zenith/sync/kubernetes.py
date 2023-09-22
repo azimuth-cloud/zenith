@@ -403,15 +403,22 @@ class ServiceReconciler:
         services = await client.api("v1").resource("services")
         await services.delete_all(labels = labels)
 
-        # For secrets, we want to be a little more particular and leave behind
-        # the cookie secrets, which are still managed by zenith-sync
-        # Deleting the cookie secrets here would mean that all the OIDC proxy sessions
-        # would become invalidated every time zenith-sync restarts
+        # For secrets, we want to be a little more particular
+        # First, we want to leave behind the mirrored secret, if it exists
+        # We also want to leave behind the cookie secrets, which are still managed by zenith-sync
+        # Deleting the cookie secrets here would mean that all the OIDC proxy sessions would
+        # become invalidated every time zenith-sync restarts
         self._logger.info("Removing legacy secrets")
         secrets = await client.api("v1").resource("secrets")
         async for secret in secrets.list(labels = labels):
-            if "cookie-secret" not in secret.data:
-                await secrets.delete(secret.metadata.name)
+            if (
+                self.config.ingress.tls.secret_name and
+                secret.metadata.name == self.config.ingress.tls.secret_name
+            ):
+                continue
+            if "cookie-secret" in secret.data:
+                continue
+            await secrets.delete(secret.metadata.name)
 
         # We also want to remove all the Helm releases for OIDC proxies, as these are
         # now provisioned as part of the zenith-service chart
