@@ -142,13 +142,15 @@ class ServiceReconciler:
         if not tls_enabled:
             return values
         tls_values = values.setdefault("ingress", {}).setdefault("tls", {})
-        tls_values["annotations"] = self.config.ingress.tls.annotations
-        tls_values["secretName"] = self.config.ingress.tls.secret_name
         if "tls-cert" in service.config:
             tls_values["existingCertificate"] = {
                 "cert": service.config["tls-cert"],
                 "key": service.config["tls-key"],
             }
+        elif self.config.ingress.tls.secret_name:
+            tls_values["secretName"] = self.config.ingress.tls.secret_name
+        else:
+            tls_values["annotations"] = self.config.ingress.tls.annotations
         if "tls-client-ca" in service.config:
             tls_values["clientCA"] = service.config["tls-client-ca"]
         return values
