@@ -33,6 +33,7 @@ spec:
           imagePullPolicy: {{ .Values.metrics.consulExporter.image.pullPolicy }}
           args:
             - "--consul.server={{ .Values.common.consul.address }}:{{ .Values.common.consul.port }}"
+            - "--consul.timeout={{ .Values.metrics.consulExporter.queryTimeout }}"
             - "--kv.prefix={{ $keyPrefix }}/subdomains"
           ports:
             - name: http

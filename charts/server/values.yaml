@@ -275,27 +275,30 @@ metrics:
       pullPolicy: IfNotPresent
       tag: v0.9.0
     imagePullSecrets: []
-    # Customise pod-level security context for sync pods
+    # The timeout for Consul queries used in the exporter
+    # This is increases from the default to accomodate clusters with many services
+    queryTimeout: 5s
+    # Customise pod-level security context for consul exporter pods
     podSecurityContext:
       runAsNonRoot: true
       runAsUser: 1000
       runAsGroup: 1000
       fsGroup: 1000
-    # Customise container-level security context for sync pods
+    # Customise container-level security context for consul exporter pods
     securityContext:
       allowPrivilegeEscalation: false
       capabilities:
         drop: [ALL]
       readOnlyRootFilesystem: true
-    # Resources for sync containers
+    # Resources for consul exporter containers
     resources: {}
-    # Customise annotations for sync pods
+    # Customise annotations for consul exporter pods
     podAnnotations: {}
-    # Customise node selector for sync pods
+    # Customise node selector for consul exporter pods
     nodeSelector: {}
-    # Customise tolerations for sync pods
+    # Customise tolerations for consul exporter pods
     tolerations: []
-    # Customise affinity rules for sync pods
+    # Customise affinity rules for consul exporter pods
     affinity: {}
   # Configuration for the Helm exporter
   helmExporter:
@@ -306,25 +309,25 @@ metrics:
       pullPolicy: IfNotPresent
       tag: 1.2.10
     imagePullSecrets: []
-    # Customise pod-level security context for sync pods
+    # Customise pod-level security context for helm exporter pods
     podSecurityContext:
       runAsNonRoot: true
       runAsUser: 1000
       runAsGroup: 1000
       fsGroup: 1000
-    # Customise container-level security context for sync pods
+    # Customise container-level security context for helm exporter pods
     securityContext:
       allowPrivilegeEscalation: false
       capabilities:
         drop: [ALL]
       readOnlyRootFilesystem: true
-    # Resources for sync containers
+    # Resources for helm exporter containers
     resources: {}
-    # Customise annotations for sync pods
+    # Customise annotations for helm exporter pods
     podAnnotations: {}
-    # Customise node selector for sync pods
+    # Customise node selector for helm exporter pods
     nodeSelector: {}
-    # Customise tolerations for sync pods
+    # Customise tolerations for helm exporter pods
     tolerations: []
-    # Customise affinity rules for sync pods
+    # Customise affinity rules for helm exporter pods
     affinity: {}
