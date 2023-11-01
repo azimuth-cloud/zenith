@@ -276,7 +276,7 @@ metrics:
       tag: v0.9.0
     imagePullSecrets: []
     # The timeout for Consul queries used in the exporter
-    # This is increases from the default to accomodate clusters with many services
+    # This is increased from the default to accomodate clusters with many services
     queryTimeout: 5s
     # Customise pod-level security context for consul exporter pods
     podSecurityContext:
