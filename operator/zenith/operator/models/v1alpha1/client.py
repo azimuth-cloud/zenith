@@ -24,7 +24,7 @@ class ContainerImage(schema.BaseModel):
         ContainerImagePullPolicy(settings.default_image_pull_policy.value),
         description = "The pull policy for the container image."
     )
-    tag: constr(regex = r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$") = Field(
+    tag: constr(pattern =r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$") = Field(
         settings.default_image_tag,
         description = "The tag for the container image."
     )
@@ -56,7 +56,7 @@ class UpstreamSpec(schema.BaseModel):
     """
     Model for the upstream section of a client spec.
     """
-    service_name: constr(regex = r"^[a-z0-9-]+$") = Field(
+    service_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the service to use as the upstream."
     )
@@ -115,7 +115,7 @@ class OIDCAuthSpec(schema.BaseModel):
         ...,
         description = "The URL of the OIDC issuer to use."
     )
-    credentials_secret_name: constr(regex = r"^[a-z0-9-]+$") = Field(
+    credentials_secret_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the secret containing the OIDC client ID and secret."
     )
@@ -157,7 +157,7 @@ class ZenithClientContainerImage(ContainerImage):
     """
     Model for the image for the Zenith client container.
     """
-    repository: constr(regex = r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
+    repository: constr(pattern =r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
         "ghcr.io/stackhpc/zenith-client",
         description = "The repository for the container image."
     )
@@ -177,7 +177,7 @@ class MITMProxyAuthInjectBasic(schema.BaseModel):
     """
     Model for basic auth injection parameters.
     """
-    secret_name: constr(regex = r"^[a-z0-9-]+$") = Field(
+    secret_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the secret containing basic auth credentials."
     )
@@ -195,7 +195,7 @@ class MITMProxyAuthInjectBearer(schema.BaseModel):
     """
     Model for bearer auth injection parameters.
     """
-    secret_name: constr(regex = r"^[a-z0-9-]+$") = Field(
+    secret_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the secret containing the bearer token."
     )
@@ -277,7 +277,7 @@ class MITMProxyContainerImage(ContainerImage):
     """
     Model for the image for the MITM proxy container.
     """
-    repository: constr(regex = r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
+    repository: constr(pattern =r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
         "ghcr.io/stackhpc/zenith-proxy",
         description = "The repository for the container image."
     )
@@ -375,7 +375,7 @@ class ClientSpec(schema.BaseModel):
     """
     Model for the spec of a Zenith client.
     """
-    reservation_name: constr(regex = r"^[a-z0-9-]+$") = Field(
+    reservation_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the Zenith reservation to use for the client."
     )

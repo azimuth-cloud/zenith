@@ -9,7 +9,7 @@ class ReservationSpec(schema.BaseModel):
     """
     Model for the spec of a reservation.
     """
-    credential_secret_name: constr(regex = r"^[a-z0-9-]+$") = Field(
+    credential_secret_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = (
             "The name of the secret to use for the SSH keypair for the reservation. "
@@ -17,11 +17,11 @@ class ReservationSpec(schema.BaseModel):
             "If the secret does not exist, a keypair will be generated and put in the secret."
         )
     )
-    credential_secret_public_key_name: constr(regex = r"^[a-zA-Z0-9._-]+$") = Field(
+    credential_secret_public_key_name: constr(pattern =r"^[a-zA-Z0-9._-]+$") = Field(
         "ssh-publickey",
         description = "The name of the key in the secret that holds the public key data."
     )
-    credential_secret_private_key_name: constr(regex = r"^[a-zA-Z0-9._-]+$") = Field(
+    credential_secret_private_key_name: constr(pattern =r"^[a-zA-Z0-9._-]+$") = Field(
         "ssh-privatekey",
         description = "The name of the key in the secret that holds the private key data."
     )

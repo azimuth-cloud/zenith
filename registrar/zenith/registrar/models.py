@@ -14,7 +14,7 @@ from .config import settings, SSHPublicKeyType
 #: In addition, this will eventually become a Kubernetes service name and Kubernetes service
 #: names must start with a letter and be lowercase
 #: See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
-Subdomain = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
+Subdomain = constr(pattern =r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63)
 
 
 class SSHPublicKey(str):

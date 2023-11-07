@@ -110,7 +110,7 @@ def model_handler(model, register_fn, /, **kwargs):
         async def handler(**handler_kwargs):
             if "instance" not in handler_kwargs:
                 try:
-                    handler_kwargs["instance"] = model.parse_obj(handler_kwargs["body"])
+                    handler_kwargs["instance"] = model.model_validate(handler_kwargs["body"])
                 except pydantic.ValidationError as exc:
                     raise kopf.PermanentError(str(exc))
             try:
@@ -245,7 +245,7 @@ async def client_changed(instance, name, namespace, body, **kwargs):
         else:
             raise
     else:
-        reservation = api.Reservation.parse_obj(reservation)
+        reservation = api.Reservation.model_validate(reservation)
     # Wait for the specified reservation to become ready
     if reservation.status.phase != api.ReservationPhase.READY:
         # This condition normally only takes a short time to resolve

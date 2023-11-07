@@ -39,18 +39,18 @@ class TunnelExit(RuntimeError):
     """
 
 #: Type for an OIDC allowed group
-AllowedGroup = constr(regex = r"^[a-zA-Z0-9_/-]+$")
+AllowedGroup = constr(pattern =r"^[a-zA-Z0-9_/-]+$")
 
 #: Type for a key in the authentication parameters
 #: This will become a header name, so limit to lowercase alpha-numeric + -
 #: Although HTTP specifies no size limit, we do for readability
-AuthParamsKey = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
+AuthParamsKey = constr(pattern =r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
 #: Type for a value in the authentication parameters
 #: Must fit in an HTTP header, so limited to 1024 unicode characters (4KB)
 AuthParamsValue = constr(max_length = 1024)
 
 #: Type for an RFC3986 compliant URL path component
-UrlPath = constr(regex = r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
+UrlPath = constr(pattern =r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
 
 
 class ClientConfig(BaseModel):
@@ -251,7 +251,7 @@ def get_tunnel_config(logger: logging.Logger, server_config: SSHDConfig) -> Tunn
     sys.stdout.flush()
     # Parse the client data into a config object
     # This will raise validation errors if the config is incorrect
-    tunnel_config = ClientConfig.parse_obj(config)
+    tunnel_config = ClientConfig.model_validate(config)
     logger.info(f"Allocated port for tunnel: {tunnel_config.allocated_port}")
     # Work out the TTL to use for the Consul session
     # This is the length of time after which keys created by the tunnel will be deleted if
