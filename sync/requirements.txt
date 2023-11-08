@@ -1,15 +1,17 @@
-anyio==3.7.0
-certifi==2023.5.7
-click==8.1.3
-configomatic @ git+https://github.com/stackhpc/configomatic.git@8b81e8f216762b2e1664f60681c4a8e618ab151d
-easykube @ git+https://github.com/stackhpc/easykube.git@594e65190e6f13d66f069feaece534f7595c1656
-exceptiongroup==1.1.1
+annotated-types==0.6.0
+anyio==4.0.0
+certifi==2023.7.22
+click==8.1.7
+configomatic @ git+https://github.com/stackhpc/configomatic.git@c485afefb9850430012e1526e5339c31b1ecee33
+easykube==0.1.1
+exceptiongroup==1.1.3
 h11==0.14.0
-httpcore==0.17.2
-httpx==0.24.1
+httpcore==1.0.1
+httpx==0.25.1
 idna==3.4
-pydantic==1.10.8
-pyhelm3 @ git+https://github.com/stackhpc/pyhelm3.git@cacf99d706851b67a57249726e94adedf03c6451
-PyYAML==6.0
+pydantic==2.4.2
+pydantic_core==2.10.1
+pyhelm3 @ git+https://github.com/stackhpc/pyhelm3.git@e4dd3ab6c12fe861eaab2394556b15816f51785f
+PyYAML==6.0.1
 sniffio==1.3.0
-typing-extensions==4.6.3
+typing_extensions==4.8.0

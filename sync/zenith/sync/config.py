@@ -1,10 +1,35 @@
-import re
 import typing as t
 import typing_extensions as te
 
-from pydantic import Field, AnyHttpUrl, conint, constr
+from pydantic import (
+    TypeAdapter,
+    Field,
+    AfterValidator,
+    StringConstraints,
+    AnyHttpUrl as PyAnyHttpUrl,
+    conint,
+    constr
+)
 
 from configomatic import Configuration, Section, LoggingConfiguration
+
+
+#: Type validating a string as a URL
+AnyHttpUrl = t.Annotated[
+    str,
+    AfterValidator(lambda v: TypeAdapter(PyAnyHttpUrl).validate_python(v))
+]
+
+
+DNS_LABEL_REGEX = r"[a-zA-Z0-9][a-zA-Z0-9-]*?[a-zA-Z0-9]"
+DOMAIN_NAME_REGEX = (
+    r"^" +
+    r"(" + DNS_LABEL_REGEX + r"\.)+" +
+    DNS_LABEL_REGEX +
+    r"$"
+)
+#: Type for validating a string as a domain name
+DomainName = t.Annotated[str, StringConstraints(pattern = DOMAIN_NAME_REGEX)]
 
 
 class ConsulConfig(Section):
@@ -28,55 +53,6 @@ class ConsulConfig(Section):
         The URL to use to access Consul.
         """
         return f"http://{self.address}:{self.port}"
-
-
-class DNSLabel(str):
-    """
-    Custom datatype that validates a DNS label.
-
-    DNS labels must contain only alphanumeric characters and hyphens, have less than 63
-    characters and not start or end with a hyphen.
-    """
-    REGEX = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9-]*?[a-zA-Z0-9]$")
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        """
-        Validates the given value as a DNS label.
-        """
-        if not isinstance(v, str):
-            raise TypeError("must be a string")
-        if len(v) > 63:
-            raise ValueError("must have at most 63 characters")
-        if cls.REGEX.fullmatch(v) is None:
-            raise ValueError(f"'{v} is not a valid DNS label")
-        return cls(v)   
-    
-
-class DomainName(str):
-    """
-    Custom datatype that validates a domain name.
-    """
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        """
-        Validates the given value as a DNS name
-        """
-        if not isinstance(v, str):
-            raise TypeError("must be a string")
-        # A valid domain should have two or more valid DNS labels separated by dots
-        dns_labels = v.split(".")
-        if len(dns_labels) < 2:
-            raise ValueError("domain name must contain at least two DNS labels")
-        return cls(".".join(DNSLabel.validate(dns_label) for dns_label in dns_labels))
 
 
 class ForwardedQueryParamRule(te.TypedDict, total = False):
@@ -222,15 +198,15 @@ class KubernetesConfig(Section):
     helm_client: HelmClientConfiguration = Field(default_factory = HelmClientConfiguration)
 
 
-class SyncConfig(Configuration):
+class SyncConfig(
+    Configuration,
+    default_path = "/etc/zenith/sync.yaml",
+    path_env_var = "ZENITH_SYNC_CONFIG",
+    env_prefix = "ZENITH_SYNC"
+):
     """
     Configuration model for the zenith-sync package.
     """
-    class Config:
-        default_path = '/etc/zenith/sync.yaml'
-        path_env_var = 'ZENITH_SYNC_CONFIG'
-        env_prefix = 'ZENITH_SYNC'
-
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
 
