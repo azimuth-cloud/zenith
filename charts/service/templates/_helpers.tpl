@@ -9,7 +9,15 @@ zenith.stackhpc.com/service-name: {{ .Release.Name }}
 Labels for a chart-level resource.
 */}}
 {{- define "zenith-service.labels" -}}
-helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | lower | trunc 63 | trimSuffix "-" }}
+helm.sh/chart: {{
+  printf "%s-%s" .Chart.Name .Chart.Version |
+    replace "+" "_" |
+    lower |
+    trunc 63 |
+    trimSuffix "-" |
+    trimSuffix "." |
+    trimSuffix "_"
+}}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}

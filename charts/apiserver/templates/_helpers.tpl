@@ -30,7 +30,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Labels for a chart-level resource.
 */}}
 {{- define "zenith.labels" -}}
-helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | lower | trunc 63 | trimSuffix "-" }}
+helm.sh/chart: {{
+  printf "%s-%s" .Chart.Name .Chart.Version |
+    replace "+" "_" |
+    lower |
+    trunc 63 |
+    trimSuffix "-" |
+    trimSuffix "." |
+    trimSuffix "_"
+}}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
