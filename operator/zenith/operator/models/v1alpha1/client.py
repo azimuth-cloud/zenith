@@ -1,6 +1,6 @@
 import typing as t
 
-from pydantic import Extra, Field, AnyHttpUrl, constr, validator
+from pydantic import Field, field_validator, ValidationInfo
 
 from kube_custom_resource import CustomResource, schema
 
@@ -24,7 +24,7 @@ class ContainerImage(schema.BaseModel):
         ContainerImagePullPolicy(settings.default_image_pull_policy.value),
         description = "The pull policy for the container image."
     )
-    tag: constr(pattern =r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$") = Field(
+    tag: schema.constr(pattern =r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$") = Field(
         settings.default_image_tag,
         description = "The tag for the container image."
     )
@@ -56,11 +56,11 @@ class UpstreamSpec(schema.BaseModel):
     """
     Model for the upstream section of a client spec.
     """
-    service_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
+    service_name: schema.constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the service to use as the upstream."
     )
-    port: t.Optional[schema.IntOrString] = Field(
+    port: schema.Optional[schema.IntOrString] = Field(
         None,
         description = (
             "The service port to use for the upstream. "
@@ -72,12 +72,13 @@ class UpstreamSpec(schema.BaseModel):
         UpstreamScheme.HTTP,
         description = "The scheme to use when forwarding traffic to the upstream."
     )
-    readTimeout: t.Optional[int] = Field(
+    readTimeout: schema.Optional[int] = Field(
         None,
         description = "The read timeout for the upstream."
     )
 
-    @validator("port")
+    @field_validator("port")
+    @classmethod
     def validate_port(cls, v):
         """
         Validates the given port.
@@ -111,19 +112,19 @@ class OIDCAuthSpec(schema.BaseModel):
     """
     Model for the OIDC auth section of a Zenith client spec.
     """
-    issuer: AnyHttpUrl = Field(
+    issuer: schema.AnyHttpUrl = Field(
         ...,
         description = "The URL of the OIDC issuer to use."
     )
-    credentials_secret_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
+    credentials_secret_name: schema.constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the secret containing the OIDC client ID and secret."
     )
-    client_id_key: constr(min_length = 1) = Field(
+    client_id_key: schema.constr(min_length = 1) = Field(
         "client-id",
         description = "The key of the client ID within the credentials secret."
     )
-    client_secret_key: constr(min_length = 1) = Field(
+    client_secret_key: schema.constr(min_length = 1) = Field(
         "client-secret",
         description = "The key of the client secret within the credentials secret."
     )
@@ -140,11 +141,11 @@ class AuthSpec(schema.BaseModel):
             "the Zenith proxy."
         )
     )
-    external: t.Optional[ExternalAuthSpec] = Field(
+    external: schema.Optional[ExternalAuthSpec] = Field(
         default = None,
         description = "Configuration for external auth."
     )
-    oidc: t.Optional[OIDCAuthSpec] = Field(
+    oidc: schema.Optional[OIDCAuthSpec] = Field(
         default = None,
         description = (
             "Configuration for OIDC auth. "
@@ -157,7 +158,7 @@ class ZenithClientContainerImage(ContainerImage):
     """
     Model for the image for the Zenith client container.
     """
-    repository: constr(pattern =r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
+    repository: schema.constr(pattern =r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
         "ghcr.io/stackhpc/zenith-client",
         description = "The repository for the container image."
     )
@@ -177,15 +178,15 @@ class MITMProxyAuthInjectBasic(schema.BaseModel):
     """
     Model for basic auth injection parameters.
     """
-    secret_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
+    secret_name: schema.constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the secret containing basic auth credentials."
     )
-    username_key: constr(min_length = 1) = Field(
+    username_key: schema.constr(min_length = 1) = Field(
         "username",
         description = "The key of the username within the secret."
     )
-    password_key: constr(min_length = 1) = Field(
+    password_key: schema.constr(min_length = 1) = Field(
         "password",
         description = "The key of the password within the secret."
     )
@@ -195,19 +196,19 @@ class MITMProxyAuthInjectBearer(schema.BaseModel):
     """
     Model for bearer auth injection parameters.
     """
-    secret_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
+    secret_name: schema.constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the secret containing the bearer token."
     )
-    token_key: constr(min_length = 1) = Field(
+    token_key: schema.constr(min_length = 1) = Field(
         "token",
         description = "The key of the bearer token within the secret."
     )
-    header_name: constr(min_length = 1) = Field(
+    header_name: schema.constr(min_length = 1) = Field(
         "Authorization",
         description = "The name of the header to use for the token."
     )
-    header_prefix: constr(min_length = 1) = Field(
+    header_prefix: schema.constr(min_length = 1) = Field(
         "Bearer",
         description = "The prefix to add to the header value."
     )
@@ -217,7 +218,7 @@ class MITMProxyAuthInjectServiceAccount(schema.BaseModel):
     """
     Model for service account auth injection parameters.
     """
-    cluster_role_name: constr(min_length = 1) = Field(
+    cluster_role_name: schema.constr(min_length = 1) = Field(
         ...,
         description = "The name of the cluster role to bind the service account to."
     )
@@ -231,43 +232,49 @@ class MITMProxyAuthInjectSpec(schema.BaseModel):
         MITMProxyAuthInjectType.NONE,
         description = "The type of auth to inject."
     )
-    basic: t.Optional[MITMProxyAuthInjectBasic] = Field(
+    basic: schema.Optional[MITMProxyAuthInjectBasic] = Field(
         None,
-        description = "Configuration for auth type 'Basic'."
+        description = "Configuration for auth type 'Basic'.",
+        validate_default = True
     )
-    bearer: t.Optional[MITMProxyAuthInjectBearer] = Field(
+    bearer: schema.Optional[MITMProxyAuthInjectBearer] = Field(
         None,
-        description = "Configuration for auth type 'Bearer'."
+        description = "Configuration for auth type 'Bearer'.",
+        validate_default = True
     )
-    service_account: t.Optional[MITMProxyAuthInjectServiceAccount] = Field(
+    service_account: schema.Optional[MITMProxyAuthInjectServiceAccount] = Field(
         None,
-        description = "Configuration for auth type 'ServiceAccount'."
+        description = "Configuration for auth type 'ServiceAccount'.",
+        validate_default = True
     )
 
-    @validator("basic", always = True)
-    def validate_basic(cls, v, values, **kwargs):
+    @field_validator("basic")
+    @classmethod
+    def validate_basic(cls, v, info: ValidationInfo):
         """
         Validates that basic auth configuration is present when required.
         """
-        if values["type"] == MITMProxyAuthInjectType.BASIC and v is None:
+        if info.data["type"] == MITMProxyAuthInjectType.BASIC and v is None:
             raise ValueError("required when .spec.mitmProxy.authInject.type = Basic")
         return v
 
-    @validator("bearer", always = True)
-    def validate_bearer(cls, v, values, **kwargs):
+    @field_validator("bearer")
+    @classmethod
+    def validate_bearer(cls, v, info: ValidationInfo):
         """
         Validates that bearer auth configuration is present when required.
         """
-        if values["type"] == MITMProxyAuthInjectType.BEARER and v is None:
+        if info.data["type"] == MITMProxyAuthInjectType.BEARER and v is None:
             raise ValueError("required when .spec.mitmProxy.authInject.type = Bearer")
         return v
 
-    @validator("service_account", always = True)
-    def validate_service_account(cls, v, values, **kwargs):
+    @field_validator("service_account")
+    @classmethod
+    def validate_service_account(cls, v, info: ValidationInfo):
         """
         Validates that service account auth configuration is present when required.
         """
-        if values["type"] == MITMProxyAuthInjectType.SERVICE_ACCOUNT and v is None:
+        if info.data["type"] == MITMProxyAuthInjectType.SERVICE_ACCOUNT and v is None:
             return MITMProxyAuthInjectServiceAccount()
         else:
             return v
@@ -277,7 +284,7 @@ class MITMProxyContainerImage(ContainerImage):
     """
     Model for the image for the MITM proxy container.
     """
-    repository: constr(pattern =r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
+    repository: schema.constr(pattern =r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
         "ghcr.io/stackhpc/zenith-proxy",
         description = "The repository for the container image."
     )
@@ -313,19 +320,16 @@ class LocalObjectReference(schema.BaseModel):
     """
     Model for an object reference.
     """
-    name: constr(min_length = 1) = Field(
+    name: schema.constr(min_length = 1) = Field(
         ...,
         description = "The name of the object being referred to."
     )
 
 
-class PodSecurityContext(schema.BaseModel):
+class PodSecurityContext(schema.BaseModel, extra = "allow"):
     """
     Model for a pod security context.
     """
-    class Config:
-        extra = Extra.allow
-
     run_as_non_root: bool = Field(
         True,
         description = "Indicates that containers must run as a non-root user."
@@ -340,23 +344,20 @@ class SecurityContextCapabilities(schema.BaseModel):
     """
     Model for the capabilities of a container security context.
     """
-    add: t.List[constr(min_length = 1)] = Field(
+    add: t.List[schema.constr(min_length = 1)] = Field(
         default_factory = list,
         description = "The capabilities to add to the container."
     )
-    drop: t.List[constr(min_length = 1)] = Field(
+    drop: t.List[schema.constr(min_length = 1)] = Field(
         default_factory = lambda: ["ALL"],
         description = "The capabilities to drop from the container."
     )
 
 
-class ContainerSecurityContext(schema.BaseModel):
+class ContainerSecurityContext(schema.BaseModel, extra = "allow"):
     """
     Model for the container security context.
     """    
-    class Config:
-        extra = Extra.allow
-
     allow_privilege_escalation: bool = Field(
         False,
         description = "Indicates whether the container is able to escalate privileges."
@@ -375,7 +376,7 @@ class ClientSpec(schema.BaseModel):
     """
     Model for the spec of a Zenith client.
     """
-    reservation_name: constr(pattern =r"^[a-z0-9-]+$") = Field(
+    reservation_name: schema.constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = "The name of the Zenith reservation to use for the client."
     )
@@ -445,13 +446,10 @@ class ClientPhase(str, schema.Enum):
     UNKNOWN = "Unknown"
 
 
-class ClientStatus(schema.BaseModel):
+class ClientStatus(schema.BaseModel, extra = "allow"):
     """
     Model for the status of a Zenith client.
     """
-    class Config:
-        extra = Extra.allow
-
     phase: ClientPhase = Field(
         ClientPhase.UNKNOWN,
         description = "The phase of the client."

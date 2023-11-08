@@ -1,9 +1,17 @@
 import enum
 import typing as t
 
-from pydantic import Field, AnyHttpUrl, conint, constr
+from pydantic import TypeAdapter, Field, AnyHttpUrl as PyAnyHttpUrl, conint, constr
+from pydantic.functional_validators import AfterValidator
 
 from configomatic import Configuration as BaseConfiguration
+
+
+#: Type for a string that is validated as a URL
+AnyHttpUrl = t.Annotated[
+    str,
+    AfterValidator(lambda v: TypeAdapter(PyAnyHttpUrl).validate_python(v))
+]
 
 
 class ContainerImagePullPolicy(str, enum.Enum):
@@ -15,15 +23,15 @@ class ContainerImagePullPolicy(str, enum.Enum):
     NEVER = "Never"
 
 
-class Configuration(BaseConfiguration):
+class Configuration(
+    BaseConfiguration,
+    default_path = "/etc/zenith/operator.yaml",
+    path_env_var = "ZENITH_OPERATOR_CONFIG",
+    env_prefix = "ZENITH_OPERATOR"
+):
     """
     Top-level configuration model.
     """
-    class Config:
-        default_path = "/etc/zenith/operator.yaml"
-        path_env_var = "ZENITH_OPERATOR_CONFIG"
-        env_prefix = "ZENITH_OPERATOR"
-
     #: The API group of the cluster CRDs
     api_group: constr(min_length = 1) = "zenith.stackhpc.com"
     #: A list of categories to place CRDs into
