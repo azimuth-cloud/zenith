@@ -19,6 +19,9 @@ class SSHPublicKeyType(str, enum.Enum):
     ED25519  = "ssh-ed25519"
 
 
+
+
+
 class RegistrarConfig(
     Configuration,
     default_path = "/etc/zenith/registrar.yaml",
@@ -29,7 +32,7 @@ class RegistrarConfig(
     Configuration model for the zenith-registrar package.
     """
     #: The key that is used to sign the subdomain tokens
-    subdomain_token_signing_key: conbytes(strip_whitespace = True, min_length = 32)
+    subdomain_token_signing_key: conbytes(min_length = 32)
 
     #: The base domain that Zenith services are proxied under
     #: The FQDN (i.e. subdomain + base domain) for each service must be at most 64 characters
