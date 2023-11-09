@@ -14,10 +14,10 @@ from pydantic import (
 from configomatic import Configuration, Section, LoggingConfiguration
 
 
-#: Type validating a string as a URL
+#: Type for a string that validates as a URL
 AnyHttpUrl = t.Annotated[
     str,
-    AfterValidator(lambda v: TypeAdapter(PyAnyHttpUrl).validate_python(v))
+    AfterValidator(lambda v: str(TypeAdapter(PyAnyHttpUrl).validate_python(v)))
 ]
 
 

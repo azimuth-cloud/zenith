@@ -7,10 +7,10 @@ from pydantic.functional_validators import AfterValidator
 from configomatic import Configuration as BaseConfiguration
 
 
-#: Type for a string that is validated as a URL
+#: Type for a string that validates as a URL
 AnyHttpUrl = t.Annotated[
     str,
-    AfterValidator(lambda v: TypeAdapter(PyAnyHttpUrl).validate_python(v))
+    AfterValidator(lambda v: str(TypeAdapter(PyAnyHttpUrl).validate_python(v)))
 ]
 
 

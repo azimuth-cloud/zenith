@@ -24,10 +24,10 @@ AuthParamsValue = constr(max_length = 1024)
 #: Type for an RFC3986 compliant URL path component
 UrlPath = constr(pattern =r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
 
-#: Type for a string that is validated as a URL
+#: Type for a string that validates as a URL
 AnyHttpUrl = typing.Annotated[
     str,
-    AfterValidator(lambda v: TypeAdapter(PyAnyHttpUrl).validate_python(v))
+    AfterValidator(lambda v: str(TypeAdapter(PyAnyHttpUrl).validate_python(v)))
 ]
 
 

@@ -19,9 +19,6 @@ class SSHPublicKeyType(str, enum.Enum):
     ED25519  = "ssh-ed25519"
 
 
-
-
-
 class RegistrarConfig(
     Configuration,
     default_path = "/etc/zenith/registrar.yaml",
