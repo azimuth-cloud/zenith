@@ -20,7 +20,7 @@ idna==3.4
 iso8601==2.1.0
 Jinja2==3.1.2
 kopf==1.36.2
-kube-custom-resource @ git+https://github.com/stackhpc/kube-custom-resource.git@1d1ac0d3918729d44e59e5d020effe45821a163f
+kube-custom-resource @ git+https://github.com/stackhpc/kube-custom-resource.git@17b18bea9618a6ba55c07852fb594abe89a5c88b
 MarkupSafe==2.1.3
 multidict==6.0.4
 pycparser==2.21
