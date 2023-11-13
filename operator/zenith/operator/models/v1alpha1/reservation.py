@@ -1,6 +1,4 @@
-import typing as t
-
-from pydantic import Extra, Field, constr
+from pydantic import Field
 
 from kube_custom_resource import CustomResource, schema
 
@@ -9,7 +7,7 @@ class ReservationSpec(schema.BaseModel):
     """
     Model for the spec of a reservation.
     """
-    credential_secret_name: constr(regex = r"^[a-z0-9-]+$") = Field(
+    credential_secret_name: schema.constr(pattern =r"^[a-z0-9-]+$") = Field(
         ...,
         description = (
             "The name of the secret to use for the SSH keypair for the reservation. "
@@ -17,11 +15,11 @@ class ReservationSpec(schema.BaseModel):
             "If the secret does not exist, a keypair will be generated and put in the secret."
         )
     )
-    credential_secret_public_key_name: constr(regex = r"^[a-zA-Z0-9._-]+$") = Field(
+    credential_secret_public_key_name: schema.constr(pattern =r"^[a-zA-Z0-9._-]+$") = Field(
         "ssh-publickey",
         description = "The name of the key in the secret that holds the public key data."
     )
-    credential_secret_private_key_name: constr(regex = r"^[a-zA-Z0-9._-]+$") = Field(
+    credential_secret_private_key_name: schema.constr(pattern =r"^[a-zA-Z0-9._-]+$") = Field(
         "ssh-privatekey",
         description = "The name of the key in the secret that holds the private key data."
     )
@@ -37,26 +35,23 @@ class ReservationPhase(str, schema.Enum):
     UNKNOWN = "Unknown"
 
  
-class ReservationStatus(schema.BaseModel):
+class ReservationStatus(schema.BaseModel, extra = "allow"):
     """
     Model for the status of a reservation.
     """
-    class Config:
-        extra = Extra.allow
-    
     phase: ReservationPhase = Field(
         ReservationPhase.UNKNOWN,
         description = "The phase of the reservation."
     )
-    subdomain: t.Optional[str] = Field(
+    subdomain: schema.Optional[str] = Field(
         None,
         description = "The subdomain that was allocated for the reservation."
     )
-    fqdn: t.Optional[str] = Field(
+    fqdn: schema.Optional[str] = Field(
         None,
         description = "The FQDN at which the Zenith service for the reservation can be reached."
     )
-    fingerprint: t.Optional[str] = Field(
+    fingerprint: schema.Optional[str] = Field(
         None,
         description = "The fingerprint of the SSH key that was registered."
     )

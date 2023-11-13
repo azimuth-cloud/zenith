@@ -50,7 +50,15 @@ app.kubernetes.io/component: {{ $componentName }}
 Common labels for all resources.
 */}}
 {{- define "zenith.commonLabels" -}}
-helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | lower | trunc 63 | trimSuffix "-" }}
+helm.sh/chart: {{
+  printf "%s-%s" .Chart.Name .Chart.Version |
+    replace "+" "_" |
+    lower |
+    trunc 63 |
+    trimSuffix "-" |
+    trimSuffix "." |
+    trimSuffix "_"
+}}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}

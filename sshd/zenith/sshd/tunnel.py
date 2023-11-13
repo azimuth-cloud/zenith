@@ -14,12 +14,14 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from pydantic import (
     BaseModel,
-    Extra,
+    TypeAdapter,
     Field,
-    AnyHttpUrl,
+    AfterValidator,
+    AnyHttpUrl as PyAnyHttpUrl,
     conint,
     constr,
-    validator
+    field_validator,
+    ValidationInfo
 )
 
 import requests
@@ -39,27 +41,30 @@ class TunnelExit(RuntimeError):
     """
 
 #: Type for an OIDC allowed group
-AllowedGroup = constr(regex = r"^[a-zA-Z0-9_/-]+$")
+AllowedGroup = constr(pattern =r"^[a-zA-Z0-9_/-]+$")
 
 #: Type for a key in the authentication parameters
 #: This will become a header name, so limit to lowercase alpha-numeric + -
 #: Although HTTP specifies no size limit, we do for readability
-AuthParamsKey = constr(regex = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
+AuthParamsKey = constr(pattern =r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 50)
 #: Type for a value in the authentication parameters
 #: Must fit in an HTTP header, so limited to 1024 unicode characters (4KB)
 AuthParamsValue = constr(max_length = 1024)
 
 #: Type for an RFC3986 compliant URL path component
-UrlPath = constr(regex = r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
+UrlPath = constr(pattern =r"/[a-zA-Z0-9._~!$&'()*+,;=:@%/-]*", min_length = 1)
+
+#: Type for a string that validates as a URL
+AnyHttpUrl = typing.Annotated[
+    str,
+    AfterValidator(lambda v: str(TypeAdapter(PyAnyHttpUrl).validate_python(v)))
+]
 
 
-class ClientConfig(BaseModel):
+class ClientConfig(BaseModel, extra = "forbid"):
     """
     Object for validating the client configuration.
     """
-    class Config:
-        extra = Extra.forbid
-
     #: The port for the service (the tunnel port)
     allocated_port: int
     #: The backend protocol
@@ -71,20 +76,29 @@ class ClientConfig(BaseModel):
     #: The URL of the OIDC issuer to use
     auth_oidc_issuer: typing.Optional[AnyHttpUrl] = None
     #: The OIDC client ID to use
-    auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = None
+    auth_oidc_client_id: typing.Optional[constr(min_length = 1)] = Field(
+        None,
+        validate_default = True
+    )
     #: The OIDC client secret to use
-    auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = None
+    auth_oidc_client_secret: typing.Optional[constr(min_length = 1)] = Field(
+        None,
+        validate_default = True
+    )
     #: The OIDC groups that are allowed access to the the service
     #: The user must have at least one of these groups in their groups claim
     auth_oidc_allowed_groups: typing.List[AllowedGroup] = Field(default_factory = list)
     #: Parameters for the external authentication service (deprecated name)
     auth_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
     #: Parameters for the external authentication service
-    auth_external_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(default_factory = dict)
+    auth_external_params: typing.Dict[AuthParamsKey, AuthParamsValue] = Field(
+        default_factory = dict,
+        validate_default = True
+    )
     #: Base64-encoded TLS certificate to use
     tls_cert: typing.Optional[str] = None
     #: Base64-encoded TLS private key to use (corresponds to TLS cert)
-    tls_key: typing.Optional[str] = None
+    tls_key: typing.Optional[str] = Field(None, validate_default = True)
     #: Base64-encoded CA for validating TLS client certificates, if required
     tls_client_ca: typing.Optional[str] = None
     #: An optional liveness path
@@ -94,7 +108,8 @@ class ClientConfig(BaseModel):
     #: The number of liveness checks that can fail before the tunnel is considered unhealthy
     liveness_failures: conint(gt = 0) = 3
 
-    @validator("allocated_port", always = True)
+    @field_validator("allocated_port")
+    @classmethod
     def validate_port(cls, v):
         """
         Validate the given input as a port.
@@ -115,15 +130,17 @@ class ClientConfig(BaseModel):
             else:
                 raise ValueError("Given port is not in use")
 
-    @validator("auth_external_params", pre = True, always = True)
-    def validate_auth_external_params(cls, v, values, **kwargs):
+    @field_validator("auth_external_params", mode = "before")
+    @classmethod
+    def validate_auth_external_params(cls, v, info: ValidationInfo):
         """
         Makes sure that the old name for external auth params is respected.
         """
-        return v or values.get("auth_params", {})
+        return v or info.data.get("auth_params", {})
 
-    @validator("auth_oidc_issuer")
-    def validate_auth_oidc_issuer(cls, v, values, **kwargs):
+    @field_validator("auth_oidc_issuer")
+    @classmethod
+    def validate_auth_oidc_issuer(cls, v):
         """
         Validates that the OIDC issuer supports discovery.
         """
@@ -134,29 +151,32 @@ class ClientConfig(BaseModel):
         else:
             raise ValueError("OIDC issuer does not support discovery")
 
-    @validator("auth_oidc_client_id", always = True)
-    def validate_auth_oidc_client_id(cls, v, values, **kwargs):
+    @field_validator("auth_oidc_client_id")
+    @classmethod
+    def validate_auth_oidc_client_id(cls, v, info: ValidationInfo):
         """
         Validates that an OIDC client id is given when an OIDC issuer is present.
         """
-        skip_auth = values.get("skip_auth", False)
-        oidc_issuer = values.get("auth_oidc_issuer")
+        skip_auth = info.data.get("skip_auth", False)
+        oidc_issuer = info.data.get("auth_oidc_issuer")
         if not skip_auth and oidc_issuer and not v:
             raise ValueError("required for OIDC authentication")
         return v
 
-    @validator("auth_oidc_client_secret", always = True)
-    def validate_auth_oidc_client_secret(cls, v, values, **kwargs):
+    @field_validator("auth_oidc_client_secret")
+    @classmethod
+    def validate_auth_oidc_client_secret(cls, v, info: ValidationInfo):
         """
         Validates that a client secret is given when a client ID is present.
         """
-        skip_auth = values.get("skip_auth", False)
-        oidc_issuer = values.get("auth_oidc_issuer")
+        skip_auth = info.data.get("skip_auth", False)
+        oidc_issuer = info.data.get("auth_oidc_issuer")
         if not skip_auth and oidc_issuer and not v:
             raise ValueError("required for OIDC authentication")
         return v
 
-    @validator("tls_cert")
+    @field_validator("tls_cert")
+    @classmethod
     def validate_tls_cert(cls, v):
         """
         Validate the given value decoding it and trying to load it as a
@@ -165,20 +185,22 @@ class ClientConfig(BaseModel):
         _ = load_pem_x509_certificate(base64.b64decode(v))
         return v
 
-    @validator("tls_key", always = True)
-    def validate_tls_key(cls, v, values, **kwargs):
+    @field_validator("tls_key")
+    @classmethod
+    def validate_tls_key(cls, v, info: ValidationInfo):
         """
         Validate the given value by decoding it and trying to load it as a
         PEM-encoded private key.
         """
-        tls_cert = values.get("tls_cert")
+        tls_cert = info.data.get("tls_cert")
         if tls_cert and not v:
             raise ValueError("required if TLS cert is specified")
         if v:
             _ = load_pem_private_key(base64.b64decode(v), None)
         return v
 
-    @validator("tls_client_ca")
+    @field_validator("tls_client_ca")
+    @classmethod
     def validate_tls_client_ca(cls, v):
         """
         Validate the given value by decoding it and trying to load it as a
@@ -251,7 +273,7 @@ def get_tunnel_config(logger: logging.Logger, server_config: SSHDConfig) -> Tunn
     sys.stdout.flush()
     # Parse the client data into a config object
     # This will raise validation errors if the config is incorrect
-    tunnel_config = ClientConfig.parse_obj(config)
+    tunnel_config = ClientConfig.model_validate(config)
     logger.info(f"Allocated port for tunnel: {tunnel_config.allocated_port}")
     # Work out the TTL to use for the Consul session
     # This is the length of time after which keys created by the tunnel will be deleted if

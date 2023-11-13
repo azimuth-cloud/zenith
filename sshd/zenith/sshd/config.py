@@ -13,15 +13,15 @@ def default_service_host():
     return socket.gethostbyname(socket.gethostname())
 
 
-class SSHDConfig(Configuration):
+class SSHDConfig(
+    Configuration,
+    default_path = "/etc/zenith/sshd.yaml",
+    path_env_var = "ZENITH_SSHD_CONFIG",
+    env_prefix = "ZENITH_SSHD"
+):
     """
     Configuration model for the zenith-sshd package.
     """
-    class Config:
-        default_path = "/etc/zenith/sshd.yaml"
-        path_env_var = "ZENITH_SSHD_CONFIG"
-        env_prefix = "ZENITH_SSHD"
-
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
 
