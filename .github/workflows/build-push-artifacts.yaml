@@ -1,6 +1,20 @@
 name: Publish artifacts
-# Run the tasks on every push
-on: push
+
+on:
+  # Publish artifacts on every push to main and every tag
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  # Also allow publication to be done via a workflow call
+  # In this case, the chart version is returned as an output
+  workflow_call:
+    outputs:
+      chart-version:
+        description: The chart version that was published
+        value: ${{ jobs.build_push_chart.outputs.chart-version }}
+
 jobs:
   build_push_images:
     name: Build and push images
