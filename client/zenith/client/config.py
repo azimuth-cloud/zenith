@@ -39,6 +39,13 @@ def base64_encoded_content(path):
         return base64.b64encode(fh.read()).decode()
 
 
+def strip_trailing_slash(v: str) -> str:
+    """
+    Strips trailing slashes from the given string.
+    """
+    return v.rstrip("/")
+
+
 class InitConfig(
     Configuration,
     default_path = "/etc/zenith/client.yaml",
@@ -57,7 +64,7 @@ class InitConfig(
     #: Either the identity already exists or a new keypair is generated at the specified location
     ssh_identity_path: pathlib.Path
     #: The Zenith registrar URL to use to associate the public key
-    registrar_url: AnyHttpUrl
+    registrar_url: typing.Annotated[AnyHttpUrl, AfterValidator(strip_trailing_slash)]
     #: The Zenith registrar token to use to associate the public key
     token: constr(min_length = 1)
     #: Indicates whether to verify the TLS certificate of the registrar
