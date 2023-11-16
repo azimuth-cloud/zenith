@@ -8,9 +8,7 @@ appVersion: main
 
 dependencies:
   - alias: oidc
-    # Until https://github.com/oauth2-proxy/manifests/pull/153 is merged,
-    # use releases from our branch
-    repository: https://mkjpryor.github.io/manifests
+    repository: https://oauth2-proxy.github.io/manifests
     name: oauth2-proxy
-    version: 6.13.1-stackhpc.1
+    version: 6.19.0
     condition: oidc.enabled

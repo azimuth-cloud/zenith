@@ -1,4 +1,20 @@
-FROM debian:bullseye-slim
+FROM ubuntu:jammy AS python-builder
+
+RUN apt-get update && \
+    apt-get install -y python3 python3-venv && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /venv && \
+    /venv/bin/pip install -U pip setuptools
+
+COPY requirements.txt /app/requirements.txt
+RUN  /venv/bin/pip install --no-deps --requirement /app/requirements.txt
+
+COPY . /app
+RUN /venv/bin/pip install --no-deps /app
+
+
+FROM ubuntu:jammy
 
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
@@ -7,32 +23,30 @@ ENV PYTHONUNBUFFERED 1
 # The user has a home directory, a restricted shell to allow the tunnel script
 # to run and an empty password to allow anonymous SSH
 ENV ZENITH_UID 1001
+ENV ZENITH_GID 1001
 ENV ZENITH_USER zenith
-RUN useradd \
+ENV ZENITH_GROUP zenith
+RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
+    useradd \
       --create-home \
       --home-dir /home/zenith \
-      --user-group \
+      --no-user-group \
+      --gid $ZENITH_GID \
       --shell /bin/rbash \
       --uid $ZENITH_UID \
       $ZENITH_USER && \
     passwd -d $ZENITH_USER
 
-# Install tini, which we will use to marshal the processes, Python and OpenSSH
+# Install tini, which we will use to marshal the processes, Python and the OpenSSH client
 RUN apt-get update && \
-    apt-get install -y git openssh-server python3 python3-pip tini && \
+    apt-get install -y ca-certificates openssh-server python3 tini && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/run/sshd && \
     chown zenith:zenith /var/run/sshd
 
-# Installing dependencies separately ensures better use of the build cache
-COPY requirements.txt /opt/zenith/sshd/
-RUN pip3 install --no-deps --requirement /opt/zenith/sshd/requirements.txt
-
 COPY etc/ /etc/
-COPY setup.cfg setup.py /opt/zenith/sshd/
-COPY zenith/ /opt/zenith/sshd/zenith/
-RUN pip3 install --no-deps -e /opt/zenith/sshd
+COPY --from=python-builder /venv /venv
 
 USER $ZENITH_UID
-ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
-CMD ["zenith-sshd", "start"]
+ENTRYPOINT ["tini", "-g", "--"]
+CMD ["/venv/bin/zenith-sshd", "start"]
