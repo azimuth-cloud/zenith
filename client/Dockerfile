@@ -43,5 +43,8 @@ RUN apt-get update && \
 
 COPY --from=python-builder /venv /venv
 
+# Symlink the zenith-client somewhere in the default PATH
+RUN ln -s /venv/bin/zenith-client /usr/local/bin/
+
 ENTRYPOINT ["tini", "-g", "--"]
-CMD ["/venv/bin/zenith-client", "connect"]
+CMD ["zenith-client", "connect"]

@@ -47,6 +47,9 @@ RUN apt-get update && \
 COPY etc/ /etc/
 COPY --from=python-builder /venv /venv
 
+# Symlink zenith-sshd somewhere in the default PATH
+RUN ln -s /venv/bin/zenith-sshd /usr/local/bin/
+
 USER $ZENITH_UID
 ENTRYPOINT ["tini", "-g", "--"]
-CMD ["/venv/bin/zenith-sshd", "start"]
+CMD ["zenith-sshd", "start"]
