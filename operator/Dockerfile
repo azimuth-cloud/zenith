@@ -10,8 +10,12 @@ RUN python3 -m venv /venv && \
 COPY requirements.txt /app/requirements.txt
 RUN  /venv/bin/pip install --no-deps --requirement /app/requirements.txt
 
+# Jinja2 doesn't support namespace packages properly
+# https://jinja.palletsprojects.com/en/3.1.x/api/#loaders
+# So we install here instead as an editable installation and also copy over
+# the app directory, which also avoids needing pip in the final image
 COPY . /app
-RUN /venv/bin/pip install --no-deps /app
+RUN /venv/bin/pip install --no-deps -e /app
 
 
 FROM ubuntu:jammy
@@ -38,6 +42,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=python-builder /venv /venv
+COPY --from=python-builder /app /app
 
 USER $ZENITH_UID
 ENTRYPOINT ["tini", "-g", "--"]
