@@ -33,14 +33,9 @@ jobs:
           - component: client
           - component: operator
           - component: proxy
-            build-args: |
-              NGINX_VERSION=${{ env.NGINX_VERSION }}
-              GOMPLATE_VERSION=${{ env.GOMPLATE_VERSION }}
           - component: registrar
           - component: sshd
           - component: sync
-            build-args: |
-              HELM_VERSION=${{ env.HELM_VERSION }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
@@ -69,7 +64,12 @@ jobs:
           cache-key: ${{ matrix.component }}
           context: ./${{ matrix.component }}
           platforms: linux/amd64,linux/arm64
-          build-args: ${{ matrix.build-args || "" }}
+          # We can't use env in the matrix definition, so just specify
+          # the build args for all the builds - they will just go unused
+          build-args: |
+            NGINX_VERSION=${{ env.NGINX_VERSION }}
+            GOMPLATE_VERSION=${{ env.GOMPLATE_VERSION }}
+            HELM_VERSION=${{ env.HELM_VERSION }}
           push: true
           tags: ${{ steps.image-meta.outputs.tags }}
           labels: ${{ steps.image-meta.outputs.labels }}
