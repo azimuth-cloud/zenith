@@ -1,14 +1,34 @@
-FROM debian:bullseye-slim
+FROM ubuntu:jammy AS python-builder
+
+RUN apt-get update && \
+    apt-get install -y python3 python3-venv && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /venv && \
+    /venv/bin/pip install -U pip setuptools
+
+COPY requirements.txt /app/requirements.txt
+RUN  /venv/bin/pip install --no-deps --requirement /app/requirements.txt
+
+COPY . /app
+RUN /venv/bin/pip install --no-deps /app
+
+
+FROM ubuntu:jammy
 
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
 
-# Create an unprivileged user to run the application process
+# Create the user that will be used to run the client process
 ENV ZENITH_UID 1001
+ENV ZENITH_GID 1001
 ENV ZENITH_USER zenith
-RUN useradd \
+ENV ZENITH_GROUP zenith
+RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
+    useradd \
       --no-create-home \
-      --user-group \
+      --no-user-group \
+      --gid $ZENITH_GID \
       --shell /sbin/nologin \
       --uid $ZENITH_UID \
       $ZENITH_USER
@@ -18,15 +38,13 @@ ENV ZENITH_CLIENT__RUN_AS_USER 1001
 
 # Install tini, which we will use to marshal the processes, Python and the OpenSSH client
 RUN apt-get update && \
-    apt-get install -y git openssh-client python3 python3-pip tini && \
+    apt-get install -y ca-certificates openssh-client python3 tini && \
     rm -rf /var/lib/apt/lists/*
 
-# Installing dependencies separately ensures better use of the build cache
-COPY requirements.txt /opt/zenith/client/
-RUN pip3 install --no-deps --requirement /opt/zenith/client/requirements.txt
+COPY --from=python-builder /venv /venv
 
-COPY . /opt/zenith/client
-RUN pip3 install --no-deps -e /opt/zenith/client
+# Symlink the zenith-client somewhere in the default PATH
+RUN ln -s /venv/bin/zenith-client /usr/local/bin/
 
-ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
+ENTRYPOINT ["tini", "-g", "--"]
 CMD ["zenith-client", "connect"]

@@ -8,6 +8,7 @@ appVersion: main
 
 dependencies:
   - name: consul
-    version: ~0.49.3
+    # This can never change as this is the last MPL-licenced version
+    version: ~1.2.0
     repository: https://helm.releases.hashicorp.com
     condition: consul.enabled

@@ -1,29 +1,10 @@
-FROM debian:bullseye-slim
+FROM ubuntu:jammy as helm
 
-# Don't buffer stdout and stderr as it breaks realtime logging
-ENV PYTHONUNBUFFERED 1
-
-# Create an unprivileged user to run the application process
-ENV ZENITH_UID 1001
-ENV ZENITH_USER zenith
-RUN useradd \
-      --no-create-home \
-      --user-group \
-      --shell /sbin/nologin \
-      --uid $ZENITH_UID \
-      $ZENITH_USER
-
-# Install tini, which we will use to marshal the processes and Python
 RUN apt-get update && \
-    apt-get install -y curl git python3 python3-pip tini && \
+    apt-get install -y curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Install the Helm CLI
-ENV HELM_CACHE_HOME /tmp/helm/cache
-ENV HELM_CONFIG_HOME /tmp/helm/config
-ENV HELM_DATA_HOME /tmp/helm/data
-ENV HELM_PLUGINS /opt/helm-plugins
-ARG HELM_VERSION=v3.10.2
+ARG HELM_VERSION
 RUN set -ex; \
     OS_ARCH="$(uname -m)"; \
     case "$OS_ARCH" in \
@@ -35,13 +16,54 @@ RUN set -ex; \
       tar -xz --strip-components 1 -C /usr/bin linux-${helm_arch}/helm; \
     helm version
 
-# Installing dependencies separately ensures better use of the build cache
-COPY requirements.txt /opt/zenith/sync/
-RUN pip3 install --no-deps --requirement /opt/zenith/sync/requirements.txt
 
-COPY . /opt/zenith/sync
-RUN pip3 install --no-deps -e /opt/zenith/sync
+FROM ubuntu:jammy AS python-builder
+
+RUN apt-get update && \
+    apt-get install -y python3 python3-venv && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /venv && \
+    /venv/bin/pip install -U pip setuptools
+
+COPY requirements.txt /app/requirements.txt
+RUN  /venv/bin/pip install --no-deps --requirement /app/requirements.txt
+
+COPY . /app
+RUN /venv/bin/pip install --no-deps /app
+
+
+FROM ubuntu:jammy
+
+# Don't buffer stdout and stderr as it breaks realtime logging
+ENV PYTHONUNBUFFERED 1
+
+# Tell Helm to use /tmp for mutable data
+ENV HELM_CACHE_HOME /tmp/helm/cache
+ENV HELM_CONFIG_HOME /tmp/helm/config
+ENV HELM_DATA_HOME /tmp/helm/data
+
+# Create the user that will be used to run the app
+ENV ZENITH_UID 1001
+ENV ZENITH_GID 1001
+ENV ZENITH_USER zenith
+ENV ZENITH_GROUP zenith
+RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
+    useradd \
+      --no-create-home \
+      --no-user-group \
+      --gid $ZENITH_GID \
+      --shell /sbin/nologin \
+      --uid $ZENITH_UID \
+      $ZENITH_USER
+
+RUN apt-get update && \
+    apt-get install -y ca-certificates python3 tini && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=helm /usr/bin/helm /usr/bin/helm
+COPY --from=python-builder /venv /venv
 
 USER $ZENITH_UID
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
-CMD ["zenith-sync"]
+CMD ["/venv/bin/zenith-sync"]
