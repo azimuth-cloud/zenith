@@ -1,0 +1,65 @@
+---
+
+version: 2
+
+updates:
+  # Automatically propose PRs for out-of-date GitHub actions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      # Check for new versions weekly
+      interval: weekly
+    labels:
+      - automation
+      - gha-update
+
+  # Automatically propose PRs for Python dependencies for each component
+  - package-ecosystem: pip
+    directory: "/client"
+    schedule:
+      # Check for new versions daily
+      interval: daily
+    labels:
+      - automation
+      - pip-update
+      - client
+
+  - package-ecosystem: pip
+    directory: "/operator"
+    schedule:
+      # Check for new versions daily
+      interval: daily
+    labels:
+      - automation
+      - pip-update
+      - operator
+
+  - package-ecosystem: pip
+    directory: "/registrar"
+    schedule:
+      # Check for new versions daily
+      interval: daily
+    labels:
+      - automation
+      - pip-update
+      - registrar
+
+  - package-ecosystem: pip
+    directory: "/sshd"
+    schedule:
+      # Check for new versions daily
+      interval: daily
+    labels:
+      - automation
+      - pip-update
+      - sshd
+
+  - package-ecosystem: pip
+    directory: "/sync"
+    schedule:
+      # Check for new versions daily
+      interval: daily
+    labels:
+      - automation
+      - pip-update
+      - sync
