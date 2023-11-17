@@ -28,7 +28,8 @@ jobs:
     needs: [fail_on_remote]
     runs-on: ubuntu-latest
     environment: ci-approval
-    run: exit 0
+    steps:
+      - run: exit 0
 
   publish_artifacts:
     needs: [wait_for_approval]
