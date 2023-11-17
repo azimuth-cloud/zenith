@@ -44,7 +44,7 @@ jobs:
         uses: stackhpc/github-actions/github-latest-release@master
         with:
           repository: ${{ matrix.repository }}
-          tags: ${{ matrix.tags || "no" }}
+          tags: ${{ matrix.tags || 'no' }}
 
       - name: Update dependency key
         uses: stackhpc/github-actions/config-update@master
