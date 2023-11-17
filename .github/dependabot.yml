@@ -9,6 +9,10 @@ updates:
     schedule:
       # Check for new versions weekly
       interval: weekly
+    # Update all actions in a single PR
+    groups:
+      github-actions:
+        patterns: ["*"]
     labels:
       - automation
       - gha-update
