@@ -38,7 +38,7 @@ jobs:
           - component: sync
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install skopeo
         run: sudo apt-get -y update && sudo apt-get install -y skopeo
@@ -105,7 +105,7 @@ jobs:
       chart-version: ${{ steps.semver.outputs.version }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # This is important for the semver action to work correctly
           # when determining the number of commits since the last tag
