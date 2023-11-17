@@ -1,7 +1,8 @@
 name: Test Azimuth deployment
 
 on:
-  pull_request:
+  # We use pull_request_target so that dependabot-created workflows can run
+  pull_request_target:
     types:
       - opened
       - synchronize
@@ -20,11 +21,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: PR must be from a branch in the stackhpc/zenith repo
-        run: exit ${{ github.repository == 'stackhpc/zenith' && '0' || '1' }}
+        run: exit ${{ github.event.pull_request.head.repo.full_name == 'stackhpc/zenith' && '0' || '1' }}
+
+  # Use a job that does nothing but is protected by an environment as a guard
+  wait_for_approval:
+    needs: [fail_on_remote]
+    runs-on: ubuntu-latest
+    environment: ci-approval
+    run: exit 0
 
   publish_artifacts:
-    needs: [fail_on_remote]
+    needs: [wait_for_approval]
     uses: ./.github/workflows/build-push-artifacts.yaml
+    with:
+      ref: ${{ github.event.pull_request.head.sha }}
+    secrets: inherit
 
   run_azimuth_tests:
     needs: [publish_artifacts]
