@@ -58,7 +58,7 @@ RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
       $ZENITH_USER
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates python3 tini && \
+    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates python3 tini && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=helm /usr/bin/helm /usr/bin/helm

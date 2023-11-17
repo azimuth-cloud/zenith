@@ -38,7 +38,7 @@ ENV ZENITH_CLIENT__RUN_AS_USER 1001
 
 # Install tini, which we will use to marshal the processes, Python and the OpenSSH client
 RUN apt-get update && \
-    apt-get install -y ca-certificates openssh-client python3 tini && \
+    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates openssh-client python3 tini && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=python-builder /venv /venv
