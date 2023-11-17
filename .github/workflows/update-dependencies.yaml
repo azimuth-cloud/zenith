@@ -1,0 +1,146 @@
+# This workflow proposes updates to the dependencies that dependabot cannot
+name: Update dependencies
+
+on:
+  # Allow manual executions
+  workflow_dispatch:
+  # Run nightly
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  propose_github_release_updates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - key: helm
+            path: ./.github/workflows/build-push-artifacts.yaml
+            repository: helm/helm
+            version_jsonpath: env.HELM_VERSION
+            component: sync
+
+          - key: nginx
+            path: ./.github/workflows/build-push-artifacts.yaml
+            repository: nginxinc/docker-nginx
+            # This repository only publishes tags, not releases
+            tags: "yes"
+            version_jsonpath: env.NGINX_VERSION
+            component: proxy
+
+          - key: gomplate
+            path: ./.github/workflows/build-push-artifacts.yaml
+            repository: hairyhenderson/gomplate
+            version_jsonpath: env.GOMPLATE_VERSION
+            component: proxy
+
+    name: ${{ matrix.key }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for most recent GitHub release
+        id: next
+        uses: stackhpc/github-actions/github-latest-release@master
+        with:
+          repository: ${{ matrix.repository }}
+          tags: ${{ matrix.tags || "no" }}
+
+      - name: Update dependency key
+        uses: stackhpc/github-actions/config-update@master
+        with:
+          path: ${{ matrix.path }}
+          updates: |
+            ${{ matrix.version_jsonpath }}=${{ steps.next.outputs.version }}
+
+      - name: Generate app token for PR
+        uses: stackhpc/github-actions/generate-app-token@master
+        id: generate-app-token
+        with:
+          repository: ${{ github.repository }}
+          app-id: ${{ secrets.APP_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Propose changes via PR if required
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ steps.generate-app-token.outputs.token }}
+          commit-message: >-
+            Update ${{ matrix.key }} to ${{ steps.next.outputs.version }}
+          branch: update-dependency/${{ matrix.key }}
+          delete-branch: true
+          title: >-
+            Update ${{ matrix.key }} to ${{ steps.next.outputs.version }}
+          body: >
+            This PR was created automatically to update
+            ${{ matrix.key }} to ${{ steps.next.outputs.version }}.
+          labels: |
+            automation
+            dependency-update
+            ${{ matrix.component }}
+
+  propose_helm_chart_updates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - key: oauth2-proxy
+            component: sync
+            path: ./charts/service/Chart.yaml
+            chart_name_jsonpath: dependencies[0].name
+            chart_repo_jsonpath: dependencies[0].repository
+            chart_version_jsonpath: dependencies[0].version
+
+    name: ${{ matrix.key }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract repo and chart
+        id: chart-info
+        uses: stackhpc/github-actions/config-extract@master
+        with:
+          path: ${{ matrix.path }}
+          outputs: |
+            repo=${{ matrix.chart_repo_jsonpath }}
+            name=${{ matrix.chart_name_jsonpath }}
+
+      - name: Check for updates
+        id: next
+        uses: stackhpc/github-actions/helm-latest-version@master
+        with:
+          repository: ${{ steps.chart-info.outputs.repo }}
+          chart: ${{ steps.chart-info.outputs.name }}
+
+      - name: Update chart version
+        uses: stackhpc/github-actions/config-update@master
+        with:
+          path: ${{ matrix.path }}
+          updates: |
+            ${{ matrix.chart_version_jsonpath }}=${{ steps.next.outputs.version }}
+
+      - name: Generate app token for PR
+        uses: stackhpc/github-actions/generate-app-token@master
+        id: generate-app-token
+        with:
+          repository: ${{ github.repository }}
+          app-id: ${{ secrets.APP_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Propose changes via PR if required
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ steps.generate-app-token.outputs.token }}
+          commit-message: >-
+            Update ${{ matrix.key }} to ${{ steps.next.outputs.version }}
+          branch: update-dependency/${{ matrix.key }}
+          delete-branch: true
+          title: >-
+            Update ${{ matrix.key }} to ${{ steps.next.outputs.version }}
+          body: >
+            This PR was created automatically to update
+            ${{ matrix.key }} to ${{ steps.next.outputs.version }}.
+          labels: |
+            automation
+            dependency-update
+            ${{ matrix.component }}
