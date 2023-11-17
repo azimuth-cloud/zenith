@@ -38,9 +38,11 @@ RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
     passwd -d $ZENITH_USER
 
 # Install tini, which we will use to marshal the processes, Python and the OpenSSH client
+# Make sure to remove the built-in keys
 RUN apt-get update && \
-    apt-get install -y ca-certificates openssh-server python3 tini && \
+    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates openssh-server python3 tini && \
     rm -rf /var/lib/apt/lists/* && \
+    rm -rf /etc/ssh/ssh_host_*_key && \
     mkdir -p /var/run/sshd && \
     chown zenith:zenith /var/run/sshd
 
