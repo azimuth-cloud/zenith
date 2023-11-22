@@ -23,8 +23,6 @@ updates:
     schedule:
       # Check for new versions daily
       interval: daily
-    # Open one PR at a time to limit cognitive overload
-    open-pull-requests-limit: 1
     labels:
       - automation
       - pip-update
@@ -35,8 +33,6 @@ updates:
     schedule:
       # Check for new versions daily
       interval: daily
-    # Open one PR at a time to limit cognitive overload
-    open-pull-requests-limit: 1
     labels:
       - automation
       - pip-update
@@ -47,8 +43,6 @@ updates:
     schedule:
       # Check for new versions daily
       interval: daily
-    # Open one PR at a time to limit cognitive overload
-    open-pull-requests-limit: 1
     labels:
       - automation
       - pip-update
@@ -59,8 +53,6 @@ updates:
     schedule:
       # Check for new versions daily
       interval: daily
-    # Open one PR at a time to limit cognitive overload
-    open-pull-requests-limit: 1
     labels:
       - automation
       - pip-update
@@ -71,8 +63,6 @@ updates:
     schedule:
       # Check for new versions daily
       interval: daily
-    # Open one PR at a time to limit cognitive overload
-    open-pull-requests-limit: 1
     labels:
       - automation
       - pip-update
