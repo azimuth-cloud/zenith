@@ -41,7 +41,11 @@ class ConsulConfig(Section):
     #: The port of the Consul server
     port: int = 8500
     #: The timeout to use with Consul blocking queries
-    blocking_query_timeout: int = 300
+    #: By default, we use many short queries as this results in fewer pool timeouts
+    #: in systems with a large volume of services
+    blocking_query_timeout: int = 1
+    #: The time to wait between Consul queries
+    query_interval: int = 5
     #: The tag to use to filter out Zenith services
     service_tag: str = "zenith-service"
     #: The prefix to use when looking for tunnel configurations in the KV store

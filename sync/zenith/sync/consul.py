@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import math
+import random
 import uuid
 
 import httpx
@@ -50,31 +52,39 @@ class ServiceWatcher:
                         "index": index,
                         "wait": f"{self.config.blocking_query_timeout}s",
                     },
-                    timeout = self.config.blocking_query_timeout + 1
+                    # Consul adds a jitter of up to wait / 16
+                    # So we wait one second longer than that so that most requests succeed
+                    timeout = (
+                        self.config.blocking_query_timeout +
+                        math.ceil(self.config.blocking_query_timeout / 16) +
+                        1
+                    )
                 )
             except httpx.ReadTimeout:
                 self._logger.info("Blocking query timed out for %s - restarting", path)
                 # On a read timeout, reset the index and try again
                 index = 0
-                continue
-            if 200 <= response.status_code < 300:
-                next_index = int(response.headers['X-Consul-Index'])
-                self._logger.info(
-                    "Blocking query successful for %s (index %d)",
-                    path,
-                    next_index
-                )
-                # Exit if the index has changed, otherwise go round again
-                if next_index != index:
-                    break
             else:
-                self._logger.error("Blocking query failed for %s", path)
-                response.raise_for_status()
-        # If the index goes backwards, reset it to zero
-        # The index must also be greater than zero
-        next_index = max(next_index if next_index >= index else 0, 0)
-        # Return the result tuple
-        return (response.json(), next_index)
+                if 200 <= response.status_code < 300:
+                    next_index = int(response.headers['X-Consul-Index'])
+                    self._logger.info(
+                        "Blocking query successful for %s (index %d)",
+                        path,
+                        next_index
+                    )
+                    # Exit if the index has changed, otherwise go round again
+                    if next_index != index:
+                        # If the index goes backwards, reset it to zero
+                        # The index must also be greater than zero
+                        next_index = max(next_index if next_index >= index else 0, 0)
+                        # Return the result tuple
+                        return (response.json(), next_index)
+                else:
+                    self._logger.error("Blocking query failed for %s", path)
+                    response.raise_for_status()
+            # Wait for the specified amount of time before retrying
+            # We add jitter of up to 1s either side of the wait time to spread out requests
+            await asyncio.sleep(self.config.query_interval - 1 + random.uniform(0, 2))
 
     async def _wait_services(self, client, index = 0):
         """
