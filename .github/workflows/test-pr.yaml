@@ -11,8 +11,10 @@ on:
     branches:
       - main
 
+# Use the head ref for workflow concurrency, with cancellation
+# This should mean that any previous workflows for a PR get cancelled when a new commit is pushed
 concurrency:
-  group: ${{ github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,23 +25,28 @@ jobs:
       - name: PR must be from a branch in the stackhpc/zenith repo
         run: exit ${{ github.event.pull_request.head.repo.full_name == 'stackhpc/zenith' && '0' || '1' }}
 
-  # Use a job that does nothing but is protected by an environment as a guard
-  wait_for_approval:
-    needs: [fail_on_remote]
-    runs-on: ubuntu-latest
-    environment: ci-approval
-    steps:
-      - run: exit 0
-
   publish_artifacts:
-    needs: [wait_for_approval]
+    needs: [fail_on_remote]
     uses: ./.github/workflows/build-push-artifacts.yaml
     with:
       ref: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
-  run_azimuth_tests:
+  # We want jobs to wait in a queue for a slot to run, so as not to overload the test infra
+  # GitHub concurrency _almost_ does this, except the queue length is one :-(
+  # There is a feature request for what we need https://github.com/orgs/community/discussions/12835
+  # Until that is implemented, the only other viable option is a busy wait
+  wait_in_queue:
     needs: [publish_artifacts]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for an available slot
+        uses: stackhpc/github-actions/workflow-concurrency@master
+        with:
+          max-concurrency: 1
+
+  run_azimuth_tests:
+    needs: [wait_in_queue]
     runs-on: ubuntu-latest
     steps:
       # Check out the configuration repository
