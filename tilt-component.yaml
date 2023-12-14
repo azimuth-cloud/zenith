@@ -1,0 +1,16 @@
+chart: ./charts/server
+
+images:
+  zenith-registrar:
+    context: ./registrar
+    chart_path: registrar.image
+
+  zenith-sshd:
+    context: ./sshd
+    chart_path: sshd.image
+
+  zenith-sync:
+    context: ./sync
+    build_args:
+      HELM_VERSION: v3.13.3
+    chart_path: sync.image
