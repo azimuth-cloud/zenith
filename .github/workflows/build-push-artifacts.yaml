@@ -27,7 +27,7 @@ env:
   NGINX_VERSION: 1.25.3
   GOMPLATE_VERSION: v3.11.6
   # sync
-  HELM_VERSION: v3.13.2
+  HELM_VERSION: v3.13.3
 
 jobs:
   build_push_images:
