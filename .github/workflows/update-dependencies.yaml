@@ -14,25 +14,25 @@ jobs:
     strategy:
       matrix:
         include:
-          - key: helm
-            path: ./.github/workflows/build-push-artifacts.yaml
-            repository: helm/helm
-            version_jsonpath: env.HELM_VERSION
-            component: sync
-
           - key: nginx
-            path: ./.github/workflows/build-push-artifacts.yaml
+            path: ./proxy/Dockerfile
             repository: nginxinc/docker-nginx
             # This repository only publishes tags, not releases
             tags: "yes"
-            version_jsonpath: env.NGINX_VERSION
+            version_jsonpath: NGINX_VERSION
             component: proxy
 
           - key: gomplate
-            path: ./.github/workflows/build-push-artifacts.yaml
+            path: ./proxy/Dockerfile
             repository: hairyhenderson/gomplate
-            version_jsonpath: env.GOMPLATE_VERSION
+            version_jsonpath: GOMPLATE_VERSION
             component: proxy
+
+          - key: helm
+            path: ./sync/Dockerfile
+            repository: helm/helm
+            version_jsonpath: HELM_VERSION
+            component: sync
 
     name: ${{ matrix.key }}
     steps:
