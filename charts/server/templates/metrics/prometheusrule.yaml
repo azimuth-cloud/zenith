@@ -27,17 +27,6 @@ spec:
     # Zenith service alerts
     - name: zenith.alerts
       rules:
-        - alert: ZenithServiceNotInitialised
-          expr: zenith_service_initialised == 0
-          for: 1h
-          annotations:
-            description: >-
-              Zenith service {{ "{{" }} $labels.service_name {{ "}}" }} has not been initialised for more than one hour.
-            summary: >-
-              Zenith service has not been initialised for more than one hour.
-          labels:
-            severity: warning
-
         # This alert fires when a service has no passing clients
         - alert: ZenithServiceHasNoHealthyClients
           expr: sum(zenith_service_client_status{status="passing"}) by(service_name) == 0
