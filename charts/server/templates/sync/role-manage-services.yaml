@@ -7,9 +7,18 @@ metadata:
   labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
   namespace: {{ .Values.sync.config.kubernetes.targetNamespace }}
 rules:
-  # For basic services, we need to manage secrets, endpoints, services and ingresses
-  # For OIDC authenticated services, we also need to manage configmaps, deployments,
-  # poddisruptionbudgets, serviceaccounts and servicemonitors
+  # For basic services, we need to manage:
+  #   * secrets
+  #   * endpoints (removing for legacy services)
+  #   * endpointslices
+  #   * services
+  #   * ingresses
+  # For OIDC authenticated services, we also need to manage:
+  #   * configmaps
+  #   * deployments
+  #   * poddisruptionbudgets
+  #   * serviceaccounts
+  #   * servicemonitors
   - apiGroups:
       - ""
     resources:
@@ -18,6 +27,12 @@ rules:
       - secrets
       - services
       - serviceaccounts
+    verbs:
+      - "*"
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
     verbs:
       - "*"
   - apiGroups:
