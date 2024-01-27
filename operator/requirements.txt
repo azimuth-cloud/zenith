@@ -9,7 +9,7 @@ cffi==1.16.0
 charset-normalizer==3.3.2
 click==8.1.7
 configomatic==0.2.0
-cryptography==42.0.0
+cryptography==42.0.1
 easykube==0.1.1
 exceptiongroup==1.2.0
 frozenlist==1.4.1
