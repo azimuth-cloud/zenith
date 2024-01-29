@@ -7,7 +7,7 @@ configomatic==0.2.0
 cryptography==42.0.1
 idna==3.6
 pycparser==2.21
-pydantic==2.5.3
+pydantic==2.6.0
 pydantic_core==2.16.0
 PyYAML==6.0.1
 requests==2.31.0
