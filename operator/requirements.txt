@@ -22,7 +22,7 @@ Jinja2==3.1.3
 kopf==1.37.1
 kube-custom-resource==0.2.0
 MarkupSafe==2.1.4
-multidict==6.0.4
+multidict==6.0.5
 pycparser==2.21
 pydantic==2.6.0
 pydantic_core==2.16.1
