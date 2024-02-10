@@ -7,7 +7,9 @@ spec:
   ports:
     - name: dynamic
       protocol: TCP
-      {{- if eq .Values.protocol "http" }}
+      {{- if eq .Values.protocol "ssh" }}
+      port: 22
+      {{- else if eq .Values.protocol "http" }}
       port: 80
       {{- else if eq .Values.protocol "https" }}
       port: 443

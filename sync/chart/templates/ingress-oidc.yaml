@@ -1,5 +1,6 @@
 {{-
   if and
+    (hasPrefix "http" .Values.protocol)
     .Values.ingress.enabled
     .Values.oidc.enabled
     (not .Values.oidc.ingress.enabled)
