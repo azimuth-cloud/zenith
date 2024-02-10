@@ -24,10 +24,9 @@ logging:
 
   loggers:
     # Add the tunnel_sshd_stdout/err handlers to the tunnel logger
-    # The stdout/err handlers are used to send logs to the client
+    # The stdout/err handlers from the root logger will still be respected
+    # and will send logs to the client
     zenith.sshd.tunnel:
       handlers:
-        - stdout
-        - stderr
         - tunnel_sshd_stdout
         - tunnel_sshd_stderr

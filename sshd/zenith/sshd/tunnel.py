@@ -67,12 +67,12 @@ class ClientConfig(BaseModel, extra = "forbid"):
     """
     #: The port for the service (the tunnel port)
     allocated_port: int
-    #: The backend protocol
-    backend_protocol: typing.Literal["http", "https"] = "http"
-    #: The read timeout for the service (in seconds)
-    read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the service is internal, i.e. without ingress
     internal: bool = False
+    #: The backend protocol
+    backend_protocol: typing.Literal["ssh", "http", "https"] = "http"
+    #: The read timeout for the service (in seconds)
+    read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
     #: The URL of the OIDC issuer to use
@@ -131,6 +131,16 @@ class ClientConfig(BaseModel, extra = "forbid"):
                 return port
             else:
                 raise ValueError("Given port is not in use")
+
+    @field_validator("backend_protocol")
+    @classmethod
+    def validate_backend_protocol(cls, v, info: ValidationInfo):
+        """
+        Validates the protocol.
+        """
+        if v == "ssh" and not info.data["internal"]:
+            raise ValueError("ssh protocol is only supported for internal services")
+        return v
 
     @field_validator("auth_external_params", mode = "before")
     @classmethod

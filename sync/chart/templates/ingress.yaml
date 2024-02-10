@@ -1,4 +1,8 @@
-{{- if .Values.ingress.enabled }}
+{{-
+  if and
+    (hasPrefix "http" .Values.protocol)
+    .Values.ingress.enabled
+}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

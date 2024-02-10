@@ -109,8 +109,10 @@ class ConnectConfig(
     server_alive_period: conint(gt = 0) = 10
     #: The number of server alive messages that can fail before the tunnel is terminated
     server_alive_failures: conint(gt = 0) = 3
+    #: Indicates whether the service should be internal, i.e. no ingress
+    internal: bool = False
     #: The backend protocol
-    backend_protocol: typing.Literal["http", "https"] = "http"
+    backend_protocol: typing.Literal["ssh", "http", "https"] = "http"
     #: An optional liveness path for the upstream service
     liveness_path: typing.Optional[UrlPath] = None
     #: The period for upstream liveness checks in seconds
@@ -119,8 +121,6 @@ class ConnectConfig(
     liveness_failures: conint(gt = 0) = 3
     #: The read timeout for the service
     read_timeout: typing.Optional[conint(gt = 0)] = None
-    #: Indicates whether the service should be internal, i.e. no ingress
-    internal: bool = False
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
     #: The URL of the OIDC issuer to use (only used when auth_type == "oidc")
@@ -146,6 +146,16 @@ class ConnectConfig(
     tls_client_ca_file: typing.Optional[FilePath] = None
     #: Base64-encoded CA to use to validate TLS client certificates
     tls_client_ca_data: typing.Optional[str] = Field(None, validate_default = True)
+
+    @field_validator("backend_protocol")
+    @classmethod
+    def validate_backend_protocol(cls, v, info: ValidationInfo):
+        """
+        Validates the protocol.
+        """
+        if v == "ssh" and not info.data["internal"]:
+            raise ValueError("ssh protocol is only supported for internal services")
+        return v
 
     @field_validator("auth_oidc_allowed_groups", mode = "before")
     @classmethod
