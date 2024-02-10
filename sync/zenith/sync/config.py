@@ -13,6 +13,12 @@ from pydantic import (
 
 from configomatic import Configuration, Section, LoggingConfiguration
 
+from easysemver import SEMVER_VERSION_REGEX
+
+
+#: Type for a string that validates as a SemVer version
+SemVerVersion = t.Annotated[str, StringConstraints(pattern = SEMVER_VERSION_REGEX)]
+
 
 #: Type for a string that validates as a URL
 AnyHttpUrl = t.Annotated[
@@ -179,12 +185,11 @@ class KubernetesConfig(Section):
     #: The namespace to create Zenith service resources in
     target_namespace: str = "zenith-services"
 
-    #: The chart repository containing the service chart
-    service_chart_repo: AnyHttpUrl = "https://stackhpc.github.io/zenith"
-    #: The name of the service chart
-    service_chart_name: constr(min_length = 1) = "zenith-service"
-    #: The version of the service chart
-    service_chart_version: constr(min_length = 1) = "main"
+    #: The Helm chart repo, name and version to use for the zenith-service chart
+    #: By default, this points to a local chart that is baked into the Docker image
+    service_chart_name: constr(min_length = 1) = "/charts/zenith-service"
+    service_chart_repo: t.Optional[AnyHttpUrl] = None
+    service_chart_version: t.Optional[SemVerVersion] = None
     #: Default values for releases of the service chart
     service_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
 
