@@ -16,6 +16,11 @@ RUN set -ex; \
       tar -xz --strip-components 1 -C /usr/bin linux-${helm_arch}/helm; \
     helm version
 
+# Install the zenith-service chart
+COPY ./chart /charts/zenith-service
+# Pull in the dependencies
+RUN helm dependency update /charts/zenith-service
+
 
 FROM ubuntu:jammy AS python-builder
 
@@ -62,6 +67,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=helm /usr/bin/helm /usr/bin/helm
+COPY --from=helm /charts /charts
 COPY --from=python-builder /venv /venv
 
 USER $ZENITH_UID

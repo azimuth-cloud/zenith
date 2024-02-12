@@ -384,6 +384,10 @@ class ClientSpec(schema.BaseModel):
         ...,
         description = "The upstream specification for the client."
     )
+    internal: bool = Field(
+        False,
+        description = "Indicates if the service is internal, i.e. has no ingress."
+    )
     mitm_proxy: MITMProxySpec = Field(
         default_factory = MITMProxySpec,
         description = "The MITM proxy specification for the client."

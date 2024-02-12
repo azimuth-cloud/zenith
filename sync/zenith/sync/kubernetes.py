@@ -6,9 +6,9 @@ import logging
 import random
 import os
 
-from easykube import Configuration, ApiError, PRESENT
+from easykube import Configuration, ApiError
 
-from pyhelm3 import Client as HelmClient
+from pyhelm3 import Client as HelmClient, mergeconcat
 
 from .model import Event, EventKind, Service
 
@@ -133,6 +133,22 @@ class ServiceReconciler:
                 values["readTimeout"] = read_timeout
         return values
 
+    async def _get_ingress_values(self, client, service):
+        """
+        Returns the values for configuring the ingress for a service.
+        """
+        if service.config.get("internal", False):
+            return {
+                "ingress": {
+                    "enabled": False,
+                },
+            }
+        else:
+            return mergeconcat(
+                self._get_tls_values(service),
+                await self._get_auth_values(client, service)
+            )
+
     def _get_tls_values(self, service):
         """
         Returns the values for configuring the TLS for a service.
@@ -229,8 +245,7 @@ class ServiceReconciler:
             ),
             self.config.service_default_values,
             self._get_service_values(service),
-            self._get_tls_values(service),
-            await self._get_auth_values(client, service),
+            await self._get_ingress_values(client, service),
             cleanup_on_fail = True,
             # The namespace should exist, so we don't need to create it
             create_namespace = False,

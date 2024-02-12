@@ -71,6 +71,8 @@ class ClientConfig(BaseModel, extra = "forbid"):
     backend_protocol: typing.Literal["http", "https"] = "http"
     #: The read timeout for the service (in seconds)
     read_timeout: typing.Optional[conint(gt = 0)] = None
+    #: Indicates whether the service is internal, i.e. without ingress
+    internal: bool = False
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
     #: The URL of the OIDC issuer to use
@@ -356,6 +358,7 @@ def consul_post_config(
     config = { "backend-protocol": tunnel.config.backend_protocol }
     if tunnel.config.read_timeout:
         config["read-timeout"] = tunnel.config.read_timeout
+    config["internal"] = tunnel.config.internal
     config["skip-auth"] = tunnel.config.skip_auth
     if not tunnel.config.skip_auth:
         if tunnel.config.auth_oidc_issuer:

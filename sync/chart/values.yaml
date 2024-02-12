@@ -18,6 +18,8 @@ readTimeout:
 
 # Settings for the ingress
 ingress:
+  # Indicates whether ingress should be enabled or not
+  enabled: true
   # The ingress class name to use
   className: nginx
   # The annotations to use with the ingress
@@ -133,7 +135,7 @@ oidc:
     #   i.e. the length of time that a user *who already has a valid cookie* will be
     #   able to continue using the service after their access has been removed at the
     #   OIDC provider
-    cookie-refresh: 1h
+    cookie-refresh: 15m
     # If the ingress is not using TLS, we have to allow the cookie on insecure connections
     cookie-secure: "{{ ternary \"true\" \"false\" .Values.global.secure }}"
     # Allow redirections to the service domain only

@@ -7,5 +7,11 @@ spec:
   ports:
     - name: dynamic
       protocol: TCP
+      {{- if eq .Values.protocol "http" }}
       port: 80
+      {{- else if eq .Values.protocol "https" }}
+      port: 443
+      {{- else }}
+      {{- fail "unsupported protocol" }}
+      {{- end }}
       targetPort: dynamic
