@@ -24,7 +24,7 @@ kube-custom-resource==0.2.0
 MarkupSafe==2.1.5
 multidict==6.0.5
 pycparser==2.21
-pydantic==2.6.0
+pydantic==2.6.1
 pydantic_core==2.16.2
 python-json-logger==2.0.7
 PyYAML==6.0.1
