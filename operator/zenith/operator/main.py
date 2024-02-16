@@ -61,25 +61,26 @@ async def on_startup(**kwargs):
         try:
             await ekclient.apply_object(crd.kubernetes_resource(), force = True)
         except Exception:
-            logger.exception("error applying CRD %s.%s - exiting", crd.plural_name, crd.api_group)
+            logger.exception(
+                "error applying CRD %s.%s - exiting",
+                crd.plural_name,
+                crd.api_group
+            )
             sys.exit(1)
-    # Wait for the APIs for our CRDs to become available
-    # This should prevent the operator failing on first start
-    # We loop infinitely and rely on the startup probe to restart us
+    # Check to see if the APIs for the CRDs are up
+    # If they are not, the kopf watches will not start properly so we exit and get restarted
     for crd in registry:
-        logger.info("waiting for %s.%s to become available", crd.plural_name, crd.api_group)
         preferred_version = next(k for k, v in crd.versions.items() if v.storage)
         api_version = f"{crd.api_group}/{preferred_version}"
-        while True:
-            try:
-                _ = await ekclient.get(f"/apis/{api_version}/{crd.plural_name}")
-            except ApiError as exc:
-                if exc.status_code in {403, 404}:
-                    await asyncio.sleep(0.1)
-                else:
-                    raise
-            else:
-                break
+        try:
+            _ = await ekclient.get(f"/apis/{api_version}/{crd.plural_name}")
+        except Exception:
+            logger.exception(
+                "api for %s.%s not available - exiting",
+                crd.plural_name,
+                crd.api_group
+            )
+            sys.exit(1)
 
 
 @kopf.on.cleanup()
