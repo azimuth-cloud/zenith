@@ -67,6 +67,8 @@ async def on_startup(**kwargs):
                 crd.api_group
             )
             sys.exit(1)
+    # Give Kubernetes a chance to create the APIs for the CRDs
+    await asyncio.sleep(0.5)
     # Check to see if the APIs for the CRDs are up
     # If they are not, the kopf watches will not start properly so we exit and get restarted
     for crd in registry:
