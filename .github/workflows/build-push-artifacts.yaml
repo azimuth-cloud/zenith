@@ -67,7 +67,7 @@ jobs:
             type=raw,value=${{ steps.semver.outputs.short-sha }}
 
       - name: Build and push image
-        uses: stackhpc/github-actions/docker-multiarch-build-push@master
+        uses: stackhpc/github-actions/docker-multiarch-build-push@add-sarif-catagory
         with:
           cache-key: ${{ matrix.component }}
           context: ./${{ matrix.component }}
