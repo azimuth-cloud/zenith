@@ -4,7 +4,7 @@ certifi==2024.2.2
 cffi==1.16.0
 click==8.1.7
 configomatic==0.2.0
-cryptography==42.0.2
+cryptography==42.0.3
 exceptiongroup==1.2.0
 fastapi==0.109.2
 h11==0.14.0
