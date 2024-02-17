@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import functools
 import hashlib
@@ -54,12 +55,34 @@ async def on_startup(**kwargs):
         prefix = settings.api_group,
         key = "last-handled-configuration",
     )
-    try:
-        for crd in registry:
+    kopf_settings.watching.client_timeout = settings.watch_timeout
+    # Apply the CRDs
+    for crd in registry:
+        try:
             await ekclient.apply_object(crd.kubernetes_resource(), force = True)
-    except Exception:
-        logger.exception("error applying CRDs - exiting")
-        sys.exit(1)
+        except Exception:
+            logger.exception(
+                "error applying CRD %s.%s - exiting",
+                crd.plural_name,
+                crd.api_group
+            )
+            sys.exit(1)
+    # Give Kubernetes a chance to create the APIs for the CRDs
+    await asyncio.sleep(0.5)
+    # Check to see if the APIs for the CRDs are up
+    # If they are not, the kopf watches will not start properly so we exit and get restarted
+    for crd in registry:
+        preferred_version = next(k for k, v in crd.versions.items() if v.storage)
+        api_version = f"{crd.api_group}/{preferred_version}"
+        try:
+            _ = await ekclient.get(f"/apis/{api_version}/{crd.plural_name}")
+        except Exception:
+            logger.exception(
+                "api for %s.%s not available - exiting",
+                crd.plural_name,
+                crd.api_group
+            )
+            sys.exit(1)
 
 
 @kopf.on.cleanup()

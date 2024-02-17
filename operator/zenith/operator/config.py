@@ -39,6 +39,9 @@ class Configuration(
         default_factory = lambda: ["zenith"]
     )
 
+    #: The amount of time (seconds) before a watch is forcefully restarted
+    watch_timeout: conint(gt = 0) = 600
+
     #: The base domain used for cluster services
     cluster_service_domain: constr(pattern =r"^[a-z0-9.-]+$") = "svc.cluster.local"
 

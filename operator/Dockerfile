@@ -46,4 +46,12 @@ COPY --from=python-builder /app /app
 
 USER $ZENITH_UID
 ENTRYPOINT ["tini", "-g", "--"]
-CMD ["/venv/bin/kopf", "run", "--module", "zenith.operator", "--all-namespaces"]
+CMD [ \
+    "/venv/bin/kopf", \
+    "run", \
+    "--module", \
+    "zenith.operator", \
+    "--all-namespaces", \
+    "--liveness", \
+    "http://0.0.0.0:8000/healthz" \
+]
