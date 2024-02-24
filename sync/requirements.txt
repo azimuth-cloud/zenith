@@ -7,7 +7,7 @@ easykube==0.1.1
 exceptiongroup==1.2.0
 h11==0.14.0
 httpcore==1.0.3
-httpx==0.26.0
+httpx==0.27.0
 idna==3.6
 pydantic==2.6.2
 pydantic_core==2.16.3
