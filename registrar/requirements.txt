@@ -6,7 +6,7 @@ click==8.1.7
 configomatic==0.2.0
 cryptography==42.0.4
 exceptiongroup==1.2.0
-fastapi==0.109.2
+fastapi==0.110.0
 h11==0.14.0
 httpcore==1.0.4
 httpx==0.27.0
