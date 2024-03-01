@@ -4,7 +4,7 @@ cffi==1.16.0
 charset-normalizer==3.3.2
 click==8.1.7
 configomatic==0.2.0
-cryptography==42.0.3
+cryptography==42.0.4
 idna==3.6
 pycparser==2.21
 pydantic==2.6.2
