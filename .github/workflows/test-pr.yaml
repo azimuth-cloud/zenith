@@ -55,6 +55,7 @@ jobs:
         with:
           os-clouds: ${{ secrets.OS_CLOUDS }}
           environment-prefix: zenith-ci
+          target-cloud: ${{ vars.TARGET_CLOUD }}
           # Use the version of the chart that we just built
           # We also want to make sure that we test the operator in the CAPI operator
           # We deploy one CaaS app (workstation) and a Kubernetes cluster (for the operator) for the test
