@@ -6,14 +6,17 @@ import uuid
 
 import httpx
 
-from .model import Endpoint, Service, EventKind, Event
+from ..config import SyncConfig, ConsulConfig
+from ..model import Endpoint, Service, EventKind, Event
+
+from . import base
 
 
-class ServiceWatcher:
+class ServiceWatcher(base.ServiceWatcher):
     """
     Allows clients to watch changes to the set of services in Consul.
     """
-    def __init__(self, config):
+    def __init__(self, config: ConsulConfig):
         self.config = config
         self._services = {}
         self._queues = {}
@@ -233,3 +236,10 @@ class ServiceWatcher:
                     services_task,
                     service_tasks
                 )
+
+    @classmethod
+    def from_config(cls, config_obj: SyncConfig) -> "ServiceWatcher":
+        """
+        Initialises an instance of the watcher from a config object.
+        """
+        return cls(config_obj.consul)

@@ -10,7 +10,11 @@ from easykube import Configuration, ApiError, PRESENT
 
 from pyhelm3 import Client as HelmClient
 
-from .model import Event, EventKind, Service
+from ..config import SyncConfig, KubernetesConfig
+from ..model import Event, EventKind, Service
+from ..watchers import ServiceWatcher
+
+from . import base
 
 
 # Initialise the easykube config from the environment
@@ -23,11 +27,11 @@ class RetryRequired(Exception):
     """
 
 
-class ServiceReconciler:
+class ServiceReconciler(base.ServiceReconciler):
     """
-    Reconciles headless services in Kubernetes with information from another system.
+    Reconciles services from a watcher by using a Helm chart to create resources in Kubernetes.
     """
-    def __init__(self, config):
+    def __init__(self, config: KubernetesConfig):
         self.config = config
         self._helm_client = HelmClient(
             default_timeout = config.helm_client.default_timeout,
@@ -439,10 +443,7 @@ class ServiceReconciler:
             if chart.name != target_chart.metadata.name:
                 await release.uninstall(wait = True)
 
-    async def run(self, source):
-        """
-        Run the reconciler against services from the given service source.
-        """
+    async def _run(self, source: ServiceWatcher):
         self._logger.info(f"Reconciling services [namespace: {self.config.target_namespace}]")
         async with self._client() as client:
             # Before we start doing anything, we need to clean up legacy resources
@@ -476,12 +477,36 @@ class ServiceReconciler:
                     service_tasks
                 )
 
+    async def run(self, source: ServiceWatcher):
+        """
+        Run the reconciler against services from the given service source.
+        """
+        # We need to also run the TLS secret mirror alongside our main loop
+        mirror = TLSSecretMirror(self.config)
+        # Both tasks should run forever if everything is good
+        done, not_done = await asyncio.wait(
+            [self._run(source), mirror.run()],
+            return_when = asyncio.FIRST_COMPLETED
+        )
+        # Exceptions are not raised until we try to fetch the results
+        for task in not_done:
+            task.cancel()
+        for task in done:
+            task.result()
+
+    @classmethod
+    def from_config(cls, config_obj: SyncConfig) -> "ServiceReconciler":
+        """
+        Initialises an instance of the reconciler from a config object.
+        """
+        return cls(config_obj.kubernetes)
+
 
 class TLSSecretMirror:
     """
     Mirrors the wildcard secret from the sync namespace to the target namespace for services.
     """
-    def __init__(self, config):
+    def __init__(self, config: KubernetesConfig):
         self.config = config
         self._logger = logging.getLogger(__name__)
 
