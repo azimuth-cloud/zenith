@@ -3,7 +3,7 @@ import typing as t
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives.serialization import load_ssh_public_key
 
-from pydantic import BaseModel, Field, StringConstraints, conset, constr, field_validator
+from pydantic import BaseModel, Field, StringConstraints, conset, constr
 from pydantic.functional_validators import AfterValidator
 
 from .config import settings, SSHPublicKeyType
