@@ -4,6 +4,9 @@ RUN apt-get update && \
     apt-get install -y curl && \
     rm -rf /var/lib/apt/lists/*
 
+# Install yq from the official Docker image
+COPY --from=mikefarah/yq /usr/bin/yq /usr/bin/
+
 ARG HELM_VERSION=v3.14.3
 RUN set -ex; \
     OS_ARCH="$(uname -m)"; \
@@ -20,6 +23,19 @@ RUN set -ex; \
 COPY ./chart /charts/zenith-service
 # Pull in the dependencies
 RUN helm dependency update /charts/zenith-service
+# Generate a checksum to add to the version that depends on the contents
+# This is because we only turn over the Helm releases when either the chart version
+# or values change, so we need a version that changes when the content changes
+RUN set -e; \
+    CHECKSUM="$( \
+      find /charts/zenith-service -type f -print0 | \
+        sort -z | \
+        xargs -0 cat | \
+        sha256sum | \
+        awk '{print $1}' | \
+        head -c 8 \
+    )"; \
+    yq -i ".version += \"+$CHECKSUM\"" /charts/zenith-service/Chart.yaml
 
 
 FROM ubuntu:jammy AS python-builder
