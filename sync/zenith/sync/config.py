@@ -221,10 +221,10 @@ class SyncConfig(
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
 
-    #: The name of the reconciler type to use
-    reconciler_type: NonEmptyString = "helm"
-    #: The name of the watcher type to use
-    watcher_type: NonEmptyString = "consul"
+    #: The name of the processor type to use
+    processor_type: NonEmptyString = "helm"
+    #: The name of the store type to use
+    store_type: NonEmptyString = "consul"
 
     #: The Consul configuration
     consul: ConsulConfig = Field(default_factory = ConsulConfig)
