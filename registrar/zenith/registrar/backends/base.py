@@ -18,6 +18,14 @@ class SubdomainAlreadyReserved(BackendError):
         super().__init__(f"subdomain '{subdomain}' is already reserved")
 
 
+class SubdomainNotReserved(BackendError):
+    """
+    Raised when an attempt is made to initialise a subdomain that is not reserved.
+    """
+    def __init__(self, subdomain: str):
+        super().__init__(f"subdomain '{subdomain}' has not been reserved")
+
+
 class SubdomainAlreadyInitialised(BackendError):
     """
     Raised when an attempt is made to initialise a subdomain that is already initialised.
@@ -39,29 +47,20 @@ class Backend:
     """
     Base class for a registrar backend.
     """
-    async def reserve_subdomain(self, subdomain: str) -> str:
+    async def reserve_subdomain(self, subdomain: str):
         """
         Reserve a subdomain for use with an application.
-
-        The return value should be an index that changes when the resource is modified.
 
         If the specified subdomain is already reserved, an exception is raised.
         """
         raise NotImplementedError
 
-    async def init_subdomain(
-        self,
-        subdomain: str,
-        index: str,
-        fingerprints: typing.Iterable[bytes]
-    ):
+    async def init_subdomain(self, subdomain: str, fingerprints: typing.Iterable[bytes]):
         """
         Initialise a subdomain with one or more public keys.
 
-        The index should match the existing subdomain record, i.e. the record has not been
-        modified since it was reserved.
-
-        If public keys are already associated with the subdomain, an exception is raised.
+        If the subdomain is not reserved or public keys are already associated with the
+        subdomain, an exception is raised.
         """
         raise NotImplementedError
 

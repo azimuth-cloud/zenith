@@ -73,7 +73,7 @@ def generate_signature(message: str) -> str:
     Generates a signature for the given message using the signing key.
     """
     key = settings.subdomain_token_signing_key
-    return hmac.new(key, message.encode(), hashlib.sha1).hexdigest()
+    return hmac.new(key, message.encode(), hashlib.sha256).hexdigest()
 
 
 def fingerprint_bytes(ssh_pk: str) -> bytes:
@@ -125,7 +125,7 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
         subdomain = req.subdomain if req.subdomain is not None else generate_random_subdomain()
         # Try to reserve the subdomain
         try:
-            index = await backend.reserve_subdomain(subdomain)
+            await backend.reserve_subdomain(subdomain)
         except backends.SubdomainAlreadyReserved:
             # How we react to this depends on whether the request specified a subdomain
             # or whether we generated one
@@ -151,12 +151,9 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
         try:
             await backend.init_subdomain(
                 subdomain,
-                index,
                 [fingerprint_bytes(key) for key in req.public_keys]
             )
         except backends.SubdomainAlreadyInitialised:
-            # This should never happen as the subdomain and index have not been
-            # published outside of this function
             raise HTTPException(
                 status_code = 409,
                 detail = "Unable to associate public keys."
@@ -172,10 +169,9 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
             fingerprints = [fingerprint(pk) for pk in req.public_keys]
         )
     else:
-        # If no keys were given, return a single-use token that can be used to associate keys
-        token_data = f"{subdomain}.{index}"
-        signature = generate_signature(token_data)
-        token = base64.urlsafe_b64encode(f"{token_data}.{signature}".encode()).decode()
+        # If no keys were given, return a token that can be used to associate keys
+        signature = generate_signature(subdomain)
+        token = base64.urlsafe_b64encode(f"{subdomain}.{signature}".encode()).decode()
         return Reservation(subdomain = subdomain, fqdn = fqdn, token = token)
 
 
@@ -228,25 +224,21 @@ async def associate_public_keys(req: PublicKeyAssociationRequest):
     token_bytes = req.token.encode()
     try:
         decoded_token = base64.urlsafe_b64decode(token_bytes).decode()
-        token_data, signature = decoded_token.rsplit(".", maxsplit = 1)
+        subdomain, signature = decoded_token.rsplit(".", maxsplit = 1)
     except (binascii.Error, ValueError):
         raise HTTPException(status_code = 400, detail = "The given token is invalid.")
     # Verify the signature matches the data
-    if not hmac.compare_digest(generate_signature(token_data), signature):
-        raise HTTPException(status_code = 400, detail = "The given token is invalid.")
-    # Split the token data into subdomain and index
-    try:
-        subdomain, index = token_data.split(".")
-    except ValueError:
+    if not hmac.compare_digest(generate_signature(subdomain), signature):
         raise HTTPException(status_code = 400, detail = "The given token is invalid.")
     # Initialise the subdomain with the public keys
     try:
         await backend.init_subdomain(
             subdomain,
-            index,
             [fingerprint_bytes(pk) for pk in req.public_keys]
         )
-    except backends.SubdomainAlreadyInitialised:
+    # SubdomainNotReserved should be impossible without knowing the signing key, since
+    # the only way to get a token is using the reserve endpoint
+    except (backends.SubdomainNotReserved, backends.SubdomainAlreadyInitialised):
         raise HTTPException(
             status_code = 409,
             detail = (

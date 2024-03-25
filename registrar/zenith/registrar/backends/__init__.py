@@ -6,6 +6,7 @@ from .. import config
 from .base import (
     Backend,
     SubdomainAlreadyReserved,
+    SubdomainNotReserved,
     SubdomainAlreadyInitialised,
     PublicKeyNotAssociated
 )
