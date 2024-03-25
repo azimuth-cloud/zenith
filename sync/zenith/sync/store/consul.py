@@ -141,7 +141,7 @@ class Store(base.Store):
         )
         return service, next_idx
 
-    async def produce_events(self, list_idx, initial_services):
+    async def _produce_events(self, list_idx, initial_services):
         """
         Yield events starting from the specified list index and initial services.
         """
@@ -208,7 +208,7 @@ class Store(base.Store):
         tasks = [self._wait_service(name) for name in names]
         initial_services = await asyncio.gather(*tasks)
         # Return the initial set of services and the events iterable
-        return tuple(s for s, _ in initial_services), self.produce_events(idx, initial_services)
+        return tuple(s for s, _ in initial_services), self._produce_events(idx, initial_services)
 
     @classmethod
     def from_config(cls, config_obj: config.SyncConfig) -> "Store":

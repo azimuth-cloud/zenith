@@ -1,0 +1,19 @@
+{{- if .Values.registrar.enabled }}
+# This role allows the holder to manage Zenith services in the target namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "zenith.componentname" (list . "registrar") }}
+  labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
+  namespace: {{ .Values.common.kubernetes.targetNamespace }}
+rules:
+  # Permissions for the CRD backend
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - services
+    verbs:
+      - get
+      - create
+      - replace
+{{- end }}

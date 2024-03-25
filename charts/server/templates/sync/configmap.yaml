@@ -8,6 +8,7 @@ consul:
   serviceTag: {{ .Values.common.consul.serviceTag | quote }}
   configKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
 kubernetes:
+  targetNamespace: {{ .Values.common.kubernetes.targetNamespace }}
   # By default, we use the same chart version for the service chart
   serviceChartVersion: {{ .Chart.Version }}
   ingress:
