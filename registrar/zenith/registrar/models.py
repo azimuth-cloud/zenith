@@ -3,7 +3,7 @@ import typing as t
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives.serialization import load_ssh_public_key
 
-from pydantic import BaseModel, Field, StringConstraints, conset, constr
+from pydantic import BaseModel, Field, StringConstraints, constr
 from pydantic.functional_validators import AfterValidator
 
 from .config import settings, SSHPublicKeyType
@@ -67,8 +67,8 @@ class ReservationRequest(BaseModel):
     """
     #: The subdomain to reserve
     subdomain: t.Optional[Subdomain] = None
-    #: The public keys to associate with the subdomain
-    public_keys: t.Optional[conset(SSHPublicKey, min_length = 1)] = None
+    #: The public key to associate with the subdomain
+    public_key: t.Optional[SSHPublicKey] = None
 
 
 class Reservation(BaseModel):
@@ -81,8 +81,8 @@ class Reservation(BaseModel):
     fqdn: constr(min_length = 1)
     #: The token to use to associate public keys with the subdomain if no keys were given
     token: t.Optional[str] = None
-    #: The fingerprints of any keys that were registered
-    fingerprints: t.List[str] = Field(default_factory = list)
+    #: The fingerprint of the key that was registered, if given
+    fingerprint: t.Optional[str] = None
 
 
 class VerificationRequest(BaseModel):
@@ -109,8 +109,8 @@ class PublicKeyAssociationRequest(BaseModel):
     """
     #: The token for the request
     token: constr(min_length = 1)
-    #: The public keys to associate with the subdomain
-    public_keys: conset(SSHPublicKey, min_length = 1)
+    #: The public key to associate with the subdomain
+    public_key: SSHPublicKey
 
 
 class PublicKeyAssociation(BaseModel):
@@ -119,8 +119,8 @@ class PublicKeyAssociation(BaseModel):
     """
     #: The subdomain that the keys were associated with
     subdomain: str
-    #: The fingerprints of the public keys that weere associated with the subdomain
-    fingerprints: t.List[str]
+    #: The fingerprint of the public key that was associated with the subdomain
+    fingerprint: str
 
 
 class Error(BaseModel):

@@ -108,11 +108,11 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
 
     If no subdomain is given, a random subdomain is reserved and returned.
 
-    If a set of SSH public keys is given, they are associated with the subdomain and the
-    fingerprints are returned. No token is returned in this case.
+    If an SSH public key is given, it is associated with the subdomain and the
+    fingerprint is returned. No token is returned in this case.
 
-    If no SSH public keys are given, a single-use token is returned that can be used to
-    associate public keys with the subdomain.
+    If no SSH public key is given, a single-use token is returned that can be used
+    to associate a public key with the subdomain.
     """
     if not req:
         req = ReservationRequest()
@@ -146,30 +146,27 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
                 settings.generate_domain_max_attempts
             )
         )
-    # If public keys were given, register them with the subdomain we reserved
-    if req.public_keys:
+    # If a public key was given, register it with the subdomain we reserved
+    if req.public_key:
         try:
-            await backend.init_subdomain(
-                subdomain,
-                [fingerprint_bytes(key) for key in req.public_keys]
-            )
+            await backend.init_subdomain(subdomain, fingerprint_bytes(req.public_key))
         except backends.SubdomainAlreadyInitialised:
             raise HTTPException(
                 status_code = 409,
-                detail = "Unable to associate public keys."
+                detail = "Unable to associate public key."
             )
     # The FQDN is the requests subdomain combined with the configured base domain
     fqdn = f"{subdomain}.{settings.base_domain}"
-    if req.public_keys:
-        # When the request contained public keys, return the fingerprints
+    if req.public_key:
+        # When the request contained a public key, return the fingerprint
         return Reservation(
             subdomain = subdomain,
             fqdn = fqdn,
-            # Return non-URL-safe fingerprints so they can be compared with the output of OpenSSH
-            fingerprints = [fingerprint(pk) for pk in req.public_keys]
+            # Return a fingerprint that can be compared with the output of OpenSSH
+            fingerprint = fingerprint(req.public_key)
         )
     else:
-        # If no keys were given, return a token that can be used to associate keys
+        # If no key was given, return a token that can be used to associate a key
         signature = generate_signature(subdomain)
         token = base64.urlsafe_b64encode(f"{subdomain}.{signature}".encode()).decode()
         return Reservation(subdomain = subdomain, fqdn = fqdn, token = token)
@@ -216,9 +213,9 @@ async def verify_subdomain(req: VerificationRequest):
         },
     }
 )
-async def associate_public_keys(req: PublicKeyAssociationRequest):
+async def associate_public_key(req: PublicKeyAssociationRequest):
     """
-    Associate one or more public keys with the subdomain linked to the given token.
+    Associate a public key with the subdomain linked to the given token.
     """
     # Extract the token data and signature from the given token
     token_bytes = req.token.encode()
@@ -232,10 +229,7 @@ async def associate_public_keys(req: PublicKeyAssociationRequest):
         raise HTTPException(status_code = 400, detail = "The given token is invalid.")
     # Initialise the subdomain with the public keys
     try:
-        await backend.init_subdomain(
-            subdomain,
-            [fingerprint_bytes(pk) for pk in req.public_keys]
-        )
+        await backend.init_subdomain(subdomain, fingerprint_bytes(req.public_key))
     # SubdomainNotReserved should be impossible without knowing the signing key, since
     # the only way to get a token is using the reserve endpoint
     except (backends.SubdomainNotReserved, backends.SubdomainAlreadyInitialised):
@@ -248,6 +242,6 @@ async def associate_public_keys(req: PublicKeyAssociationRequest):
         )
     return PublicKeyAssociation(
         subdomain = subdomain,
-        # Return the non-URL-safe fingerprints so they can be compared with the output of OpenSSH
-        fingerprints = [fingerprint(pk) for pk in req.public_keys]
+        # Return a fingerprint that can be compared with the output of OpenSSH
+        fingerprint = fingerprint(req.public_key)
     )

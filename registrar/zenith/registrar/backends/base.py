@@ -55,12 +55,11 @@ class Backend:
         """
         raise NotImplementedError
 
-    async def init_subdomain(self, subdomain: str, fingerprints: typing.Iterable[bytes]):
+    async def init_subdomain(self, subdomain: str, fingerprint: bytes):
         """
-        Initialise a subdomain with one or more public keys.
+        Initialise a subdomain with an SSH public key, using the fingerprint.
 
-        If the subdomain is not reserved or public keys are already associated with the
-        subdomain, an exception is raised.
+        If the subdomain is not reserved or is already initialised, an exception is raised.
         """
         raise NotImplementedError
 

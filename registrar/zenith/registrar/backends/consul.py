@@ -1,5 +1,4 @@
 import base64
-import typing as t
 
 import httpx
 
@@ -42,7 +41,7 @@ class Backend(base.Backend):
             raise base.SubdomainAlreadyReserved(subdomain)
         response.raise_for_status()
 
-    async def init_subdomain(self, subdomain: str, fingerprints: t.Iterable[bytes]):
+    async def init_subdomain(self, subdomain: str, fingerprint: bytes):
         # Fetch the subdomain record and verify that the value is "0"
         response = await self.client.get(f"/v1/kv/{self.key_prefix}/subdomains/{subdomain}")
         if response.status_code == 404:
@@ -68,7 +67,6 @@ class Backend(base.Backend):
                         "Value": base64.b64encode(b"1").decode(),
                     },
                 },
-            ] + [
                 {
                     "KV": {
                         # Use regular set operations here, as we don't care about splatting
@@ -83,7 +81,6 @@ class Backend(base.Backend):
                         "Value": base64.b64encode(subdomain.encode()).decode(),
                     }
                 }
-                for fingerprint in fingerprints
             ]
         )
         # If the subdomain already exists, the response will be a 409
