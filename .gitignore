@@ -1,6 +1,7 @@
 .python-version
 charts/*/charts
-charts/*/Chart.lock
+sync/chart/charts
+**/Chart.lock
 __pycache__
 *.egg-info
 kubeconfig

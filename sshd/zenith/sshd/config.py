@@ -1,6 +1,6 @@
 import socket
 
-from pydantic import DirectoryPath, FilePath, Field, conint
+from pydantic import DirectoryPath, FilePath, Field, conint, constr
 
 from configomatic import Configuration, LoggingConfiguration
 
@@ -25,23 +25,27 @@ class SSHDConfig(
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
 
+    #: The backend type to use
+    backend_type: constr(min_length = 1) = "consul"
+
     #: The address of the Consul server
     consul_address: str = "127.0.0.1"
     #: The port of the Consul server
     consul_port: conint(gt = 0) = 8500
-    #: The heartbeat interval for services created in Consul
-    #: This is only used if no liveness check is configured for the tunnel
-    consul_heartbeat_interval: conint(gt = 0) = 10
-    #: The interval after which a service in Consul will be deregistered
-    consul_deregister_interval: conint(gt = 0) = 600
-    #: The number of times that posting a heartbeat to Consul can fail before a tunnel is closed
-    consul_heartbeat_failures: int = 3
     #: The prefix to use for Consul keys
     consul_key_prefix: str = "zenith/services"
+    #: The tag to use when registering services with Consul
+    consul_service_tag: str = "zenith-service"
+    #: The interval after which a service in Consul will be deregistered
+    consul_deregister_interval: conint(gt = 0) = 600
+
+    #: The heartbeat interval for tunnels
+    #: This is only used if no liveness check is configured for a tunnel
+    heartbeat_interval: conint(gt = 0) = 10
+    #: The number of times that posting a heartbeat can fail before a tunnel is closed
+    heartbeat_failures: int = 3
     #: The host to use when registering services with Consul
     service_host: str = Field(default_factory = default_service_host)
-    #: The tag to use when registering services with Consul
-    service_tag: str = "zenith-service"
     #: The number of seconds to wait to receive a tunnel configuration before exiting
     configure_timeout: int = 5
 

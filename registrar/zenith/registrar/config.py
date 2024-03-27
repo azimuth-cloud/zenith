@@ -68,6 +68,9 @@ class RegistrarConfig(
     #: The minimum size for RSA keys (by default, 1024 bit keys are not allowed)
     ssh_rsa_min_bits: conint(ge = 1024) = 2048
 
+    #: The type of backend to use
+    backend_type: constr(min_length = 1) = "consul"
+
     #: The address of the Consul server
     consul_address: str = "127.0.0.1"
     #: The port of the Consul server
