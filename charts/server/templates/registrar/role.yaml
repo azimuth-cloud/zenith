@@ -15,5 +15,5 @@ rules:
     verbs:
       - get
       - create
-      - replace
+      - update
 {{- end }}

@@ -75,6 +75,8 @@ class RegistrarConfig(
     crd_api_version: str = "zenith.stackhpc.com/v1alpha1"
     #: The target namespace for the CRD backend
     crd_target_namespace: str = "zenith-services"
+    #: The label to use to make finding resources by fingerprint easy
+    crd_fingerprint_label: str = "zenith.stackhpc.com/fingerprint"
 
     #: The address of the Consul server
     consul_address: str = "127.0.0.1"

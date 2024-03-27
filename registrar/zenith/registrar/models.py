@@ -3,7 +3,7 @@ import typing as t
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives.serialization import load_ssh_public_key
 
-from pydantic import BaseModel, Field, StringConstraints, constr
+from pydantic import BaseModel, StringConstraints, constr, model_validator, computed_field
 from pydantic.functional_validators import AfterValidator
 
 from .config import settings, SSHPublicKeyType
@@ -70,6 +70,25 @@ class ReservationRequest(BaseModel):
     #: The public key to associate with the subdomain
     public_key: t.Optional[SSHPublicKey] = None
 
+    @model_validator(mode = "before")
+    @classmethod
+    def validate_legacy_public_keys(cls, data: t.Any):
+        """
+        Allows clients to specify a list of SSH public keys for backwards compatibility.
+
+        If the list contains exactly one item, it is used as the public key. In all
+        other cases a validation error is raised.
+        """
+        if (
+            isinstance(data, dict) and
+            "public_key" not in data and
+            "public_keys" in data and
+            isinstance(data["public_keys"], list) and
+            len(data["public_keys"]) == 1
+        ):
+            data["public_key"] = data["public_keys"][0]
+        return data
+
 
 class Reservation(BaseModel):
     """
@@ -83,6 +102,17 @@ class Reservation(BaseModel):
     token: t.Optional[str] = None
     #: The fingerprint of the key that was registered, if given
     fingerprint: t.Optional[str] = None
+
+    @computed_field
+    @property
+    def fingerprints(self) -> t.List[str]:
+        """
+        A list of fingerprints, for compatibility with older clients.
+        """
+        if self.fingerprint:
+            return [self.fingerprint]
+        else:
+            return []
 
 
 class VerificationRequest(BaseModel):
@@ -112,6 +142,25 @@ class PublicKeyAssociationRequest(BaseModel):
     #: The public key to associate with the subdomain
     public_key: SSHPublicKey
 
+    @model_validator(mode = "before")
+    @classmethod
+    def validate_legacy_public_keys(cls, data: t.Any):
+        """
+        Allows clients to specify a list of SSH public keys for backwards compatibility.
+
+        If the list contains exactly one item, it is used as the public key. In all
+        other cases a validation error is raised.
+        """
+        if (
+            isinstance(data, dict) and
+            "public_key" not in data and
+            "public_keys" in data and
+            isinstance(data["public_keys"], list) and
+            len(data["public_keys"]) == 1
+        ):
+            data["public_key"] = data["public_keys"][0]
+        return data
+
 
 class PublicKeyAssociation(BaseModel):
     """
@@ -121,6 +170,14 @@ class PublicKeyAssociation(BaseModel):
     subdomain: str
     #: The fingerprint of the public key that was associated with the subdomain
     fingerprint: str
+
+    @computed_field
+    @property
+    def fingerprints(self) -> t.List[str]:
+        """
+        A list of fingerprints, for compatibility with older clients.
+        """
+        return [self.fingerprint]
 
 
 class Error(BaseModel):

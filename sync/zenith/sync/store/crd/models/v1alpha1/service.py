@@ -7,6 +7,11 @@ class ServiceSpec(schema.BaseModel):
     """
     Model for the spec of a service resource.
     """
+    public_key_fingerprint: schema.Optional[schema.constr(min_length = 1)] = Field(
+        None,
+        description = "The fingerprint of the public key for the service.",
+        validate_default = True
+    )
 
 
 class Service(

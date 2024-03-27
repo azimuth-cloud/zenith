@@ -1,3 +1,4 @@
+import base64
 import logging
 import typing
 
@@ -8,17 +9,30 @@ from .. import config
 from . import base
 
 
+def fingerprint_urlsafe(fingerprint: bytes) -> str:
+    return base64.urlsafe_b64encode(fingerprint).decode().rstrip("=")
+
+
+def fingerprint_str(fingerprint: bytes) -> str:
+    return base64.b64encode(fingerprint).decode().rstrip("=")
+
+
 class Backend(base.Backend):
     """
     Backend that stores services using a Kubernetes CRD.
     """
-    def __init__(self, api_version: str, target_namespace: str):
+    def __init__(self,
+        api_version: str,
+        target_namespace: str,
+        fingerprint_label: str
+    ):
         self.logger = logging.getLogger(__name__)
         # Initialise an easykube client from the environment
         self.ekclient = Configuration.from_environment().async_client(
             default_namespace = target_namespace
         )
         self.api_version = api_version
+        self.fingerprint_label = fingerprint_label
 
     async def startup(self):
         """
@@ -50,9 +64,44 @@ class Backend(base.Backend):
             else:
                 raise
 
+    async def init_subdomain(self, subdomain: str, fingerprint: bytes):
+        # Fetch the existing service record for the subdomain
+        ekresource = await self._ekresource()
+        try:
+            service = await ekresource.fetch(subdomain)
+        except ApiError as exc:
+            if exc.status_code == 404:
+                raise base.SubdomainNotReserved(subdomain)
+            else:
+                raise
+        # If the service already has a public key, we are done
+        if service.get("spec", {}).get("publicKeyFingerprint"):
+            raise base.SubdomainAlreadyInitialised(subdomain)
+        # Modify the resource and replace it
+        # Using replace with a resource version that we know does not have a public key
+        # should ensure we are the first operation to set a public key
+        # Set a label that allows us to search by fingerprint later
+        # The label uses a URL-safe version of the fingerprint because of the allowed chars
+        labels = service["metadata"].setdefault("labels", {})
+        labels[self.fingerprint_label] = fingerprint_urlsafe(fingerprint)
+        spec = service.setdefault("spec", {})
+        spec["publicKeyFingerprint"] = fingerprint_str(fingerprint)
+        print(service)
+        try:
+            _ = await self.ekclient.replace_object(service)
+        except ApiError as exc:
+            if exc.status_code == 409:
+                raise base.SubdomainAlreadyInitialised(subdomain)
+            else:
+                raise
+
     @classmethod
     def from_config(cls, config_obj: config.RegistrarConfig) -> "Backend":
         """
         Initialises an instance of the backend from a config object.
         """
-        return cls(config_obj.crd_api_version, config_obj.crd_target_namespace)
+        return cls(
+            config_obj.crd_api_version,
+            config_obj.crd_target_namespace,
+            config_obj.crd_fingerprint_label
+        )
