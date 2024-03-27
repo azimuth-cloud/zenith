@@ -187,6 +187,11 @@ class KubernetesConfig(Section):
     #: The namespace to create Zenith service resources in
     target_namespace: str = "zenith-services"
 
+    #: The API group to use for CRD resources
+    crd_api_group: str = "zenith.stackhpc.com"
+    #: The categories for the CRD resources
+    crd_categories: t.List[str] = Field(default_factory = lambda: ["zenith"])
+
     #: The Helm chart repo, name and version to use for the zenith-service chart
     #: By default, this points to a local chart that is baked into the Docker image
     service_chart_name: NonEmptyString = "/charts/zenith-service"
@@ -224,7 +229,7 @@ class SyncConfig(
     #: The name of the processor type to use
     processor_type: NonEmptyString = "helm"
     #: The name of the store type to use
-    store_type: NonEmptyString = "consul"
+    store_type: NonEmptyString = "crd"
 
     #: The Consul configuration
     consul: ConsulConfig = Field(default_factory = ConsulConfig)

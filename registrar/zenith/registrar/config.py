@@ -69,7 +69,14 @@ class RegistrarConfig(
     ssh_rsa_min_bits: conint(ge = 1024) = 2048
 
     #: The type of backend to use
-    backend_type: constr(min_length = 1) = "consul"
+    backend_type: constr(min_length = 1) = "crd"
+
+    #: The API version of the resources when using the CRD backend
+    crd_api_version: str = "zenith.stackhpc.com/v1alpha1"
+    #: The target namespace for the CRD backend
+    crd_target_namespace: str = "zenith-services"
+    #: The label to use to make finding resources by fingerprint easy
+    crd_fingerprint_label: str = "zenith.stackhpc.com/fingerprint"
 
     #: The address of the Consul server
     consul_address: str = "127.0.0.1"
