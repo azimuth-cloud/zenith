@@ -6,12 +6,20 @@ from pydantic import (
     Field,
     AfterValidator,
     StringConstraints,
-    AnyHttpUrl as PyAnyHttpUrl,
-    conint,
-    constr
+    AnyHttpUrl as PyAnyHttpUrl
 )
 
 from configomatic import Configuration, Section, LoggingConfiguration
+
+from easysemver import SEMVER_VERSION_REGEX
+
+
+#: Type for a string that validates as a SemVer version
+SemVerVersion = t.Annotated[str, StringConstraints(pattern = SEMVER_VERSION_REGEX)]
+
+
+#: Type for a non-empty string
+NonEmptyString = t.Annotated[str, StringConstraints(min_length = 1)]
 
 
 #: Type for a string that validates as a URL
@@ -63,16 +71,16 @@ class ForwardedQueryParamRule(te.TypedDict, total = False):
     """
     Model for a forwarded query parameter rule.
     """
-    value: constr(min_length = 1)
-    pattern: constr(min_length = 1)
+    value: NonEmptyString
+    pattern: NonEmptyString
 
 
 class ForwardedQueryParam(te.TypedDict, total = False):
     """
     Model for a forwarded query parameter.
     """
-    name: constr(min_length = 1)
-    default: t.List[constr(min_length = 1)]
+    name: NonEmptyString
+    default: t.List[NonEmptyString]
     allow: t.List[ForwardedQueryParamRule]
 
 
@@ -85,9 +93,9 @@ class OIDCConfig(Section):
     #: containing OIDC credentials to use for each service
     discovery_enabled: bool = False
     #: The template to use for the names of discovery secrets
-    discovery_secret_name_template: constr(min_length = 1) = "oidc-discovery-{service_name}"
+    discovery_secret_name_template: NonEmptyString = "oidc-discovery-{service_name}"
     #: The template to use for the secret containing the cookie secret for the OAuth2 proxy
-    oauth2_proxy_cookie_secret_template: constr(min_length = 1) = "oidc-cookie-{service_name}"
+    oauth2_proxy_cookie_secret_template: NonEmptyString = "oidc-cookie-{service_name}"
     #: The query parameters that are passed to the IDP in the authorize request
     #: For example, Keycloak allows a kc_idp_hint parameter that can be used to
     #: pre-select an identity provider
@@ -154,10 +162,10 @@ class HelmClientConfiguration(Section):
     """
     #: The default timeout to use with Helm releases
     #: Can be an integer number of seconds or a duration string like 5m, 5h
-    default_timeout: t.Union[int, constr(min_length = 1)] = "5m"
+    default_timeout: t.Union[int, NonEmptyString] = "5m"
     #: The executable to use
     #: By default, we assume Helm is on the PATH
-    executable: constr(min_length = 1) = "helm"
+    executable: NonEmptyString = "helm"
     #: The maximum number of revisions to retain in the history of releases
     history_max_revisions: int = 3
     #: Indicates whether to verify TLS when pulling charts
@@ -172,19 +180,18 @@ class KubernetesConfig(Section):
     Model for the Kubernetes configuration section.
     """
     #: The field manager name to use for server-side apply
-    easykube_field_manager: constr(min_length = 1) = "zenith-sync"
+    easykube_field_manager: NonEmptyString = "zenith-sync"
 
     #: The namespace that the sync component is running in
     self_namespace: str
     #: The namespace to create Zenith service resources in
     target_namespace: str = "zenith-services"
 
-    #: The chart repository containing the service chart
-    service_chart_repo: AnyHttpUrl = "https://stackhpc.github.io/zenith"
-    #: The name of the service chart
-    service_chart_name: constr(min_length = 1) = "zenith-service"
-    #: The version of the service chart
-    service_chart_version: constr(min_length = 1) = "main"
+    #: The Helm chart repo, name and version to use for the zenith-service chart
+    #: By default, this points to a local chart that is baked into the Docker image
+    service_chart_name: NonEmptyString = "/charts/zenith-service"
+    service_chart_repo: t.Optional[AnyHttpUrl] = None
+    service_chart_version: t.Optional[SemVerVersion] = None
     #: Default values for releases of the service chart
     service_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
 
@@ -195,7 +202,7 @@ class KubernetesConfig(Section):
     #: The annotation used to record that a secret is a mirror of another secret
     tls_mirror_annotation: str = "zenith.stackhpc.com/mirrors"
     #: The maximum delay between retries when backing off
-    reconciliation_max_backoff: conint(gt = 0) = 60
+    reconciliation_max_backoff: t.Annotated[int, Field(gt = 0)] = 60
     #: The ingress configuration
     ingress: IngressConfig
     #: The Helm client configuration
@@ -213,6 +220,11 @@ class SyncConfig(
     """
     #: The logging configuration
     logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
+
+    #: The name of the processor type to use
+    processor_type: NonEmptyString = "helm"
+    #: The name of the store type to use
+    store_type: NonEmptyString = "consul"
 
     #: The Consul configuration
     consul: ConsulConfig = Field(default_factory = ConsulConfig)
