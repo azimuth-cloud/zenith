@@ -10,7 +10,7 @@ charset-normalizer==3.3.2
 click==8.1.7
 configomatic==0.2.0
 cryptography==42.0.5
-easykube==0.2.0
+easykube==0.3.0
 exceptiongroup==1.2.0
 frozenlist==1.4.1
 h11==0.14.0
