@@ -86,7 +86,6 @@ class Backend(base.Backend):
         labels[self.fingerprint_label] = fingerprint_urlsafe(fingerprint)
         spec = service.setdefault("spec", {})
         spec["publicKeyFingerprint"] = fingerprint_str(fingerprint)
-        print(service)
         try:
             _ = await self.ekclient.replace_object(service)
         except ApiError as exc:
@@ -94,6 +93,16 @@ class Backend(base.Backend):
                 raise base.SubdomainAlreadyInitialised(subdomain)
             else:
                 raise
+
+    async def subdomain_for_public_key(self, fingerprint: bytes) -> str:
+        # Fetch the first subdomain record that has the fingerprint as a label
+        ekresource = await self._ekresource()
+        labels = { self.fingerprint_label: fingerprint_urlsafe(fingerprint) }
+        service = await ekresource.first(labels = labels)
+        if service:
+            return service.metadata.name
+        else:
+            raise base.PublicKeyNotAssociated(fingerprint)
 
     @classmethod
     def from_config(cls, config_obj: config.RegistrarConfig) -> "Backend":
