@@ -46,27 +46,41 @@ class Backend(base.Backend):
         """
         await self.ekclient.__aexit__(None, None, None)
 
-    async def _ekresource(self):
-        """
-        Returns an easykube resource for manipulating services.
-        """
-        return await self.ekclient.api(self.api_version).resource("services")
-
     async def reserve_subdomain(self, subdomain: str):
         # Create the service record
         # If we are the one that gets to do the create, we win any races
-        ekresource = await self._ekresource()
+        ekservices = await self.ekclient.api(self.api_version).resource("services")
         try:
-            _ = await ekresource.create({ "metadata": { "name": subdomain } })
+            service = await ekservices.create({ "metadata": { "name": subdomain } })
         except ApiError as exc:
             if exc.status_code == 409:
                 raise base.SubdomainAlreadyReserved(subdomain)
             else:
                 raise
+        # Also create an empty endpoints resource that is owned by the service
+        ekendpoints = await self.ekclient.api(self.api_version).resource("endpoints")
+        _ = await ekendpoints.create_or_replace(
+            subdomain,
+            {
+                "metadata": {
+                    "name": service["metadata"]["name"],
+                    "namespace": service["metadata"]["namespace"],
+                    "ownerReferences": [
+                        {
+                            "apiVersion": service["apiVersion"],
+                            "kind": service["kind"],
+                            "name": service["metadata"]["name"],
+                            "uid": service["metadata"]["uid"],
+                            "blockOwnerDeletion": True,
+                        },
+                    ],
+                }
+            }
+        )
 
     async def init_subdomain(self, subdomain: str, fingerprint: bytes):
         # Fetch the existing service record for the subdomain
-        ekresource = await self._ekresource()
+        ekresource = await self.ekclient.api(self.api_version).resource("services")
         try:
             service = await ekresource.fetch(subdomain)
         except ApiError as exc:
@@ -96,7 +110,7 @@ class Backend(base.Backend):
 
     async def subdomain_for_public_key(self, fingerprint: bytes) -> str:
         # Fetch the first subdomain record that has the fingerprint as a label
-        ekresource = await self._ekresource()
+        ekresource = await self.ekclient.api(self.api_version).resource("services")
         labels = { self.fingerprint_label: fingerprint_urlsafe(fingerprint) }
         service = await ekresource.first(labels = labels)
         if service:

@@ -1,12 +1,67 @@
+import datetime
+
 from pydantic import Field
 
 from kube_custom_resource import CustomResource, schema
+
+
+class EndpointStatus(schema.Enum):
+    """
+    Enumeration of possible endpoint statuses.
+    """
+    PASSING = "passing"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class Endpoint(schema.BaseModel):
+    """
+    Model for an endpoint.
+    """
+    address: schema.constr(min_length = 1) = Field(
+        ...,
+        description = "The address for the endpoint."
+    )
+    port: schema.conint(gt = 0) = Field(
+        ...,
+        description = "The port for the endpoint."
+    )
+    status: EndpointStatus = Field(
+        ...,
+        description = "The status of the endpoint."
+    )
+    last_seen: datetime.datetime = Field(
+        ...,
+        description = "The time at which the endpoint was last seen."
+    )
+    ttl: schema.conint(gt = 0) = Field(
+        ...,
+        description = (
+            "The number of seconds since the last seen time after which "
+            "the endpoint will be moved to the critical status."
+        )
+    )
+    reap_after: schema.conint(gt = 0) = Field(
+        ...,
+        description = (
+            "The number of seconds since the last seen time after which "
+            "the endpoint will be removed."
+        )
+    )
+    config: schema.Dict[str, schema.Any] = Field(
+        default_factory = dict,
+        description = "The config for the endpoint."
+    )
 
 
 class EndpointsSpec(schema.BaseModel):
     """
     Model for the spec of an endpoints resource.
     """
+    endpoints: schema.Dict[str, Endpoint] = Field(
+        default_factory = dict,
+        description = "The endpoints, indexed by ID."
+    )
 
 
 class Endpoints(

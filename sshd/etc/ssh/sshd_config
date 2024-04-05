@@ -54,4 +54,5 @@ AllowAgentForwarding no
 AllowStreamLocalForwarding no
 PermitTunnel no
 PermitUserEnvironment no
+PermitUserRC no
 X11Forwarding no

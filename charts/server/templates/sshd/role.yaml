@@ -1,0 +1,16 @@
+{{- if .Values.sshd.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "zenith.componentname" (list . "sshd") }}
+  labels: {{ include "zenith.componentLabels" (list . "sshd") | nindent 4 }}
+  namespace: {{ .Values.common.kubernetes.targetNamespace }}
+rules:
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - endpoints
+    verbs:
+      - list
+      - patch
+{{- end }}

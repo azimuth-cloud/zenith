@@ -1,9 +1,3 @@
-# Configuration for Consul
-# See https://www.consul.io/docs/k8s/helm
-consul:
-  # Whether or not to deploy a Consul instance
-  enabled: true
-
 # The ingress configuration can also from from globals
 # This is mainly to reduce duplication when integrating with Azimuth
 # In the future, other consumers could adopt the same conventions to reduce duplication when defining ingress
@@ -50,63 +44,9 @@ common:
 sync:
   enabled: true
   # Configuration for the sync component
-  # Defaults are taken from the common configuration where appropriate
   config:
-    # The Consul configuration
-    # consul:
-    #   # The address of the Consul server
-    #   address:
-    #   # The port of the Consul server
-    #   port:
-    #   # The tag to use for identifying Zenith services in Consul
-    #   serviceTag:
-    #   # The prefix to use for Zenith service config in Consul KV
-    #   configKeyPrefix:
-    #   # The timeout to use with Consul blocking queries
-    #   blockingQueryTimeout:
-    # The Kubernetes configuration
     kubernetes:
       ingress: {}
-        # # The base domain to use for services exposed by Zenith
-        # baseDomain:
-        # # The ingress class to use
-        # className:
-        # # The annotations to use - these are merged with the common annotations
-        # annotations:
-        # # The TLS configuration
-        # tls:
-        #   # Indicates if TLS should be enabled (default true)
-        #   enabled:
-        #   # The name of a secret containing a wildcard certificate
-        #   secretName:
-        #   # TLS-specific annotations
-        #   annotations:
-        # # The OIDC auth configuration
-        # oidc:
-        #   # Indicates if OIDC credential discovery should be enabled
-        #   discoveryEnabled: true
-        #   # The Helm chart to use for the oauth2-proxy that provides OIDC auth for services
-        #   oauth2ProxyChartRepo:
-        #   oauth2ProxyChartName:
-        #   oauth2ProxyChartVersion:
-        #   # The default values for the oauth2-proxy releases for OIDC-authenticated services
-        #   oauth2ProxyDefaultValues: {}
-        # # The external auth configuration
-        # externalAuth:
-        #   # The URL for verifying incoming requests
-        #   url:
-        #   # The URL to redirect to when the verify URL returns a 401
-        #   # If not set, the 401 will just be returned
-        #   signinUrl:
-        #   # The URL parameter to contain the original URL when redirecting to the signin URL
-        #   nextUrlParam: next
-        #   # Dictionary of headers to set for authentication requests
-        #   # These will override headers from the incoming request, which would otherwise be forwarded
-        #   # In particular, you may need to override the accepts header to suit the content types served
-        #   # by the external authentication service
-        #   requestHeaders: {}
-        #   # List of headers from the authentication response to add to the upstream request
-        #   responseHeaders: []
   # The image to use for the sync component
   image:
     repository: ghcr.io/stackhpc/zenith-sync
@@ -135,23 +75,8 @@ sync:
 
 sshd:
   enabled: true
+  # Config for the SSHD server
   config: {}
-    # The address of the Consul agent
-    # consulAddress:
-    # The port of the Consul agent
-    # consulPort:
-    # The heartbeat interval for services created in Consul
-    # consulHeartbeatInterval:
-    # The interval after which a service in Consul will be deregistered
-    # consulDeregisterInterval:
-    # The number of times that posting a heartbeat to Consul can fail before a tunnel is closed
-    # consulHeartbeatFailures:
-    # The prefix to use for additional service information for Zenith services in Consul KV
-    # consulKeyPrefix:
-    # The tag to use when registering services with Consul
-    # serviceTag:
-    # The number of seconds to wait to receive a tunnel configuration before exiting
-    # configureTimeout:
   # The image to use for the SSHD server
   image:
     repository: ghcr.io/stackhpc/zenith-sshd
@@ -197,42 +122,12 @@ registrar:
   enabled: true
   # The registrar configuration
   config:
-    # The key that is used to sign the subdomain tokens
-    # subdomainTokenSigningKey:
-    # The shared token that is permitted to reserve subdomains
-    # reserveToken:
-    # The shared token that is permitted to verify SSH public keys
-    # verifyToken:
-    # The base domain used for Zenith services
     baseDomain: "{{ pluck \"baseDomain\" .Values.common.ingress .Values.global.ingress | first }}"
-    # A list of subdomains that are reserved and cannot be used for Zenith services
     reservedSubdomains: []
-    # The set of allowed SSH key types
-    # sshAllowedKeyTypes: [ssh-rsa, ssh-ed25519, ...] 
-    # The minimum size for RSA keys
-    # sshRsaMinBits:
-    # The address of the Consul server
-    # consulAddress:
-    # The port of the Consul server
-    # consulPort:
-    # The prefix to use for Consul keys (different to the service prefix)
-    # consulKeyPrefix:
   # The registrar ingress configuration
   ingress:
     # The subdomain that will be reserved for the registrar
     subdomain: registrar
-    # The host for the ingress resource
-    # host:
-    # The annotations for the ingress resource
-    # annotations:
-    # The class name for the ingress resource
-    # className:
-    # The TLS configuration for the ingress resource
-    # tls:
-      # Indicates whether TLS should be enabled for the ingress resource
-      # enabled: true
-      # The name of a secret containing a wildcard certificate, if required
-      # secretName:
   # The image to use for the registrar
   image:
     repository: ghcr.io/stackhpc/zenith-registrar

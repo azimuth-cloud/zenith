@@ -6,15 +6,28 @@ logging:
       format: "[%(asctime)s] %(name)-20.20s [%(levelname)-8.8s] %(subdomain)s{%(tunnelid)s} %(message)s"
 
   handlers:
-    # Handlers pointing directly to the stdout/err of the SSHD process
-    # Used to push logs to the SSHD stdout/err from the tunnel script, where stdout/err go to the client
-    # This only works because all the processes run as the zenith user
+    # NOTE: This fd trick works because all procs run as zenith, including SSHD
+    # Handlers pointing directly to the stdout/err of the SSHD process, using the default format
+    # Used for the root logger
+    sshd_stdout:
+      class: logging.FileHandler
+      filename: /proc/1/fd/1
+      formatter: default
+      filters:
+        - less_than_warning
+    sshd_stderr:
+      class: logging.FileHandler
+      filename: /proc/1/fd/2
+      formatter: default
+      level: WARNING
+    # Handlers pointing directly to the stdout/err of the SSHD process, using the format that
+    # shows subdomain and tunnel ID
+    # Used only for the tunnel logger
     tunnel_sshd_stdout:
       class: logging.FileHandler
       filename: /proc/1/fd/1
       formatter: tunnel_sshd
       filters:
-        # The is in the default filters
         - less_than_warning
     tunnel_sshd_stderr:
       class: logging.FileHandler
@@ -23,11 +36,18 @@ logging:
       level: WARNING
 
   loggers:
-    # Add the tunnel_sshd_stdout/err handlers to the tunnel logger
-    # The stdout/err handlers are used to send logs to the client
+    # Send logs for the root logger to the SSHD stdout/err
+    "":
+      handlers:
+        - sshd_stdout
+        - sshd_stderr
+    # Send the tunnel logs to the stdout/err of the forked SSHD process
+    # That should mean that these are the only logs that the client sees
+    # Also send them to SSHD stdout/err using the tunnel handlers
     zenith.sshd.tunnel:
       handlers:
         - stdout
         - stderr
         - tunnel_sshd_stdout
         - tunnel_sshd_stderr
+      propagate: false

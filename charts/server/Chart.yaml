@@ -5,10 +5,3 @@ type: application
 # The version and appVersion are updated by the chart build script
 version: 0.1.0
 appVersion: main
-
-dependencies:
-  - name: consul
-    # This can never change as this is the last MPL-licenced version
-    version: ~1.2.0
-    repository: https://helm.releases.hashicorp.com
-    condition: consul.enabled

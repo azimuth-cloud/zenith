@@ -83,10 +83,11 @@ def start(ctx):
     ctx.forward(ensure_hostkeys)
     ctx.obj["LOGGER"].info("Collecting forwarded environment variables")
     # Ensure all environment variables starting ZENITH_SSHD are forwarded by SSHD
+    # Also ensure that the host and port for the Kubernetes API server are available to tunnels
     forward_env = " ".join(
         f"{name}=\"{value}\""
         for name, value in os.environ.items()
-        if name.startswith("ZENITH_SSHD_")
+        if name.startswith("ZENITH_SSHD_") or name.startswith("KUBERNETES_SERVICE_")
     )
     ctx.obj["LOGGER"].info("Starting SSHD")
     # Run SSHD by replacing the current process
