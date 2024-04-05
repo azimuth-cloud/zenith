@@ -8,7 +8,8 @@ from ... import config, model
 
 from .. import base
 
-from . import models
+from . import models as crds
+from .models import v1alpha1 as api
 
 
 class Store(base.Store):
@@ -35,7 +36,7 @@ class Store(base.Store):
         """
         await self.ekclient.__aenter__()
         # Register the CRDs
-        self.registry.discover_models(models)
+        self.registry.discover_models(crds)
         for crd in self.registry:
             await self.ekclient.apply_object(crd.kubernetes_resource(), force = True)
 
@@ -55,31 +56,52 @@ class Store(base.Store):
             resource = f"{resource}/{subresource}"
         return await api.resource(resource)
 
-    async def _service_for_endpoints(self, endpoints):
+    def _service_for_endpoints(self, endpoints):
         """
         Produces a service DTO instance for the given endpoints resource.
         """
+        # Parse the endpoint into a model instance
+        endpoints = api.Endpoints.model_validate(endpoints)
+        return model.Service(
+            name = endpoints.metadata.name,
+            endpoints = [
+                model.Endpoint(address = ep.address, port = ep.port)
+                for ep in endpoints.spec.endpoints.values()
+                if ep.status != api.EndpointStatus.CRITICAL
+            ],
+            # Merge the configs associated with each endpoint
+            config = {
+                k: v
+                for ep in endpoints.spec.endpoints.values()
+                for k, v in ep.config.items()
+            }
+        )
 
     async def _produce_events(self, ep_events):
         """
         Yield event DTOs for each endpoints event.
         """
         async for event in ep_events:
-            print(event)
-            if False:
-                yield
+            if event["type"] == "ADDED":
+                event_type = model.EventKind.CREATED
+            elif event["type"] == "MODIFIED":
+                event_type = model.EventKind.UPDATED
+            elif event["type"] == "DELETED":
+                event_type = model.EventKind.DELETED
+            else:
+                continue
+            yield model.Event(event_type, self._service_for_endpoints(event["object"]))
 
     async def watch(self) -> typing.Tuple[
         typing.Iterable[model.Service],
         typing.AsyncIterable[model.Event]
     ]:
-        ekresource = await self._ekresource_for_model(models.v1alpha1.Endpoints)
+        ekresource = await self._ekresource_for_model(api.Endpoints)
         initial_eps, ep_events = await ekresource.watch_list()
-        # Produce the initial services
-        initial_services = []
-        for ep in initial_eps:
-            initial_services.append(await self._service_for_endpoints(ep))
-        return [], self._produce_events(ep_events)
+        return (
+            [self._service_for_endpoints(ep) for ep in initial_eps],
+            self._produce_events(ep_events)
+        )
 
     @classmethod
     def from_config(cls, config_obj: config.SyncConfig) -> "Store":
