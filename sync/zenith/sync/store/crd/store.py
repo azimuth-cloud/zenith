@@ -1,7 +1,9 @@
+import asyncio
+import datetime
 import logging
 import typing
 
-from easykube import Configuration, ApiError
+from easykube import Configuration
 from kube_custom_resource import CustomResourceRegistry
 
 from ... import config, model
@@ -102,6 +104,48 @@ class Store(base.Store):
             [self._service_for_endpoints(ep) for ep in initial_eps],
             self._produce_events(ep_events)
         )
+
+    async def run(self):
+        # We need to move dead endpoints into the critical state, and reap old ones
+        ekresource = await self._ekresource_for_model(api.Endpoints)
+        while True:
+            async for endpoints in ekresource.list():
+                endpoints = api.Endpoints.model_validate(endpoints)
+                # Generate the required patch for the endpoints resource
+                patches = []
+                for id, endpoint in endpoints.spec.endpoints.items():
+                    now = datetime.datetime.now(tz = datetime.timezone.utc)
+                    reap_after_delta = datetime.timedelta(seconds = endpoint.reap_after)
+                    ttl_delta = datetime.timedelta(seconds = endpoint.ttl)
+                    # If the endpoint has gone past it's reap delta, remove it
+                    if endpoint.last_seen + reap_after_delta < now:
+                        patches.append(
+                            {
+                                "op": "remove",
+                                "path": f"/spec/endpoints/{id}",
+                            }
+                        )
+                    # Otherwise, if the endpoint has gone past it's TTL mark it as critical
+                    elif (
+                        endpoint.status != api.EndpointStatus.CRITICAL and
+                        endpoint.last_seen + ttl_delta < now
+                    ):
+                        patches.append(
+                            {
+                                "op": "replace",
+                                "path": f"/spec/endpoints/{id}/status",
+                                "value": api.EndpointStatus.CRITICAL.value,
+                            }
+                        )
+                # If there are any patches, apply them
+                if patches:
+                    _ = await ekresource.json_patch(
+                        endpoints.metadata.name,
+                        patches,
+                        namespace = endpoints.metadata.namespace
+                    )
+            # Wait for the configured duration
+            await asyncio.sleep(self.config.crd_endpoint_check_interval)
 
     @classmethod
     def from_config(cls, config_obj: config.SyncConfig) -> "Store":

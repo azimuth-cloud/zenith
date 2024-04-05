@@ -191,6 +191,11 @@ class KubernetesConfig(Section):
     crd_api_group: str = "zenith.stackhpc.com"
     #: The categories for the CRD resources
     crd_categories: t.List[str] = Field(default_factory = lambda: ["zenith"])
+    #: The sleep interval for the endpoint checker
+    #: Assuming the sync component is up, then the maximum time after the last heartbeart
+    #: that a dead endpoint will still be included in the endpoints of a service is the
+    #: ttl of the endpoint plus this interval
+    crd_endpoint_check_interval: t.Annotated[int, Field(gt = 0)] = 10
 
     #: The Helm chart repo, name and version to use for the zenith-service chart
     #: By default, this points to a local chart that is baked into the Docker image

@@ -11,12 +11,20 @@ rules:
   - apiGroups:
       - zenith.stackhpc.com
     resources:
-      - endpoints
       - services
     verbs:
       - list
       - get
       - watch
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - endpoints
+    verbs:
+      - list
+      - get
+      - watch
+      - patch
   # Permissions for the Helm processor
   # For basic services, we need to manage:
   #   * secrets
