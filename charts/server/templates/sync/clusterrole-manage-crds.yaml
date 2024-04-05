@@ -21,6 +21,7 @@ rules:
       - customresourcedefinitions
     resourceNames:
       - endpoints.zenith.stackhpc.com
+      - leases.zenith.stackhpc.com
       - services.zenith.stackhpc.com
     verbs:
       - update

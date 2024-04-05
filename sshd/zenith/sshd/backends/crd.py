@@ -1,9 +1,8 @@
 import datetime
 import logging
 import typing as t
-import uuid
 
-from easykube import Configuration, ApiError
+from easykube import Configuration
 
 from .. import config
 
@@ -51,12 +50,42 @@ class Backend(base.Backend):
         reap_after: int,
         config_dict: t.Dict[str, t.Any]
     ) -> str:
-        # First, generate a UUID for the tunnel
-        tunnel_id = str(uuid.uuid4())
+        # Get the endpoints record, so that it can own our lease
+        ekendpoints = self.ekclient.api(self.api_version).resource("endpoints")
+        endpoints = ekendpoints.fetch(subdomain)
+
+        # Create a lease for the tunnel
+        ekleases = self.ekclient.api(self.api_version).resource("leases")
+        lease = ekleases.create(
+            {
+                "metadata": {
+                    # Generate a name based on the subdomain
+                    # We will use this as the tunnel ID
+                    "generateName": f"{subdomain}-",
+                    "ownerReferences": [
+                        {
+                            "apiVersion": endpoints["apiVersion"],
+                            "kind": endpoints["kind"],
+                            "name": endpoints["metadata"]["name"],
+                            "uid": endpoints["metadata"]["uid"],
+                            "blockOwnerDeletion": True,
+                        },
+                    ],
+                },
+                "spec": {
+                    "renewedAt": isotime(),
+                    "ttl": ttl,
+                    "reapAfter": reap_after,
+                }
+            }
+        )
+
+        # The tunnel ID is the lease name with the subdomain prefix removed
+        tunnel_id = lease["metadata"]["name"].removeprefix(f"{subdomain}-")
+
         # Update the endpoints resource with the endpoint definition
         # The endpoints resource should already exist
-        ekendpoints = self.ekclient.api(self.api_version).resource("endpoints")
-        _ = ekendpoints.patch(
+        ekendpoints.patch(
             subdomain,
             {
                 "spec": {
@@ -66,28 +95,33 @@ class Backend(base.Backend):
                             "port": port,
                             # The initial status is critical, until the first heartbeat
                             "status": base.TunnelStatus.CRITICAL.value,
-                            "lastSeen": isotime(),
-                            "ttl": ttl,
-                            "reapAfter": reap_after,
                             "config": config_dict,
                         },
                     },
                 },
             }
         )
+    
         return tunnel_id
 
     def tunnel_heartbeat(self, subdomain: str, id: str, status: base.TunnelStatus):
-        # Update the status and lastSeen for the tunnel
-        ekendpoints = self.ekclient.api(self.api_version).resource("endpoints")
-        _ = ekendpoints.patch(
+        # Renew the lease
+        self.ekclient.api(self.api_version).resource("leases").patch(
+            f"{subdomain}-{id}",
+            {
+                "spec": {
+                    "renewedAt": isotime(),
+                },
+            }
+        )
+        # Update the endpoint status
+        self.ekclient.api(self.api_version).resource("endpoints").patch(
             subdomain,
             {
                 "spec": {
                     "endpoints": {
                         id: {
                             "status": status.value,
-                            "lastSeen": isotime(),
                         },
                     },
                 },
@@ -96,8 +130,7 @@ class Backend(base.Backend):
 
     def tunnel_terminate(self, subdomain: str, id: str):
         # Remove the tunnel from the endpoints object
-        ekendpoints = self.ekclient.api(self.api_version).resource("endpoints")
-        _ = ekendpoints.json_patch(
+        self.ekclient.api(self.api_version).resource("endpoints").json_patch(
             subdomain,
             [
                 {
@@ -106,6 +139,8 @@ class Backend(base.Backend):
                 },
             ]
         )
+        # Delete the lease
+        self.ekclient.api(self.api_version).resource("leases").delete(f"{subdomain}-{id}")
 
     def startup(self):
         self.ekclient.__enter__()

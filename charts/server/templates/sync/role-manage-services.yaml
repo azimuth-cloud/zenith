@@ -25,6 +25,14 @@ rules:
       - get
       - watch
       - patch
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - leases
+    verbs:
+      - list
+      - patch
+      - delete
   # Permissions for the Helm processor
   # For basic services, we need to manage:
   #   * secrets

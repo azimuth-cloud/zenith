@@ -17,7 +17,13 @@ class ServiceSpec(schema.BaseModel):
 class Service(
     CustomResource,
     subresources = {"status": {}},
-    printer_columns = []
+    printer_columns = [
+        {
+            "name": "Fingerprint",
+            "type": "string",
+            "jsonPath": ".spec.publicKeyFingerprint",
+        },
+    ]
 ):
     """
     Custom resource for a Zenith service.

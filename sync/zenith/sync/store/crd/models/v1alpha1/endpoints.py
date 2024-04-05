@@ -30,24 +30,6 @@ class Endpoint(schema.BaseModel):
         ...,
         description = "The status of the endpoint."
     )
-    last_seen: datetime.datetime = Field(
-        ...,
-        description = "The time at which the endpoint was last seen."
-    )
-    ttl: schema.conint(gt = 0) = Field(
-        ...,
-        description = (
-            "The number of seconds since the last seen time after which "
-            "the endpoint will be moved to the critical status."
-        )
-    )
-    reap_after: schema.conint(gt = 0) = Field(
-        ...,
-        description = (
-            "The number of seconds since the last seen time after which "
-            "the endpoint will be removed."
-        )
-    )
     config: schema.Dict[str, schema.Any] = Field(
         default_factory = dict,
         description = "The config for the endpoint."

@@ -107,42 +107,41 @@ class Store(base.Store):
 
     async def run(self):
         # We need to move dead endpoints into the critical state, and reap old ones
-        ekresource = await self._ekresource_for_model(api.Endpoints)
+        # To determine which endpoints to reap, we check the leases
+        ekleases = await self._ekresource_for_model(api.Lease)
+        ekendpoints = await self._ekresource_for_model(api.Endpoints)
         while True:
-            async for endpoints in ekresource.list():
-                endpoints = api.Endpoints.model_validate(endpoints)
-                # Generate the required patch for the endpoints resource
-                patches = []
-                for id, endpoint in endpoints.spec.endpoints.items():
-                    now = datetime.datetime.now(tz = datetime.timezone.utc)
-                    reap_after_delta = datetime.timedelta(seconds = endpoint.reap_after)
-                    ttl_delta = datetime.timedelta(seconds = endpoint.ttl)
-                    # If the endpoint has gone past it's reap delta, remove it
-                    if endpoint.last_seen + reap_after_delta < now:
-                        patches.append(
+            now = datetime.datetime.now(tz = datetime.timezone.utc)
+            async for lease in ekleases.list():
+                lease = api.Lease.model_validate(lease)
+                # Split the lease name into the subdomain and ID
+                subdomain, id = lease.metadata.name.split("-", maxsplit = 1)
+                # Check if the lease has expired or needs reaping
+                reap_after_delta = datetime.timedelta(seconds = lease.spec.reap_after)
+                ttl_delta = datetime.timedelta(seconds = lease.spec.ttl)
+                # If the lease has gone past it's reap delta, remove it and the endpoint
+                if lease.spec.renewed_at + reap_after_delta < now:
+                    await ekendpoints.json_patch(
+                        subdomain,
+                        [
                             {
                                 "op": "remove",
                                 "path": f"/spec/endpoints/{id}",
-                            }
-                        )
-                    # Otherwise, if the endpoint has gone past it's TTL mark it as critical
-                    elif (
-                        endpoint.status != api.EndpointStatus.CRITICAL and
-                        endpoint.last_seen + ttl_delta < now
-                    ):
-                        patches.append(
+                            },
+                        ]
+                    )
+                    await ekleases.delete(lease.metadata.name)
+                # If the lease has gone past it's TTL, mark the endpoint as critical
+                elif lease.spec.renewed_at + ttl_delta < now:
+                    await ekendpoints.json_patch(
+                        subdomain,
+                        [
                             {
                                 "op": "replace",
                                 "path": f"/spec/endpoints/{id}/status",
                                 "value": api.EndpointStatus.CRITICAL.value,
-                            }
-                        )
-                # If there are any patches, apply them
-                if patches:
-                    _ = await ekresource.json_patch(
-                        endpoints.metadata.name,
-                        patches,
-                        namespace = endpoints.metadata.namespace
+                            },
+                        ]
                     )
             # Wait for the configured duration
             await asyncio.sleep(self.config.crd_endpoint_check_interval)

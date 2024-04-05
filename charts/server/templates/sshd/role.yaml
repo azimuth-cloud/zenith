@@ -11,6 +11,15 @@ rules:
     resources:
       - endpoints
     verbs:
+      - get
       - list
       - patch
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - leases
+    verbs:
+      - create
+      - patch
+      - delete
 {{- end }}
