@@ -1,6 +1,5 @@
 import base64
 import logging
-import typing
 
 from easykube import Configuration, ApiError
 
@@ -97,7 +96,8 @@ class Backend(base.Backend):
         # Set a label that allows us to search by fingerprint later
         # The label uses a URL-safe version of the fingerprint because of the allowed chars
         labels = service["metadata"].setdefault("labels", {})
-        labels[self.fingerprint_label] = fingerprint_urlsafe(fingerprint)
+        # In case the fingerprint starts with - or _, add a prefix
+        labels[self.fingerprint_label] = f"fp{fingerprint_urlsafe(fingerprint)}"
         spec = service.setdefault("spec", {})
         spec["publicKeyFingerprint"] = fingerprint_str(fingerprint)
         try:
@@ -111,7 +111,8 @@ class Backend(base.Backend):
     async def subdomain_for_public_key(self, fingerprint: bytes) -> str:
         # Fetch the first subdomain record that has the fingerprint as a label
         ekresource = await self.ekclient.api(self.api_version).resource("services")
-        labels = { self.fingerprint_label: fingerprint_urlsafe(fingerprint) }
+        # The label value has a prefix in case the fingerprint starts with - or _
+        labels = { self.fingerprint_label: f"fp{fingerprint_urlsafe(fingerprint)}" }
         service = await ekresource.first(labels = labels)
         if service:
             return service.metadata.name
