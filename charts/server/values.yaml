@@ -163,40 +163,6 @@ metrics:
     enabled: true
     labels:
       grafana_dashboard: "1"
-  # Configuration for the consul exporter
-  consulExporter:
-    # The image to use for the consul exporter
-    # We use a synced version to avoid a dependency on Docker Hub
-    image:
-      repository: ghcr.io/stackhpc/zenith/consul-exporter
-      pullPolicy: IfNotPresent
-      tag: v0.9.0
-    imagePullSecrets: []
-    # The timeout for Consul queries used in the exporter
-    # This is increased from the default to accomodate clusters with many services
-    queryTimeout: 5s
-    # Customise pod-level security context for consul exporter pods
-    podSecurityContext:
-      runAsNonRoot: true
-      runAsUser: 1000
-      runAsGroup: 1000
-      fsGroup: 1000
-    # Customise container-level security context for consul exporter pods
-    securityContext:
-      allowPrivilegeEscalation: false
-      capabilities:
-        drop: [ALL]
-      readOnlyRootFilesystem: true
-    # Resources for consul exporter containers
-    resources: {}
-    # Customise annotations for consul exporter pods
-    podAnnotations: {}
-    # Customise node selector for consul exporter pods
-    nodeSelector: {}
-    # Customise tolerations for consul exporter pods
-    tolerations: []
-    # Customise affinity rules for consul exporter pods
-    affinity: {}
   # Configuration for the Helm exporter
   helmExporter:
     # The image to use for the Helm exporter

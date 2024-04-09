@@ -1,6 +1,4 @@
 docker.io:
   images:
-    prom/consul-exporter:
-      - v0.9.0
     sstarcher/helm-exporter:
       - 1.2.16
