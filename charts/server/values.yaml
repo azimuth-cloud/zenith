@@ -307,7 +307,7 @@ metrics:
     image:
       repository: ghcr.io/stackhpc/zenith/helm-exporter
       pullPolicy: IfNotPresent
-      tag: 1.2.10
+      tag: 1.2.16
     imagePullSecrets: []
     # Customise pod-level security context for helm exporter pods
     podSecurityContext:

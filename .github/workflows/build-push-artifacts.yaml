@@ -88,18 +88,19 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Install skopeo
-        run: sudo apt-get -y update && sudo apt-get install -y skopeo
-
       - name: Mirror exporter images
         run: |-
-          skopeo sync \
-            --src yaml \
-            --dest docker \
-            --dest-creds ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} \
-            --all \
-            skopeo-manifest.yml \
-            ghcr.io/stackhpc/zenith
+          podman run \
+            -v $PWD:/pwd \
+            -w /pwd \
+            quay.io/skopeo/stable:latest \
+            sync \
+              --src yaml \
+              --dest docker \
+              --dest-creds ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} \
+              --all \
+              skopeo-manifest.yml \
+              ghcr.io/stackhpc/zenith
 
   build_push_chart:
     name: Build and push Helm chart
