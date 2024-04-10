@@ -86,7 +86,14 @@ jobs:
         include:
           - key: oauth2-proxy
             component: sync
-            path: ./charts/service/Chart.yaml
+            path: ./sync/chart/Chart.yaml
+            chart_name_jsonpath: dependencies[0].name
+            chart_repo_jsonpath: dependencies[0].repository
+            chart_version_jsonpath: dependencies[0].version
+
+          - key: kube-state-metrics
+            component: metrics
+            path: ./charts/server/Chart.yaml
             chart_name_jsonpath: dependencies[0].name
             chart_repo_jsonpath: dependencies[0].repository
             chart_version_jsonpath: dependencies[0].version

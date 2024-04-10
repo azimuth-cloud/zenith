@@ -163,6 +163,76 @@ metrics:
     enabled: true
     labels:
       grafana_dashboard: "1"
+  prometheus:
+    rules:
+      enabled: true
+    monitor:
+      enabled: true
+      honorLabels: true
+  # Disable all the default collectors
+  collectors: []
+  # Allow kube-state-metrics read-only access to our CRDs
+  rbac:
+    create: true
+    extraRules:
+      - apiGroups:
+          - zenith.stackhpc.com
+        resources:
+          - endpoints
+          - leases
+          - services
+        verbs:
+          - list
+          - watch
+          - get
+  # Configure kube-state-metrics to report only on our custom resources
+  extraArgs:
+    - --custom-resource-state-only=true
+  customResourceState:
+    enabled: true
+    config:
+      kind: CustomResourceStateMetrics
+      spec:
+        resources:
+          - groupVersionKind:
+              group: zenith.stackhpc.com
+              version: v1alpha1
+              kind: Service
+            metricNamePrefix: zenith_service
+            labelsFromPath:
+              service_namespace: [metadata, namespace]
+              service_name: [metadata, name]
+            metrics:
+              - name: info
+                help: "Service info"
+                each:
+                  type: Info
+                  info:
+                    labelsFromPath:
+                      created_at: [metadata, creationTimestamp]
+                      fingerprint: [spec, publicKeyFingerprint]
+
+          - groupVersionKind:
+              group: zenith.stackhpc.com
+              version: v1alpha1
+              kind: Endpoints
+            metricNamePrefix: zenith_service
+            labelsFromPath:
+              service_namespace: [metadata, namespace]
+              service_name: [metadata, name]
+            metrics:
+              - name: endpoint_info
+                help: "Metric for the endpoints of a service"
+                each:
+                  type: Info
+                  info:
+                    path: [spec, endpoints]
+                    labelFromKey: endpoint_id
+                    labelsFromPath:
+                      endpoint_address: [address]
+                      endpoint_port: [port]
+                      endpoint_status: [status]
+
   # Configuration for the Helm exporter
   helmExporter:
     # The image to use for the Helm exporter
