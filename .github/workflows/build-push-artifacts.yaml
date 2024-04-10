@@ -78,7 +78,7 @@ jobs:
           labels: ${{ steps.image-meta.outputs.labels }}
 
   # This task mirrors and tags the current latest version of the
-  # Consul and Helm exporter images, to reduce reliance on Docker Hub
+  # required exporter images, to reduce reliance on Docker Hub
   mirror_exporter_images:
     name: Mirror exporter images
     runs-on: ubuntu-latest

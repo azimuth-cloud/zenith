@@ -2,11 +2,6 @@
 {{- $global := deepCopy .Values.global.ingress }}
 {{- $common := deepCopy .Values.common.ingress }}
 {{- $ingress := mergeOverwrite $global $common }}
-consul:
-  address: {{ tpl .Values.common.consul.address . | quote }}
-  port: {{ .Values.common.consul.port }}
-  serviceTag: {{ .Values.common.consul.serviceTag | quote }}
-  configKeyPrefix: {{ .Values.common.consul.serviceKeyPrefix | quote }}
 kubernetes:
   targetNamespace: {{ .Values.common.kubernetes.targetNamespace }}
   # By default, we use the same chart version for the service chart

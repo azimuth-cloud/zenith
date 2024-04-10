@@ -33,7 +33,6 @@ traffic can then flow to the proxied service, even if that service is behind NAT
       and the
       [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
       for performant, dynamic proxying.
-    * [Hashicorp Consul](https://www.consul.io/) to glue everything together.
     * (Recommended) [cert-manager](https://cert-manager.io/docs/) for managing TLS certificates.
 
 ## Architecture
@@ -48,8 +47,8 @@ The Zenith server consists of three main components, all of which are written in
   * A registrar that allows subdomains to be reserved and issues single-use tokens that can
     be used to associate SSH public keys with those subdomains.
   * A locked-down SSHD server that establishes secure tunnels with the Zenith clients and posts
-    the resulting service information into Consul.
-  * A sync component that receives updates from Consul and synchronises the corresponding
+    the resulting service information into a store.
+  * A sync component that receives updates from the store and synchronises the corresponding
     `Service`, `Endpoint` and `Ingress` resources in Kubernetes.
 
 The Zenith client is also written in [Python](https://www.python.org/), and it is responsible for:
@@ -154,8 +153,11 @@ Forwarding from [::1]:51485 -> 8000
 
 $ curl -X POST -s http://localhost:51485/admin/reserve | jq
 {
-  "subdomain": "oa81x2dhnalln02xjcg4h77bp7jr8gm7",
-  "token": "b2E4MXgyZGhuYWxsbjAyeGpjZzRoNzdicDdqcjhnbTcuOTc0LmUyODgwNjFiMzcxOWYyZTI5NmQyYWIxYTgwOTNhMTNjMDlmZThiNzk="
+  "subdomain": "dgububnqpld9wv7kqac5w5aifiynbteaa3o",
+  "fqdn": "dgububnqpld9wv7kqac5w5aifiynbteaa3o.apps.example.org",
+  "token": "ZGd1YnVibnFwbGQ5d3Y3a3FhYzV3NWFpZml5bmJ0ZWFhM28uNWY3OWUzZmVhZWVmZDA2NjUzODJmNjljNDVjMjM2ZTE3YTRmOTNlZmNjMjg2NWJkNWI1OGRjNjBlNjNlYmNlNg==",
+  "fingerprint": null,
+  "fingerprints": []
 }
 ```
 
@@ -170,32 +172,32 @@ zenith-ssh
 $ docker run \
     --rm \
     -v zenith-ssh:/home/zenith/.ssh \
-    ghcr.io/stackhpc/zenith-client:main \
+    ghcr.io/stackhpc/zenith-client:latest \
     zenith-client init \
       --ssh-identity-path /home/zenith/.ssh/id_zenith \
       --registrar-url ${zenith_registrar_url} \
-      --token b2E4MXgyZGhuYWxsbjAyeGpjZzRoNzdicDdqcjhnbTcuOTc0LmUyODgwNjFiMzcxOWYyZTI5NmQyYWIxYTgwOTNhMTNjMDlmZThiNzk=
+      --token ZGd1YnVibnFwbGQ5d3Y3a3FhYzV3NWFpZml5bmJ0ZWFhM28uNWY3OWUzZmVhZWVmZDA2NjUzODJmNjljNDVjMjM2ZTE3YTRmOTNlZmNjMjg2NWJkNWI1OGRjNjBlNjNlYmNlNg==
 
-[INFO] [INIT] Generating SSH identity at /home/zenith/.ssh/id_zenith
+[2024-04-10 13:10:19,376] zenith.client.init   [INFO    ] Generating SSH identity at /home/zenith/.ssh/id_zenith
 Generating public/private rsa key pair.
 Your identification has been saved in /home/zenith/.ssh/id_zenith
 Your public key has been saved in /home/zenith/.ssh/id_zenith.pub
 The key fingerprint is:
-SHA256:SwFMYyCOB4jztQ3iG6ap4zj0XDySBuNgBqI133E7Q1g zenith-key
+SHA256:c6vjwXKGMcPAoSMekUOdbtUHEvFnA2QP++LmspaMZpE zenith-key
 The key's randomart image is:
 +---[RSA 2048]----+
-|+ . .+=oE        |
-|*++.o.+oo        |
-|==o= = +..       |
-|o*= o o +.       |
-|=+ooo   So       |
-|oo.+ + . .       |
-|o + o . .        |
-|=  o             |
-|o+               |
+|.oo o+=*.        |
+| o.= o+.=.       |
+|..= +  o.=       |
+|...+ o  + .      |
+| .. . =.S..      |
+|   E  .*.o .     |
+|    + +o= .      |
+|   + =o+.o       |
+|  o ..ooo.       |
 +----[SHA256]-----+
-[INFO] [INIT] Uploading public key to registrar at [registrar URL]
-[INFO] [INIT] Public key SHA256:SwFMYyCOB4jztQ3iG6ap4zj0XDySBuNgBqI133E7Q1g uploaded successfully
+[2024-04-10 13:10:19,485] zenith.client.init   [INFO    ] Uploading public key to registrar at [registrar URL]
+[2024-04-10 13:10:19,699] zenith.client.init   [INFO    ] Public key SHA256:c6vjwXKGMcPAoSMekUOdbtUHEvFnA2QP++LmspaMZpE uploaded successfully
 ```
 
 Finally, we launch the Zenith client `connect` command onto the isolated Docker network
@@ -209,7 +211,7 @@ $ docker run \
     --restart unless-stopped \
     --network zenith-test \
     -v zenith-ssh:/home/zenith/.ssh \
-    ghcr.io/stackhpc/zenith-client:main \
+    ghcr.io/stackhpc/zenith-client:latest \
     zenith-client connect \
       --ssh-identity-path /home/zenith/.ssh/id_zenith \
       --server-address ${zenith_sshd_address} \
@@ -224,33 +226,28 @@ We can check the logs from the `connect` command to see that the tunnel establis
 ```
 $ docker logs acbbe2f337edfb821d504482677318d920c5e16ee144034e2b2104c56b7e4623
 
-[INFO] [CLIENT] Switching to uid '1001'
-[INFO] [CLIENT] Writing SSH private key data to temporary file
-[INFO] [CLIENT] Spawning SSH process
-[INFO] [CLIENT] Negotiating tunnel configuration
-Warning: Permanently added '[redacted]:32222' (ECDSA) to the list of known hosts.
-[SERVER] [INFO] Initiating tunnel for subdomain 'oa81x2dhnalln02xjcg4h77bp7jr8gm7'
-[SERVER] [INFO] Waiting for configuration
-eyJhbGxvY2F0ZWRfcG9ydCI6IDQwOTEzLCAiYmFja2VuZF9wcm90b2NvbCI6ICJodHRwIn0=
+[2024-04-10 13:12:51,123] zenith.client.tunnel [INFO    ] Switching to uid '1001'
+[2024-04-10 13:12:51,124] zenith.client.tunnel [INFO    ] Writing SSH private key data to temporary file
+[2024-04-10 13:12:51,124] zenith.client.tunnel [INFO    ] Spawning SSH process
+[2024-04-10 13:12:51,124] zenith.client.tunnel [INFO    ] Negotiating tunnel configuration
+Warning: Permanently added '[redacted]:2222' (ED25519) to the list of known hosts.
+[2024-04-10 13:12:53,073] zenith.sshd.tunnel   [INFO    ] Negotiating tunnel configuration
+eyJhbGxvY2F0ZWRfcG9ydCI6IDQzMDk1LCAiYmFja2VuZF9wcm90b2NvbCI6ICJodHRwIiwgInNr
+aXBfYXV0aCI6IGZhbHNlfQ==
 
 END_CONFIGURATION
-[INFO] [CLIENT] Tunnel configured successfully
-[SERVER] [INFO] Received configuration: {
-  "allocated_port": 40913,
-  "backend_protocol": "http"
-}
-[SERVER] [INFO] Checking if Consul service already exists for allocated port
-[SERVER] [INFO] No existing service found
-[SERVER] [INFO] Registering service with Consul
-[SERVER] [INFO] Registered service successfully
-[SERVER] [INFO] Updating service health status in Consul
-[SERVER] [INFO] Service health updated successfully
-[SERVER] [INFO] Updating service health status in Consul
-[SERVER] [INFO] Service health updated successfully
+[2024-04-10 13:12:53,110] zenith.client.tunnel [INFO    ] Tunnel configured successfully
+[2024-04-10 13:12:53,107] zenith.sshd.tunnel   [INFO    ] Received tunnel configuration
+[2024-04-10 13:12:53,108] zenith.sshd.tunnel   [INFO    ] Allocated port for tunnel: 43095
+[2024-04-10 13:12:53,164] zenith.sshd.tunnel   [INFO    ] Posted heartbeat with status 'passing'
+[2024-04-10 13:13:03,185] zenith.sshd.tunnel   [INFO    ] Posted heartbeat with status 'passing'
+[2024-04-10 13:13:13,207] zenith.sshd.tunnel   [INFO    ] Posted heartbeat with status 'passing'
+[2024-04-10 13:13:23,226] zenith.sshd.tunnel   [INFO    ] Posted heartbeat with status 'passing'
+[2024-04-10 13:13:33,248] zenith.sshd.tunnel   [INFO    ] Posted heartbeat with status 'passing'
 ...
 ```
 
-The subdomain that is associated with the SSH key is verified and printed, then the client and
-server negotiate the tunnel configuration.
+The subdomain that is associated with the SSH key is verified, then the client and server
+negotiate the tunnel configuration.
 
 The NGINX test page will now be available at `http[s]://[subdomain].[zenith_base_domain]`.

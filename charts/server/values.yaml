@@ -24,18 +24,6 @@ common:
   # Ingress configuration
   # This overrides global.ingress, and can be overridden by component-specific settings
   ingress: {}
-  # Consul configuration
-  consul:
-    # The address of the Consul server
-    address: "{{ .Release.Name }}-consul-server"
-    # The port of the Consul server
-    port: 8500
-    # The tag to use for identifying Zenith services in Consul
-    serviceTag: "zenith-service"
-    # The prefix to use for additional service information for Zenith services in Consul KV
-    serviceKeyPrefix: "zenith/services"
-    # The prefix to use for registrar information in Consul KV
-    registrarKeyPrefix: "zenith"
   # Common Kubernetes configuration
   kubernetes:
     # The target namespace for Zenith services

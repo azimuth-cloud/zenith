@@ -29,15 +29,7 @@ spec:
           image: {{ printf "%s:%s" .Values.sshd.image.repository (default .Chart.AppVersion .Values.sshd.image.tag) }}
           imagePullPolicy: {{ .Values.sshd.image.pullPolicy }}
           env:
-            {{- if not .Values.sshd.config.consulAddress }}
-            # If a Consul agent address is not explicitly specified, we will attempt to connect
-            # to an agent running on the host (as deployed by the Consul Helm chart)
-            - name: ZENITH_SSHD__CONSUL_ADDRESS
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
-            {{- end }}
-            # The pod IP should ALWAYS be used as the service host in Consul, even if service
+            # The pod IP should ALWAYS be used as the service host, even if service
             # host is specified in the configuration
             - name: ZENITH_SSHD__SERVICE_HOST
               valueFrom:
