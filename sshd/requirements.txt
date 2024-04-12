@@ -5,7 +5,7 @@ charset-normalizer==3.3.2
 click==8.1.7
 configomatic==0.2.0
 cryptography==42.0.5
-idna==3.6
+idna==3.7
 pycparser==2.22
 pydantic==2.7.0
 pydantic_core==2.18.0
