@@ -50,16 +50,19 @@ class Backend(base.Backend):
         reap_after: int,
         config_dict: t.Dict[str, t.Any]
     ) -> str:
+        # Fetch the service resource, so that it can own the endpoints resource
+        # It also means we fail early if something has gone awry with the registrar
+        ekservices = self.ekclient.api(self.api_version).resource("services")
+        service = ekservices.fetch(subdomain)
+
         # Get the endpoints record, so that it can own our lease
         # If it doesn't exist, create it
-        ekservices = self.ekclient.api(self.api_version).resource("services")
         ekendpoints = self.ekclient.api(self.api_version).resource("endpoints")
         try:
             endpoints = ekendpoints.fetch(subdomain)
         except ApiError as exc:
             if exc.status_code == 404:
                 # Fetch the service so it can own the endpoints resource
-                service = ekservices.fetch(subdomain)
                 endpoints = ekendpoints.create(
                     {
                         "metadata": {
