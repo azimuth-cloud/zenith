@@ -50,7 +50,7 @@ class SSHDConfig(
     #: The number of times that posting a heartbeat can fail before a tunnel is closed
     heartbeat_failures: int = 3
     #: The number of seconds after the last heartbeat that a tunnel should be reaped
-    reap_after: conint(gt = 0) = 60
+    reap_after: conint(gt = 0) = 120
 
     #: The host to use when registering services with Consul
     service_host: str = Field(default_factory = default_service_host)
