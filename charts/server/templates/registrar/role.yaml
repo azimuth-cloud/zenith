@@ -18,12 +18,4 @@ rules:
       - watch
       - create
       - update
-  - apiGroups:
-      - zenith.stackhpc.com
-    resources:
-      - endpoints
-    verbs:
-      - get
-      - create
-      - update
 {{- end }}

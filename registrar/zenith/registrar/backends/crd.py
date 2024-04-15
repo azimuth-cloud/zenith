@@ -50,32 +50,12 @@ class Backend(base.Backend):
         # If we are the one that gets to do the create, we win any races
         ekservices = await self.ekclient.api(self.api_version).resource("services")
         try:
-            service = await ekservices.create({ "metadata": { "name": subdomain } })
+            _ = await ekservices.create({ "metadata": { "name": subdomain } })
         except ApiError as exc:
             if exc.status_code == 409:
                 raise base.SubdomainAlreadyReserved(subdomain)
             else:
                 raise
-        # Also create an empty endpoints resource that is owned by the service
-        ekendpoints = await self.ekclient.api(self.api_version).resource("endpoints")
-        _ = await ekendpoints.create_or_replace(
-            subdomain,
-            {
-                "metadata": {
-                    "name": service["metadata"]["name"],
-                    "namespace": service["metadata"]["namespace"],
-                    "ownerReferences": [
-                        {
-                            "apiVersion": service["apiVersion"],
-                            "kind": service["kind"],
-                            "name": service["metadata"]["name"],
-                            "uid": service["metadata"]["uid"],
-                            "blockOwnerDeletion": True,
-                        },
-                    ],
-                }
-            }
-        )
 
     async def init_subdomain(self, subdomain: str, fingerprint: bytes):
         # Fetch the existing service record for the subdomain

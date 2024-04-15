@@ -2,7 +2,7 @@ import datetime
 import logging
 import typing as t
 
-from easykube import Configuration
+from easykube import Configuration, ApiError
 
 from .. import config
 
@@ -51,8 +51,34 @@ class Backend(base.Backend):
         config_dict: t.Dict[str, t.Any]
     ) -> str:
         # Get the endpoints record, so that it can own our lease
+        # If it doesn't exist, create it
+        ekservices = self.ekclient.api(self.api_version).resource("services")
         ekendpoints = self.ekclient.api(self.api_version).resource("endpoints")
-        endpoints = ekendpoints.fetch(subdomain)
+        try:
+            endpoints = ekendpoints.fetch(subdomain)
+        except ApiError as exc:
+            if exc.status_code == 404:
+                # Fetch the service so it can own the endpoints resource
+                service = ekservices.fetch(subdomain)
+                endpoints = ekendpoints.create(
+                    {
+                        "metadata": {
+                            "name": service["metadata"]["name"],
+                            "namespace": service["metadata"]["namespace"],
+                            "ownerReferences": [
+                                {
+                                    "apiVersion": service["apiVersion"],
+                                    "kind": service["kind"],
+                                    "name": service["metadata"]["name"],
+                                    "uid": service["metadata"]["uid"],
+                                    "blockOwnerDeletion": True,
+                                },
+                            ],
+                        }
+                    }
+                )
+            else:
+                raise
 
         # Create a lease for the tunnel
         ekleases = self.ekclient.api(self.api_version).resource("leases")

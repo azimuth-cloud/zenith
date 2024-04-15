@@ -9,10 +9,17 @@ rules:
   - apiGroups:
       - zenith.stackhpc.com
     resources:
+      - services
+    verbs:
+      - get
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
       - endpoints
     verbs:
       - get
       - list
+      - create
       - patch
   - apiGroups:
       - zenith.stackhpc.com
