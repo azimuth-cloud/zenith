@@ -32,6 +32,8 @@ class SSHDConfig(
     crd_api_version: str = "zenith.stackhpc.com/v1alpha1"
     #: The target namespace for the CRD backend
     crd_target_namespace: str = "zenith-services"
+    #: The maximum number of endpoints that are permitted on a single resource
+    crd_max_endpoints: conint(gt = 0) = 50
 
     #: The address of the Consul server
     consul_address: str = "127.0.0.1"
@@ -48,7 +50,7 @@ class SSHDConfig(
     #: The number of times that posting a heartbeat can fail before a tunnel is closed
     heartbeat_failures: int = 3
     #: The number of seconds after the last heartbeat that a tunnel should be reaped
-    reap_after: conint(gt = 0) = 600
+    reap_after: conint(gt = 0) = 60
 
     #: The host to use when registering services with Consul
     service_host: str = Field(default_factory = default_service_host)

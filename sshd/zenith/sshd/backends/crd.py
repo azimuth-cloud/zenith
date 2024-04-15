@@ -9,6 +9,12 @@ from .. import config
 from . import base
 
 
+class MaximumNumberOfEndpointsExceeded(Exception):
+    """
+    Raised when the maximum number of endpoints has been exceeded.
+    """
+
+
 def isotime() -> str:
     """
     Returns the current time as an ISO8601 formatted string.
@@ -24,7 +30,8 @@ class Backend(base.Backend):
         self,
         logger: logging.Logger,
         api_version: str,
-        target_namespace: str
+        target_namespace: str,
+        max_endpoints: int
     ):
         self.logger = logger
         self.api_version = api_version
@@ -32,6 +39,7 @@ class Backend(base.Backend):
         self.ekclient = Configuration.from_environment().sync_client(
             default_namespace = target_namespace
         )
+        self.max_endpoints = max_endpoints
 
     def tunnel_check_host_and_port(self, host: str, port: int) -> bool:
         ekendpoints = self.ekclient.api(self.api_version).resource("endpoints")
@@ -82,6 +90,11 @@ class Backend(base.Backend):
                 )
             else:
                 raise
+
+        # If the endpoints resource is already full, fail
+        # A well-behaved client should retry until it can be fitted in
+        if len(endpoints.get("spec", {}).get("endpoints", {})) >= self.max_endpoints:
+            raise MaximumNumberOfEndpointsExceeded
 
         # Create a lease for the tunnel
         ekleases = self.ekclient.api(self.api_version).resource("leases")
@@ -182,4 +195,9 @@ class Backend(base.Backend):
         """
         Initialises an instance of the backend from a config object.
         """
-        return Backend(logger, config_obj.crd_api_version, config_obj.crd_target_namespace)
+        return Backend(
+            logger,
+            config_obj.crd_api_version,
+            config_obj.crd_target_namespace,
+            config_obj.crd_max_endpoints
+        )
