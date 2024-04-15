@@ -8,7 +8,9 @@ from .base import (
     SubdomainAlreadyReserved,
     SubdomainNotReserved,
     SubdomainAlreadyInitialised,
-    PublicKeyNotAssociated
+    PublicKeyAlreadyAssociated,
+    PublicKeyNotAssociated,
+    PublicKeyHasMultipleAssociations,
 )
 
 

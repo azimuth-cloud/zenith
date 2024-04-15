@@ -34,9 +34,10 @@ def authorized_keys(ctx, key_type, key_content):
     # Make a request to the registrar service to check the SSH public key
     url = ctx.obj["CONFIG"].registrar_url + "/admin/verify"
     response = requests.post(url, json = { "public_key": f"{key_type} {key_content}" })
-    # If the response is a 404, we exit without printing anything as the key is not
-    # associated with any subdomains
-    if response.status_code == 404:
+    # The expected error codes are 404 or 409, in which case we exit without printing anything
+    #   404 indicates the key is not associated with a subdomain
+    #   409 indicates that the key is associated with multiple subdomains, and we refuse to pick
+    if response.status_code in {404, 409}:
         return
     # Any other status codes should be a command error
     response.raise_for_status()

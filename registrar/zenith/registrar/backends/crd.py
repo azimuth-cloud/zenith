@@ -70,6 +70,17 @@ class Backend(base.Backend):
         # If the service already has a public key, we are done
         if service.get("spec", {}).get("publicKeyFingerprint"):
             raise base.SubdomainAlreadyInitialised(subdomain)
+        # Check if the public key is already associated with another subdomain
+        # Note that we know that the current subdomain DOES NOT have a public key associated
+        try:
+            _ = await self.subdomain_for_public_key(fingerprint)
+        except base.PublicKeyNotAssociated:
+            # This is the condition that we want
+            pass
+        except base.PublicKeyHasMultipleAssociations:
+            raise base.PublicKeyAlreadyAssociated(fingerprint)
+        else:
+            raise base.PublicKeyAlreadyAssociated(fingerprint)
         # Modify the resource and replace it
         # Using replace with a resource version that we know does not have a public key
         # should ensure we are the first operation to set a public key
@@ -89,13 +100,17 @@ class Backend(base.Backend):
                 raise
 
     async def subdomain_for_public_key(self, fingerprint: bytes) -> str:
-        # Fetch the first subdomain record that has the fingerprint as a label
+        # Fetch all the subdomain records that have the fingerprint as a label
         ekresource = await self.ekclient.api(self.api_version).resource("services")
         # The label value has a prefix in case the fingerprint starts with - or _
         labels = { self.fingerprint_label: f"fp{fingerprint_urlsafe(fingerprint)}" }
-        service = await ekresource.first(labels = labels)
-        if service:
-            return service.metadata.name
+        services = [service async for service in ekresource.list(labels = labels)]
+        # If there is exactly one service, return the name
+        # If not, raise the appropriate exception
+        if len(services) == 1:
+            return services[0].metadata.name
+        elif len(services) > 1:
+            raise base.PublicKeyHasMultipleAssociations(fingerprint)
         else:
             raise base.PublicKeyNotAssociated(fingerprint)
 
