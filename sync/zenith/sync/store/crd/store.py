@@ -3,7 +3,7 @@ import datetime
 import logging
 import typing
 
-from easykube import Configuration
+from easykube import Configuration, ApiError
 from kube_custom_resource import CustomResourceRegistry
 
 from ... import config, model
@@ -121,28 +121,38 @@ class Store(base.Store):
                 ttl_delta = datetime.timedelta(seconds = lease.spec.ttl)
                 # If the lease has gone past it's reap delta, remove it and the endpoint
                 if lease.spec.renewed_at + reap_after_delta < now:
-                    await ekendpoints.json_patch(
-                        subdomain,
-                        [
-                            {
-                                "op": "remove",
-                                "path": f"/spec/endpoints/{id}",
-                            },
-                        ]
-                    )
+                    try:
+                        await ekendpoints.json_patch(
+                            subdomain,
+                            [
+                                {
+                                    "op": "remove",
+                                    "path": f"/spec/endpoints/{id}",
+                                },
+                            ]
+                        )
+                    except ApiError as exc:
+                        # If the endpoint is already gone, which is fine, we will get a 422
+                        if exc.status_code != 422:
+                            raise
                     await ekleases.delete(lease.metadata.name)
                 # If the lease has gone past it's TTL, mark the endpoint as critical
                 elif lease.spec.renewed_at + ttl_delta < now:
-                    await ekendpoints.json_patch(
-                        subdomain,
-                        [
-                            {
-                                "op": "replace",
-                                "path": f"/spec/endpoints/{id}/status",
-                                "value": api.EndpointStatus.CRITICAL.value,
-                            },
-                        ]
-                    )
+                    try:
+                        await ekendpoints.json_patch(
+                            subdomain,
+                            [
+                                {
+                                    "op": "replace",
+                                    "path": f"/spec/endpoints/{id}/status",
+                                    "value": api.EndpointStatus.CRITICAL.value,
+                                },
+                            ]
+                        )
+                    except ApiError as exc:
+                        # If the endpoint is not present, which is fine, we will get a 422
+                        if exc.status_code != 422:
+                            raise
             # Wait for the configured duration
             await asyncio.sleep(self.config.crd_endpoint_check_interval)
 
