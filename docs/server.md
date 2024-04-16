@@ -35,7 +35,6 @@ for the vast majority of cases. For more advanced configuration requirements, se
   - [External auth service](#external-auth-service)
 - [Using non-standard images](#using-non-standard-images)
 - [Managing resource consumption](#managing-resource-consumption)
-- [Customising the Consul deployment](#customising-the-consul-deployment)
 
 ## Prerequisites
 
@@ -56,12 +55,6 @@ If you wish to use [cert-manager](https://cert-manager.io/) to automatically req
 renew TLS certificates for Zenith services, it must be installed before you deploy Zenith.
 You will also need to [configure an issuer](https://cert-manager.io/docs/configuration/)
 for Zenith to consume. Zenith will not manage this for you.
-
-In the default configuration, Consul also assumes that you have a default
-[Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/) configured
-on your Kubernetes cluster that it can use for data volumes. If this is not the case,
-or if you have multiple storage classes available and need to specify a particular one,
-see [Customising the Consul deployment](#customising-the-consul-deployment).
 
 ## Generating a signing key for the Registrar
 
@@ -511,8 +504,6 @@ registrar:
     tag: <valid tag>
 ```
 
-You may also wish to change the images used for Consul (see below).
-
 ## Managing resource consumption
 
 In a production environment, it is important to constrain the resources available to each
@@ -556,34 +547,3 @@ registrar:
 Alternatively, you can use the
 [Vertical Pod Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
 to set these values automatically based on observed usage.
-
-## Customising the Consul deployment
-
-[Consul](https://www.consul.io/) is installed automatically as a dependency of Zenith using
-the
-[official Consul Helm chart](https://www.consul.io/docs/k8s/installation/install#helm-chart-installation).
-The default setup of Consul will be sufficient in almost all cases, however the values
-for the Consul deployment can be customised if required by adding configuration under
-the `consul` key in your Zenith values file. The available options for the Consul Helm chart
-(there are many!) are [documented on the Consul website](https://www.consul.io/docs/k8s/helm).
-
-The most common change required for Consul is to reduce the number of replicas used for the
-Consul server in order to get it to start, e.g. on a single node cluster:
-
-```yaml
-consul:
-  server:
-    replicas: 1
-```
-
-If your
-[Kubernetes network plugin](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
-does not support `hostPort`, you may also need to configure the Consul agents to use the host
-networking:
-
-```yaml
-consul:
-  client:
-    dnsPolicy: ClusterFirstWithHostNet
-    hostNetwork: true
-```

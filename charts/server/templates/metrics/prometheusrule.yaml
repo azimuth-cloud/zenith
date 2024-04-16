@@ -1,5 +1,4 @@
-{{- if .Values.metrics.enabled -}}
-{{- $keyPrefix := default .Values.common.consul.registrarKeyPrefix .Values.registrar.config.consulKeyPrefix }}
+{{- if and .Values.metrics.enabled .Values.metrics.prometheus.rules.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -12,12 +11,12 @@ spec:
         # This metric indicates if a service has been initialised
         - record: zenith_service_initialised
           expr: >-
-            sum(label_replace(consul_catalog_kv, "service_name", "$1", "key", "{{ $keyPrefix }}/subdomains/(.+)")) by(service_name) > bool 0
+            sum(topk(1, zenith_service_info{fingerprint=~".+"} or (zenith_service_info{fingerprint=""} - 1)) by(service_name)) by(service_name)
 
-        # This metric indicates the number of clients in each status in Consul
+        # This metric indicates the number of clients in each status
         - record: zenith_service_client_status
           expr: >-
-            sum(topk(1, consul_health_service_status) by(service_id, status)) by(service_name, status)
+            sum(topk(1, label_replace(zenith_service_endpoint_info, "status", "$1", "endpoint_status", "(.*)")) by(service_name, endpoint_id, status)) by(service_name, status)
 
         # This metric indicates the status of the Helm release
         - record: zenith_service_helm_status
@@ -44,7 +43,7 @@ spec:
         # It only fires when there is at least one passing client (see above)
         # Since this is a scenario that occurs when clients reconnect after a restart
         # or an upgrade of the server, the trigger time should be greater than the
-        # DeregisterCriticalServiceAfter property of the service as set by SSHD
+        # reap_after property of the service as set by SSHD
         # By default, this is 600 seconds
         - alert: ZenithServiceHasUnhealthyClients
           expr: >-
@@ -92,26 +91,4 @@ spec:
               Zenith service has not synced correctly.
           labels:
             severity: critical
-
-    # Basic Consul alerts
-    - name: consul.alerts
-      rules:
-        - alert: ConsulDown
-          expr: min(consul_up) == 0
-          for: 15m
-          annotations:
-            description: Consul has been reporting as down for more than 15 minutes.
-            summary: Consul has been reporting as down for more than 15 minutes.
-          labels:
-            severity: warning
-
-        - alert: ConsulNodeUnhealthy
-          expr: sum(consul_health_node_status{status!="passing"}) by (node) > 0
-          for: 15m
-          annotations:
-            description: >-
-              Consul node {{ "{{" }} $labels.node {{ "}}" }} has been unhealthy for more than 15 minutes.
-            summary: Consul node has been unhealthy for more than 15 minutes.
-          labels:
-            severity: warning
 {{- end }}

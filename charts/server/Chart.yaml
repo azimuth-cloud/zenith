@@ -7,8 +7,9 @@ version: 0.1.0
 appVersion: main
 
 dependencies:
-  - name: consul
-    # This can never change as this is the last MPL-licenced version
-    version: ~1.2.0
-    repository: https://helm.releases.hashicorp.com
-    condition: consul.enabled
+  # prometheus-community/kube-state-metrics to produce metrics on clusters
+  - name: kube-state-metrics
+    repository: https://prometheus-community.github.io/helm-charts
+    version: 5.18.1
+    alias: metrics
+    condition: metrics.enabled

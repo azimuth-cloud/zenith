@@ -101,7 +101,7 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "The number of services that exist in Consul.",
+      "description": "The active services, i.e. services with at least one active endpoint.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -201,7 +201,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(sum(zenith_service_client_status{status!=\"passing\"}) by(service_name) == bool 0) or vector(0)",
+          "expr": "sum(sum(zenith_service_client_status) by(service_name) == bool ignoring(status) zenith_service_client_status{status=\"passing\"}) or vector(0)",
           "instant": true,
           "legendFormat": "Healthy",
           "range": false,
@@ -223,7 +223,7 @@
           "refId": "B"
         }
       ],
-      "title": "Consul services",
+      "title": "Active services",
       "type": "stat"
     },
     {
@@ -1094,7 +1094,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(zenith_service_client_status{status!=\"passing\"}) by(service_name) == bool 0",
+          "expr": "(sum(zenith_service_client_status) by(service_name) == bool ignoring(status) zenith_service_client_status{status=\"passing\"}) or (sum(zenith_service_client_status{status!=\"passing\"}) by(service_name) == bool 0)",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -1153,7 +1153,7 @@
               "Time 1": "",
               "Value": "Number of clients",
               "Value #A": "Number of clients",
-              "Value #B": "Consul service healthy?",
+              "Value #B": "Service healthy?",
               "service_name": "Service",
               "status": "Helm release status"
             }

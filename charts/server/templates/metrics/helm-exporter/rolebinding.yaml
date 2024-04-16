@@ -6,7 +6,7 @@ kind: RoleBinding
 metadata:
   name: {{ include "zenith.componentname" (list . "helm-exporter") }}
   labels: {{ include "zenith.componentLabels" (list . "helm-exporter") | nindent 4 }}
-  namespace: {{ .Values.sync.config.kubernetes.targetNamespace }}
+  namespace: {{ .Values.common.kubernetes.targetNamespace }}
 subjects:
   - kind: ServiceAccount
     namespace: {{ .Release.Namespace }}

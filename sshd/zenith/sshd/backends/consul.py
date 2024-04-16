@@ -17,14 +17,12 @@ class Backend(base.Backend):
         logger: logging.Logger,
         url: str,
         key_prefix: str,
-        service_tag: str,
-        deregister_interval: int
+        service_tag: str
     ):
         self.logger = logger
         self.url = url
         self.key_prefix = key_prefix
         self.service_tag = service_tag
-        self.deregister_interval = deregister_interval
 
     def tunnel_check_host_and_port(self, host: str, port: int) -> bool:
         response = requests.get(
@@ -46,6 +44,7 @@ class Backend(base.Backend):
         host: str,
         port: int,
         ttl: int,
+        reap_after: int,
         config_dict: t.Dict[str, t.Any]
     ) -> str:
         # Start a Consul session for the tunnel
@@ -97,7 +96,7 @@ class Backend(base.Backend):
                     "TTL": f"{ttl}s",
                     # This deregisters the service once it has been critical for the specified interval
                     # We can probably assume the service will not come back up
-                    "DeregisterCriticalServiceAfter": f"{self.deregister_interval}s",
+                    "DeregisterCriticalServiceAfter": f"{reap_after}s",
                 },
             }
         )
@@ -106,7 +105,7 @@ class Backend(base.Backend):
         # Return the tunnel ID
         return tunnel_id
 
-    def tunnel_heartbeat(self, id: str, status: base.TunnelStatus):
+    def tunnel_heartbeat(self, subdomain: str, id: str, status: base.TunnelStatus):
         self.logger.debug("Renewing Consul session")
         response = requests.put(f"{self.url}/v1/session/renew/{id}")
         response.raise_for_status()
@@ -116,7 +115,7 @@ class Backend(base.Backend):
         response = requests.put(url, json = { "Status": status.value })
         response.raise_for_status()
 
-    def tunnel_terminate(self, id: str):
+    def tunnel_terminate(self, subdomain: str, id: str):
         """
         Terminate the specified tunnel.
         """
@@ -136,6 +135,5 @@ class Backend(base.Backend):
             logger,
             config_obj.consul_url,
             config_obj.consul_key_prefix,
-            config_obj.consul_service_tag,
-            config_obj.consul_deregister_interval
+            config_obj.consul_service_tag
         )

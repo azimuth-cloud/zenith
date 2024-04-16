@@ -2,6 +2,12 @@
 
 This document describes the architecture of Zenith in detail.
 
+> **WARNING**
+>
+> Although still broadly relevant, some parts of this document are out-of-date.
+>
+> In particular, Consul has been replaced as the store by a Kubernetes CRD.
+
 Zenith has a client-server architecture in which the client and server collaborate to
 establish a secure tunnel over which traffic is proxied in a controlled way from the
 internet to a service that would not otherwise be exposed to the internet. This allows

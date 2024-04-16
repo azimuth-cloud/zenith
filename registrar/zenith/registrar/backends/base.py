@@ -34,13 +34,32 @@ class SubdomainAlreadyInitialised(BackendError):
         super().__init__(f"subdomain '{subdomain}' is already initialised")
 
 
+class PublicKeyAlreadyAssociated(BackendError):
+    """
+    Raised when an attempt is made to initialise a subdomain with a public key that is
+    already associated with another subdomain.
+    """
+    def __init__(self, fingerprint: bytes):
+        fingerprint_str = base64.b64encode(fingerprint).decode().rstrip("=")
+        super().__init__(f"public key '{fingerprint_str}' is already associated with a subdomain")
+
+
 class PublicKeyNotAssociated(BackendError):
     """
-    Raised when a public key is not associated with a subdomain.
+    Raised during verify when a public key is not associated with a subdomain.
     """
     def __init__(self, fingerprint: bytes):
         fingerprint_str = base64.b64encode(fingerprint).decode().rstrip("=")
         super().__init__(f"public key '{fingerprint_str}' is not associated with a subdomain")
+
+
+class PublicKeyHasMultipleAssociations(BackendError):
+    """
+    Raised during verify when a public key is associated with multiple subdomains.
+    """
+    def __init__(self, fingerprint: bytes):
+        fingerprint_str = base64.b64encode(fingerprint).decode().rstrip("=")
+        super().__init__(f"public key '{fingerprint_str}' is already associated with a subdomain")
 
 
 class Backend:
@@ -59,7 +78,8 @@ class Backend:
         """
         Initialise a subdomain with an SSH public key, using the fingerprint.
 
-        If the subdomain is not reserved or is already initialised, an exception is raised.
+        If the subdomain is not reserved, is already initialised, or the public key is
+        already associated with another subdomain, an exception is raised.
         """
         raise NotImplementedError
 
@@ -67,7 +87,8 @@ class Backend:
         """
         Returns the subdomain that is associated with the given public key fingerprint.
 
-        If the public key is not associated with a subdomain, an exception is raised.
+        If the public key is not associated with a subdomain, or is associated with multiple
+        subdomains, an exception is raised.
         """
         raise NotImplementedError
 

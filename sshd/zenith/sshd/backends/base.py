@@ -32,6 +32,7 @@ class Backend:
         host: str,
         port: int,
         ttl: int,
+        reap_after: int,
         config_dict: typing.Dict[str, typing.Any]
     ) -> str:
         """
@@ -39,13 +40,13 @@ class Backend:
         """
         raise NotImplementedError
 
-    def tunnel_heartbeat(self, id: str, status: TunnelStatus):
+    def tunnel_heartbeat(self, subdomain: str, id: str, status: TunnelStatus):
         """
         Send a heartbeat for the specified tunnel.
         """
         raise NotImplementedError
 
-    def tunnel_terminate(self, id: str):
+    def tunnel_terminate(self, subdomain: str, id: str):
         """
         Terminate the specified tunnel.
         """

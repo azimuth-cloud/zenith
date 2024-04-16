@@ -1,0 +1,18 @@
+{{- if .Values.registrar.enabled }}
+# This role binding allows the registrar service account in the release namespace
+# to manage Zenith services in the target namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "zenith.componentname" (list . "registrar") }}
+  labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
+  namespace: {{ .Values.common.kubernetes.targetNamespace }}
+subjects:
+  - kind: ServiceAccount
+    namespace: {{ .Release.Namespace }}
+    name: {{ include "zenith.componentname" (list . "registrar") }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "zenith.componentname" (list . "registrar") }}
+{{- end }}

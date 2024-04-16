@@ -5,8 +5,35 @@ kind: Role
 metadata:
   name: {{ include "zenith.componentname" (list . "sync") }}-manage-services
   labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
-  namespace: {{ .Values.sync.config.kubernetes.targetNamespace }}
+  namespace: {{ .Values.common.kubernetes.targetNamespace }}
 rules:
+  # Permissions for the CRD store
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - services
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - endpoints
+    verbs:
+      - list
+      - get
+      - watch
+      - patch
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - leases
+    verbs:
+      - list
+      - patch
+      - delete
+  # Permissions for the Helm processor
   # For basic services, we need to manage:
   #   * secrets
   #   * endpoints (removing for legacy services)

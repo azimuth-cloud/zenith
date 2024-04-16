@@ -155,6 +155,11 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
                 status_code = 409,
                 detail = "Unable to associate public key."
             )
+        except backends.PublicKeyAlreadyAssociated:
+            raise HTTPException(
+                status_code = 409,
+                detail = "Public key is already associated with another subdomain."
+            )
     # The FQDN is the requests subdomain combined with the configured base domain
     fqdn = f"{subdomain}.{settings.base_domain}"
     if req.public_key:
@@ -192,6 +197,11 @@ async def verify_subdomain(req: VerificationRequest):
         raise HTTPException(
             status_code = 404,
             detail = "The given SSH public key is not known."
+        )
+    except backends.PublicKeyHasMultipleAssociations:
+        raise HTTPException(
+            status_code = 409,
+            detail = "The given SSH public key is associated with multiple subdomains."
         )
     return VerificationResult(subdomain = subdomain, public_key = req.public_key)
 
@@ -239,6 +249,11 @@ async def associate_public_key(req: PublicKeyAssociationRequest):
                 "The given token has already been used or does not "
                 "correspond to a reservation."
             )
+        )
+    except backends.PublicKeyAlreadyAssociated:
+        raise HTTPException(
+            status_code = 409,
+            detail = "Public key is already associated with another subdomain."
         )
     return PublicKeyAssociation(
         subdomain = subdomain,

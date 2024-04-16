@@ -39,7 +39,7 @@ spec:
             - "-latest-chart-version=false"
             - "-status-in-metric=true"
             - "-namespaces"
-            - {{ .Values.sync.config.kubernetes.targetNamespace | quote }}
+            - {{ .Values.common.kubernetes.targetNamespace | quote }}
           ports:
             - name: http
               containerPort: 9571
