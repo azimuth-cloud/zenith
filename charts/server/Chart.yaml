@@ -1,3 +1,4 @@
+---
 apiVersion: v2
 name: zenith-server
 description: Helm chart for deploying a Zenith server on Kubernetes
