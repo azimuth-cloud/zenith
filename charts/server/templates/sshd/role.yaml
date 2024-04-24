@@ -29,4 +29,10 @@ rules:
       - create
       - patch
       - delete
+  - apiGroups:
+      - zenith.stackhpc.com
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - "*"
 {{- end }}
