@@ -3,7 +3,7 @@ anyio==4.3.0
 certifi==2024.2.2
 click==8.1.7
 configomatic==0.2.0
-easykube==0.3.0
+easykube==0.3.1
 easysemver==0.1.0
 exceptiongroup==1.2.1
 h11==0.14.0
