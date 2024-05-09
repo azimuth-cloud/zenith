@@ -231,11 +231,17 @@ async def associate_public_key(req: PublicKeyAssociationRequest):
     token_bytes = req.token.encode()
     try:
         decoded_token = base64.urlsafe_b64decode(token_bytes).decode()
-        subdomain, signature = decoded_token.rsplit(".", maxsplit = 1)
+        token_data, signature = decoded_token.rsplit(".", maxsplit = 1)
     except (binascii.Error, ValueError):
         raise HTTPException(status_code = 400, detail = "The given token is invalid.")
     # Verify the signature matches the data
-    if not hmac.compare_digest(generate_signature(subdomain), signature):
+    if not hmac.compare_digest(generate_signature(token_data), signature):
+        raise HTTPException(status_code = 400, detail = "The given token is invalid.")
+    # Extract the subdomain from the token data
+    # For backwards compatibility, we support new-style tokens that just include the subdomain
+    # and old-style tokens that also include the modify index, which is no longer used
+    subdomain = token_data.split(".")[0].strip()
+    if not subdomain:
         raise HTTPException(status_code = 400, detail = "The given token is invalid.")
     # Initialise the subdomain with the public keys
     try:
