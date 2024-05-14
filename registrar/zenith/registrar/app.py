@@ -231,17 +231,38 @@ async def associate_public_key(req: PublicKeyAssociationRequest):
     token_bytes = req.token.encode()
     try:
         decoded_token = base64.urlsafe_b64decode(token_bytes).decode()
-        token_data, signature = decoded_token.rsplit(".", maxsplit = 1)
+        subdomain, signature = decoded_token.rsplit(".", maxsplit = 1)
     except (binascii.Error, ValueError):
         raise HTTPException(status_code = 400, detail = "The given token is invalid.")
-    # Verify the signature matches the data
-    if not hmac.compare_digest(generate_signature(token_data), signature):
-        raise HTTPException(status_code = 400, detail = "The given token is invalid.")
-    # Extract the subdomain from the token data
-    # For backwards compatibility, we support new-style tokens that just include the subdomain
-    # and old-style tokens that also include the modify index, which is no longer used
-    subdomain = token_data.split(".")[0].strip()
-    if not subdomain:
+
+    # NOTE(mkjpryor)
+    #
+    # There are two types of token that we might receive:
+    #
+    #   1. New-style tokens consisting of a subdomain and a SHA256 signature
+    #   2. Old-style tokens consisting of a subdomain, a modify index and a SHA1 signature
+    #
+    # We only want to accept new-style tokens, as continuing to accept old-style tokens
+    # would mean we are reducing our security to SHA1 (i.e. if you want to forge a token,
+    # just use an old-style token).
+    #
+    # However, for backwards compatibility we still want to accept old-style tokens as a
+    # valid input, but always reject the request. We use the same error message as other
+    # cases where the token is valid but unproceedable, as this allows clients to behave
+    # correctly.
+    #
+    # Old-style tokens will contain a dot in the token data
+    if "." in subdomain:
+        raise HTTPException(
+            status_code = 409,
+            detail = (
+                "The given token has already been used or does not "
+                "correspond to a reservation."
+            )
+        )
+
+    # For new-style tokens, validate the signature and continue from there
+    if not hmac.compare_digest(generate_signature(subdomain), signature):
         raise HTTPException(status_code = 400, detail = "The given token is invalid.")
     # Initialise the subdomain with the public keys
     try:
