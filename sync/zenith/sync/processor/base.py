@@ -103,7 +103,7 @@ class Processor:
             # Wait for the task to actually finish cancelling
             try:
                 await asyncio.wait_for(existing_task, 10)
-            except asyncio.CancelledError:
+            except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
         self.logger.info(
             "Scheduling task to process %s event for %s",
