@@ -72,7 +72,7 @@ sshd:
     tag: ""  # Defaults to appVersion if not given
   imagePullSecrets: []
   # The number of SSHD replicas to use
-  replicaCount: 1
+  replicaCount: 3
   # Customise annotations for SSHD pods
   podAnnotations: {}
   # Customise pod-level security context for SSHD pods

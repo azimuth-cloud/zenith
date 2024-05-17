@@ -55,6 +55,12 @@ spec:
       {{- with .Values.sshd.tolerations }}
       tolerations: {{ toYaml . | nindent 8 }}
       {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 14 }}
       volumes:
         - name: etc-zenith
           configMap:
