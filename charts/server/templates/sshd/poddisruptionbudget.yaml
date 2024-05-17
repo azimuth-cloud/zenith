@@ -5,7 +5,7 @@ metadata:
   name: {{ include "zenith.componentname" (list . "sshd") }}
   labels: {{ include "zenith.componentLabels" (list . "sshd") | nindent 4 }}
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 6 }}
 {{- end }}
