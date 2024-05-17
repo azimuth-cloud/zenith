@@ -6,7 +6,7 @@ import typing
 
 import httpx
 
-from .. import config, model
+from .. import config, model, util
 
 from . import base
 
@@ -176,7 +176,7 @@ class Store(base.Store):
                         self.logger.info("Emitting deleted event for %s", name)
                         yield model.Event(model.EventKind.DELETED, model.Service(name = name))
                         known_services.discard(name)
-                        service_tasks.pop(name).cancel()
+                        await util.task_cancel_and_wait(service_tasks.pop(name))
                     services_task = asyncio.create_task(self._wait_services(idx))
                 else:
                     self.logger.info("Service query task completed")

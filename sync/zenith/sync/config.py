@@ -162,7 +162,7 @@ class HelmClientConfiguration(Section):
     """
     #: The default timeout to use with Helm releases
     #: Can be an integer number of seconds or a duration string like 5m, 5h
-    default_timeout: t.Union[int, NonEmptyString] = "5m"
+    default_timeout: t.Union[int, NonEmptyString] = "2m"
     #: The executable to use
     #: By default, we assume Helm is on the PATH
     executable: NonEmptyString = "helm"
@@ -211,6 +211,8 @@ class KubernetesConfig(Section):
     service_name_label: str = "zenith.stackhpc.com/service-name"
     #: The annotation used to record that a secret is a mirror of another secret
     tls_mirror_annotation: str = "zenith.stackhpc.com/mirrors"
+    #: The maximum number of concurrent reconciliations
+    reconciliation_max_concurrency: t.Annotated[int, Field(gt = 0)] = 20
     #: The maximum delay between retries when backing off
     reconciliation_max_backoff: t.Annotated[int, Field(gt = 0)] = 60
     #: The ingress configuration

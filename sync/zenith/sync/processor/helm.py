@@ -10,7 +10,7 @@ from easykube import Configuration, ApiError
 
 from pyhelm3 import Client as HelmClient
 
-from .. import config, model, store
+from .. import config, model, store, util
 
 from . import base
 
@@ -33,7 +33,11 @@ class Processor(base.Processor):
             insecure_skip_tls_verify = config.helm_client.insecure_skip_tls_verify,
             unpack_directory = config.helm_client.unpack_directory
         )
-        super().__init__(logging.getLogger(__name__), self.config.reconciliation_max_backoff)
+        super().__init__(
+            logging.getLogger(__name__),
+            config.reconciliation_max_concurrency,
+            config.reconciliation_max_backoff
+        )
 
     async def startup(self):
         """
@@ -357,8 +361,9 @@ class Processor(base.Processor):
             return_when = asyncio.FIRST_COMPLETED
         )
         # Any exceptions are not raised until the result is requested
+        # We also cancel the other task
         for task in not_done:
-            task.cancel()
+            await util.task_cancel_and_wait(task)
         for task in done:
             task.result()
 
