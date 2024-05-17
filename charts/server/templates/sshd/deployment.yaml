@@ -60,8 +60,7 @@ spec:
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
-            matchLabels:
-              app: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 14 }}
+            matchLabels: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 14 }}
       volumes:
         - name: etc-zenith
           configMap:
