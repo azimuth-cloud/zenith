@@ -4,6 +4,7 @@ import contextlib
 from . import config
 from .processor import load as load_processor
 from .store import load as load_store
+from .util import task_cancel_and_wait
 
 
 async def run(config_obj: config.SyncConfig):
@@ -21,7 +22,8 @@ async def run(config_obj: config.SyncConfig):
             return_when = asyncio.FIRST_COMPLETED
         )
         # However any exceptions are not raised until we try to fetch the results
+        # We also cancel any remaining tasks
         for task in not_done:
-            task.cancel()
+            await task_cancel_and_wait(task)
         for task in done:
             task.result()
