@@ -9,14 +9,32 @@ from .. import config, model, store, util
 class EventQueue:
     """
     Queue of (event, retries) tuples.
+
+    The queue is "smart" in a few ways:
+
+      1. It has explicit operations for enqueuing a new event and requeuing an event that has
+         previously been attempted.
+
+      2. Requeuing of an event that has been previously attempted only happens after a backoff.
+         This happens asynchronously so that it does not block the worker from moving on to the
+         next event.
+
+      3. At most one event per service can be in the queue at any given time.
+         New events trump any existing events, and existing events trump requeued events.
+
+      4. Only one event per service is allowed to be "active" at any given time.
+         The queue records when an event for a service leaves the queue, and does not allow any
+         more events for that service to leave the queue until it has been notified that
+         processing of that event has been completed (either explicitly or by requeuing).
     """
     def __init__(self, requeue_max_backoff: int):
         self.requeue_max_backoff = requeue_max_backoff
         # The main queue of events
         self._queue: typing.List[typing.Tuple[model.Event, int]] = []
-        # A queue of futures, where each future represents a waiting "dequeuer"
+        # A queue of futures
+        # Each waiting "dequeuer" adds a future to the queue and waits on it
         # When an event becomes available, the first future in the queue is resolved, which
-        # "wakes up" the dequeuer to read the event from the queue
+        # "wakes up" the corresponding dequeuer to read the event from the queue
         self._futures: typing.Deque[asyncio.Future] = collections.deque()
         # A set of service names for which there is an active processing task
         self._active: typing.Set[str] = set()
@@ -24,9 +42,7 @@ class EventQueue:
         self._handles: typing.Dict[str, asyncio.TimerHandle] = {}
 
     def _wakeup_next_dequeue(self):
-        """
-        Wakes up the next eligible dequeuer by resolving the first future in the queue.
-        """
+        # Wake up the next eligible dequeuer by resolving the first future in the queue
         while self._futures:
             future = self._futures.popleft()
             if not future.done():
@@ -69,8 +85,6 @@ class EventQueue:
     def enqueue(self, event: model.Event):
         """
         Add a new event to the queue.
-
-        If an event for the same service is already in the queue, it is replaced.
         """
         # Discard any events for the same service from the queue
         self._queue = [
