@@ -11,6 +11,6 @@ dependencies:
   # prometheus-community/kube-state-metrics to produce metrics on clusters
   - name: kube-state-metrics
     repository: https://prometheus-community.github.io/helm-charts
-    version: 5.19.0
+    version: 5.19.1
     alias: metrics
     condition: metrics.enabled
