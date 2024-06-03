@@ -13,7 +13,7 @@ idna==3.7
 kube-custom-resource==0.3.0
 pydantic==2.7.2
 pydantic_core==2.18.3
-pyhelm3==0.3.2
+pyhelm3==0.3.3
 PyYAML==6.0.1
 sniffio==1.3.1
 typing_extensions==4.12.1
