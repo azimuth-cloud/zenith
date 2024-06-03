@@ -7,6 +7,6 @@ idna==3.7
 pydantic==2.7.2
 pydantic_core==2.18.3
 PyYAML==6.0.1
-requests==2.32.2
+requests==2.32.3
 typing_extensions==4.11.0
 urllib3==2.2.1
