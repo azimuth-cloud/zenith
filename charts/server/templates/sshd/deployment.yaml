@@ -61,6 +61,9 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels: {{ include "zenith.componentSelectorLabels" (list . "sshd") | nindent 14 }}
+          # Tell Kubernetes to respect node affinity and taints when doing spread calculations
+          nodeAffinityPolicy: Honor
+          nodeTaintsPolicy: Honor
       volumes:
         - name: etc-zenith
           configMap:
