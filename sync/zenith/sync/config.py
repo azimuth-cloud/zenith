@@ -189,8 +189,6 @@ class KubernetesConfig(Section):
 
     #: The API group to use for CRD resources
     crd_api_group: str = "zenith.stackhpc.com"
-    #: The categories for the CRD resources
-    crd_categories: t.List[str] = Field(default_factory = lambda: ["zenith"])
     #: The sleep interval for the endpoint checker
     #: Assuming the sync component is up, then the maximum time after the last heartbeart
     #: that a dead endpoint will still be included in the endpoints of a service is the

@@ -4,13 +4,11 @@ import logging
 import typing
 
 from easykube import Configuration, ApiError
-from kube_custom_resource import CustomResourceRegistry
 
 from ... import config, model
 
 from .. import base
 
-from . import models as crds
 from .models import v1alpha1 as api
 
 
@@ -21,11 +19,6 @@ class Store(base.Store):
     def __init__(self, config_obj: config.KubernetesConfig):
         self.logger = logging.getLogger(__name__)
         self.config = config_obj
-        # Initialise the custom resource registry
-        self.registry = CustomResourceRegistry(
-            self.config.crd_api_group,
-            self.config.crd_categories
-        )
         # Initialise an easykube client from the environment
         self.ekclient = Configuration.from_environment().async_client(
             default_field_manager = self.config.easykube_field_manager,
@@ -37,10 +30,6 @@ class Store(base.Store):
         Perform any startup tasks that are required.
         """
         await self.ekclient.__aenter__()
-        # Register the CRDs
-        self.registry.discover_models(crds)
-        for crd in self.registry:
-            await self.ekclient.apply_object(crd.kubernetes_resource(), force = True)
 
     async def shutdown(self):
         """

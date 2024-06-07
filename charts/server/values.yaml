@@ -19,6 +19,13 @@ global:
       # TLS-specific annotations for ingress resources
       annotations: {}
 
+# Configuration for the CRDs
+crds:
+  # Indicates whether CRDs should be managed by the release
+  enabled: true
+  # Indicates whether CRDs should be kept when the release is removed
+  keep: true
+
 # Common configuration
 common:
   # Ingress configuration
@@ -163,6 +170,14 @@ metrics:
   rbac:
     create: true
     extraRules:
+      - apiGroups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - list
+          - watch
+          - get
       - apiGroups:
           - zenith.stackhpc.com
         resources:

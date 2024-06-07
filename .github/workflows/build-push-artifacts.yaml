@@ -118,6 +118,36 @@ jobs:
           # when determining the number of commits since the last tag
           fetch-depth: 0
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python packages
+        run: |
+          set -e
+          python -m pip install --upgrade pip
+          python -m pip install --no-deps -r ./operator/requirements.txt
+          python -m pip install --no-deps -r ./sync/requirements.txt
+          pythom -m pip install --no-deps -e ./operator
+          pythom -m pip install --no-deps -e ./sync
+
+      - name: Generate operator CRDs
+        run: |
+          kcr_generate \
+            zenith.operator.models \
+            zenith.stackhpc.com \
+            ./charts/operator/files/crds \
+            --category zenith
+
+      - name: Generate store CRDs
+        run: |
+          kcr_generate \
+            zenith.sync.store.crd.models \
+            zenith.stackhpc.com \
+            ./charts/server/files/crds \
+            --category zenith
+
       - name: Get SemVer version for current commit
         id: semver
         uses: stackhpc/github-actions/semver@master

@@ -1,3 +1,10 @@
+# Configuration for the CRDs
+crds:
+  # Indicates whether CRDs should be managed by the release
+  enabled: true
+  # Indicates whether CRDs should be kept when the release is removed
+  keep: true
+
 # Configuration for the operator
 # For all available options, see config.py in the operator source
 config: {}

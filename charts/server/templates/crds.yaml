@@ -1,0 +1,6 @@
+{{- if .Values.crds.enabled }}
+{{- range $path, $_ := .Files.Glob "files/crds/*.yaml" }}
+---
+{{ include "zenith.crd" (list $ $path) }}
+{{- end }}
+{{- end }}

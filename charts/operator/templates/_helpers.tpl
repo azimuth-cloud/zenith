@@ -45,3 +45,26 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 {{ include "zenith-operator.selectorLabels" . }}
 {{- end }}
+
+{{/*
+Produces the metadata for a CRD.
+*/}}
+{{- define "zenith-operator.crd.metadata" }}
+metadata:
+  labels: {{ include "zenith-operator.labels" . | nindent 4 }}
+  {{- if .Values.crds.keep }}
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
+{{- end }}
+
+{{/*
+Loads a CRD from the specified file and merges in the metadata.
+*/}}
+{{- define "zenith-operator.crd" }}
+{{- $ctx := index . 0 }}
+{{- $path := index . 1 }}
+{{- $crd := $ctx.Files.Get $path | fromYaml }}
+{{- $metadata := include "zenith-operator.crd.metadata" $ctx | fromYaml }}
+{{- merge $crd $metadata | toYaml }}
+{{- end }}

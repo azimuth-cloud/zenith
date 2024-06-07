@@ -34,10 +34,6 @@ class Configuration(
     """
     #: The API group of the cluster CRDs
     api_group: constr(min_length = 1) = "zenith.stackhpc.com"
-    #: A list of categories to place CRDs into
-    crd_categories: t.List[constr(min_length = 1)] = Field(
-        default_factory = lambda: ["zenith"]
-    )
 
     #: The amount of time (seconds) before a watch is forcefully restarted
     watch_timeout: conint(gt = 0) = 600
