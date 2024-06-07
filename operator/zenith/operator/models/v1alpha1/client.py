@@ -4,8 +4,6 @@ from pydantic import Field, field_validator, ValidationInfo
 
 from kube_custom_resource import CustomResource, schema
 
-from ...config import settings
-
 
 class ContainerImagePullPolicy(str, schema.Enum):
     """
@@ -21,13 +19,33 @@ class ContainerImage(schema.BaseModel):
     Model for a container image.
     """
     pull_policy: ContainerImagePullPolicy = Field(
-        ContainerImagePullPolicy(settings.default_image_pull_policy.value),
+        None,
+        validate_default = True,
         description = "The pull policy for the container image."
     )
     tag: schema.constr(pattern =r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$") = Field(
-        settings.default_image_tag,
+        None,
+        validate_default = True,
         description = "The tag for the container image."
     )
+
+    @field_validator("pull_policy", mode = "before")
+    @classmethod
+    def default_pull_policy(cls, v):
+        from ...config import settings
+        if v is None:
+            return ContainerImagePullPolicy(settings.default_image_pull_policy.value)
+        else:
+            return v
+
+    @field_validator("tag", mode = "before")
+    @classmethod
+    def default_tag(cls, v):
+        from ...config import settings
+        if v is None:
+            return settings.default_image_tag
+        else:
+            return v
 
 
 class ContainerResources(schema.BaseModel):
@@ -401,7 +419,8 @@ class ClientSpec(schema.BaseModel):
         description = "The auth configuration for the Zenith client."
     )
     debug: bool = Field(
-        default = settings.default_debug,
+        None,
+        validate_default = True,
         description = "Indicates if the Zenith client should be in debug mode."
     )
     resources: ContainerResources = Field(
@@ -432,6 +451,15 @@ class ClientSpec(schema.BaseModel):
         default_factory = list,
         description = "The tolerations for client pods."
     )
+
+    @field_validator("debug", mode = "before")
+    @classmethod
+    def default_debug(cls, v):
+        from ...config import settings
+        if v is None:
+            return settings.default_debug
+        else:
+            return v
 
 
 class ClientPhase(str, schema.Enum):

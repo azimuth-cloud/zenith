@@ -1,5 +1,5 @@
 {{- if .Values.crds.enabled }}
-{{- range $path, $_ := .Files.Glob "files/crds/*.yaml" }}
+{{- range $path, $_ := .Files.Glob "files/*.yaml" }}
 ---
 {{ include "zenith-operator.crd" (list $ $path) }}
 {{- end }}

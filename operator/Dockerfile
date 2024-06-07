@@ -50,7 +50,7 @@ CMD [ \
     "/venv/bin/kopf", \
     "run", \
     "--module", \
-    "zenith.operator", \
+    "zenith.operator.main", \
     "--all-namespaces", \
     "--liveness", \
     "http://0.0.0.0:8000/healthz" \
