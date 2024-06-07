@@ -134,6 +134,8 @@ jobs:
 
       - name: Generate operator CRDs
         run: |
+          ZENITH_OPERATOR__REGISTRAR_ADMIN_URL=http://zenith.stackhpc.com \
+          ZENITH_OPERATOR__SSHD_HOST=zenith.stackhpc.com \
           kcr_generate \
             zenith.operator.models \
             zenith.stackhpc.com \
