@@ -10,9 +10,22 @@ from easykube import Configuration, ApiError
 
 from pyhelm3 import Client as HelmClient
 
-from .. import config, model, store, util
+from .. import config, metrics, model, store, util
 
 from . import base
+
+
+class ServiceHelmStatus(metrics.Metric):
+    prefix = "zenith_service"
+    suffix = "helm_status"
+    description = "The Helm status for Zenith services"
+
+    def labels(self, obj):
+        return {
+            "service_namespace": obj.release.namespace,
+            "service_name": obj.release.name,
+            "status": obj.status.value,
+        }
 
 
 class Processor(base.Processor):
@@ -273,6 +286,17 @@ class Processor(base.Processor):
             service_name = service.name
         )
         await secrets.delete(secret_name)
+
+    async def metrics(self) -> typing.Iterable[metrics.Metric]:
+        releases = await self.helm_client.list_releases(
+            all = True,
+            max_releases = 0,
+            namespace = self.config.target_namespace
+        )
+        helm_status_metric = ServiceHelmStatus()
+        for release in releases:
+            helm_status_metric.add_obj(await release.current_revision())
+        return [helm_status_metric]
 
     async def _update_tls_mirror(self, source_object):
         """

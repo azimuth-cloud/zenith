@@ -3,7 +3,7 @@ import collections
 import random
 import typing
 
-from .. import config, model, store, util
+from .. import config, metrics, model, store, util
 
 
 class EventQueue:
@@ -183,6 +183,12 @@ class Processor:
         Called when a service is removed and should reconcile as required.
         """
         raise NotImplementedError
+    
+    async def metrics(self) -> typing.Iterable[metrics.Metric]:
+        """
+        Produce metrics for the processor.
+        """
+        return []
 
     async def process_events(self, queue: EventQueue, worker_num: int):
         """

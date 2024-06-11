@@ -6,11 +6,3 @@ type: application
 # The version and appVersion are updated by the chart build script
 version: 0.1.0
 appVersion: main
-
-dependencies:
-  # prometheus-community/kube-state-metrics to produce metrics on clusters
-  - name: kube-state-metrics
-    repository: https://prometheus-community.github.io/helm-charts
-    version: 5.19.1
-    alias: metrics
-    condition: metrics.enabled
