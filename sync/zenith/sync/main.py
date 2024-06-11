@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 
 from . import config
+from .metrics import metrics_server
 from .processor import load as load_processor
 from .store import load as load_store
 from .util import task_cancel_and_wait
@@ -18,7 +19,7 @@ async def run(config_obj: config.SyncConfig):
         # We can't use gather because we want the entire command to exit if one
         # of the coroutines exits, even if that exit is clean
         done, not_done = await asyncio.wait(
-            [processor.run(store), store.run()],
+            [processor.run(store), store.run(), metrics_server(store, processor)],
             return_when = asyncio.FIRST_COMPLETED
         )
         # However any exceptions are not raised until we try to fetch the results

@@ -1,0 +1,19 @@
+{{-
+  if and
+    .Values.sync.enabled
+    .Values.metrics.enabled
+    .Values.metrics.prometheus.monitor.enabled
+}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "zenith.componentname" (list . "sync") }}
+  labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
+spec:
+  endpoints:
+    - honorLabels: true
+      port: metrics
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchLabels: {{ include "zenith.componentSelectorLabels" (list . "sync") | nindent 6 }}
+{{- end }}

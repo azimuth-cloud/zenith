@@ -6,12 +6,52 @@ import typing
 from easykube import Configuration, ApiError
 from kube_custom_resource import CustomResourceRegistry
 
-from ... import config, model
+from ... import config, metrics, model
 
 from .. import base
 
 from . import models as crds
 from .models import v1alpha1 as api
+
+
+class StoreMetric(metrics.Metric):
+    prefix = "zenith_service"
+
+    def labels(self, obj):
+        return {
+            "service_namespace": obj.metadata.namespace,
+            "service_name": obj.metadata.name,
+        }
+
+
+class ServiceInfo(StoreMetric):
+    suffix = "info"
+    description = "Information about Zenith services"
+
+    def labels(self, obj):
+        return {
+            **super().labels(obj),
+            "created_at": obj.metadata["creationTimestamp"],
+            "fingerprint": obj.get("spec", {}).get("publicKeyFingerprint", ""),
+        }
+
+
+class ServiceEndpointInfo(StoreMetric):
+    suffix = "endpoint_info"
+    description = "Information about the endpoints for Zenith services"
+
+    def samples(self):
+        for obj in self._objs:
+            labels = super().labels(obj)
+            for name, endpoint in obj.get("spec", {}).get("endpoints", {}).items():
+                endpoint_labels = {
+                    **labels,
+                    "endpoint_id": name,
+                    "endpoint_address": endpoint["address"],
+                    "endpoint_port": endpoint["port"],
+                    "endpoint_status": endpoint["status"],
+                }
+                yield endpoint_labels, 1
 
 
 class Store(base.Store):
@@ -155,6 +195,19 @@ class Store(base.Store):
                             raise
             # Wait for the configured duration
             await asyncio.sleep(self.config.crd_endpoint_check_interval)
+
+    async def metrics(self) -> typing.Iterable[metrics.Metric]:
+        ekservices = await self._ekresource_for_model(api.Service)
+        service_info_metric = ServiceInfo()
+        async for service in ekservices.list():
+            service_info_metric.add_obj(service)
+
+        ekendpoints = await self._ekresource_for_model(api.Endpoints)
+        endpoints_info_metric = ServiceEndpointInfo()
+        async for endpoints in ekendpoints.list():
+            endpoints_info_metric.add_obj(endpoints)
+
+        return [service_info_metric, endpoints_info_metric]
 
     @classmethod
     def from_config(cls, config_obj: config.SyncConfig) -> "Store":

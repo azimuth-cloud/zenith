@@ -1,13 +1,19 @@
 import asyncio
 import typing
 
-from .. import config, model
+from .. import config, metrics, model
 
 
 class Store:
     """
     Produces events when the underlying representation of a service changes.
     """
+    async def metrics(self) -> typing.Iterable[metrics.Metric]:
+        """
+        Produce metrics for the processor.
+        """
+        return []
+
     async def watch(self) -> typing.Tuple[
         typing.Iterable[model.Service],
         typing.AsyncIterable[model.Event]

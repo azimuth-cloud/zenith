@@ -1,0 +1,15 @@
+{{- if .Values.sync.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zenith.componentname" (list . "sync") }}
+  labels: {{ include "zenith.componentLabels" (list . "sync") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+      protocol: TCP
+  selector: {{ include "zenith.componentSelectorLabels" (list . "sync") | nindent 4 }}
+{{- end }}
