@@ -37,10 +37,6 @@ spec:
             - name: KUBECONFIG
               value: /etc/kube/config
           {{- end }}
-          livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
-          startupProbe:
-            {{- toYaml .Values.startupProbe | nindent 12 }}
           volumeMounts:
             - name: etc-zenith
               mountPath: /etc/zenith

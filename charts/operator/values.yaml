@@ -28,22 +28,6 @@ image:
 
 imagePullSecrets: []
 
-# Liveness probe for the operator
-livenessProbe:
-  httpGet:
-    path: /healthz
-    port: 8000
-  periodSeconds: 10
-  failureThreshold: 1
-
-# Liveness probe for the operator
-startupProbe:
-  httpGet:
-    path: /healthz
-    port: 8000
-  periodSeconds: 10
-  failureThreshold: 3
-
 # Pod-level security context
 podSecurityContext:
   runAsNonRoot: true
