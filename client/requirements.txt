@@ -4,7 +4,7 @@ charset-normalizer==3.3.2
 click==8.1.7
 configomatic==0.2.0
 idna==3.7
-pydantic==2.7.4
+pydantic==2.8.0
 pydantic_core==2.20.0
 PyYAML==6.0.1
 requests==2.32.3
