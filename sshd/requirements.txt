@@ -4,7 +4,7 @@ certifi==2024.7.4
 cffi==1.16.0
 charset-normalizer==3.3.2
 click==8.1.7
-configomatic==0.3.1
+configomatic==0.4.0
 cryptography==42.0.8
 easykube==0.3.3
 exceptiongroup==1.2.2
