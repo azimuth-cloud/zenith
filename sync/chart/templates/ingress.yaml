@@ -7,7 +7,7 @@ metadata:
     {{- include "zenith-service.ingress.annotations" . | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
-  {{- if .Values.global.secure }}
+  {{- if and .Values.global.secure (not .Values.ingress.tls.terminatedAtProxy) }}
   tls:
     - hosts:
         - {{ include "zenith-service.ingress.host" . }}

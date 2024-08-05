@@ -32,6 +32,8 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
   # The TLS configuration for the ingress
   tls:
+    # Indicates if the ingress controller is itself behind a proxy that is terminating TLS
+    terminatedAtProxy: false
     # TLS-specific annotations
     # Only used if no existing certificate is given, e.g. to configure cert-manager
     annotations: {}

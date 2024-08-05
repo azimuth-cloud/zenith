@@ -3,6 +3,7 @@
     .Values.oidc.enabled
     (not .Values.oidc.ingress.enabled)
 }}
+{{- $ingressTLSRequired := and .Values.global.secure (not .Values.ingress.tls.terminatedAtProxy) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -10,7 +11,7 @@ metadata:
   labels: {{ include "zenith-service.labels" . | nindent 4 }}
   annotations:
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
-    {{- if .Values.global.secure }}
+    {{- if $ingressTLSRequired }}
     {{- if not .Values.ingress.tls.existingCertificate.cert }}
     {{- with .Values.ingress.tls.annotations }}
     {{- toYaml . | nindent 4 }}
@@ -19,7 +20,7 @@ metadata:
     {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
-  {{- if .Values.global.secure }}
+  {{- if $ingressTLSRequired }}
   tls:
     - hosts:
         - {{ include "zenith-service.ingress.host" . }}

@@ -16,6 +16,8 @@ global:
     tls:
       # Indicates if TLS should be enabled
       enabled: true
+      # Indicates if the ingress controller is itself behind a proxy that is terminating TLS
+      terminatedAtProxy: false
       # The name of a secret containing a wildcard certificate
       secretName:
       # TLS-specific annotations for ingress resources
