@@ -101,6 +101,9 @@ class OIDCConfig(Section):
     #: pre-select an identity provider
     #: See https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/alpha-config#loginurlparameter
     forwarded_query_params: t.List[ForwardedQueryParam] = Field(default_factory = list)
+    #: The headers to inject into the request from claims in the ID token
+    #: The special claims id_token and access_token represent the ID and access tokens
+    inject_request_headers: t.Dict[str, str] = Field(default_factory = dict)
 
 
 class ExternalAuthConfig(Section):
