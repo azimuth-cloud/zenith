@@ -16,7 +16,7 @@ zenithClient:
     failures: 3
   # The image to use for the Zenith client container
   image:
-    repository: ghcr.io/stackhpc/zenith-client
+    repository: ghcr.io/azimuth-cloud/zenith-client
     pullPolicy: IfNotPresent
     tag: ""  # Defaults to appVersion if not given
 
@@ -26,7 +26,7 @@ mitmProxy:
   port: 8080
   # The image to use for the proxy container
   image:
-    repository: ghcr.io/stackhpc/zenith-proxy
+    repository: ghcr.io/azimuth-cloud/zenith-proxy
     pullPolicy: IfNotPresent
     tag: ""  # Defaults to appVersion if not given
 

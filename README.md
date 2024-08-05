@@ -59,7 +59,7 @@ The Zenith client is also written in [Python](https://www.python.org/), and it i
     [OpenSSH client](https://man.openbsd.org/ssh.1).
 
 The reservation of domains and the delivery of tokens to clients are managed by an external "broker"
-that will be different for each use case. For example, [Azimuth](https://github.com/stackhpc/azimuth)
+that will be different for each use case. For example, [Azimuth](https://github.com/azimuth-cloud/azimuth)
 is able to act as a broker for Zenith clients that are running on machines and clusters it creates.
 
 The architecture of Zenith is described in more detail in [Zenith Architecture](./docs/architecture.md).
@@ -99,7 +99,7 @@ The Zenith client is made available on [GitHub Packages](https://github.com/feat
 as a multi-arch container image that is built for both AMD64 and ARM64:
 
 ```bash
-docker run --rm ghcr.io/stackhpc/zenith-client:main zenith-client --help
+docker run --rm ghcr.io/azimuth-cloud/zenith-client:main zenith-client --help
 ```
 
 ### Python installation
@@ -107,10 +107,8 @@ docker run --rm ghcr.io/stackhpc/zenith-client:main zenith-client --help
 The Zenith client can also be installed directly from GitHub using [pip](https://pip.pypa.io/en/stable/):
 
 ```bash
-# configomatic is a dependency of the Zenith client
-pip install git+https://github.com/stackhpc/configomatic.git
 # Install the Zenith client
-pip install git+https://github.com/stackhpc/zenith.git#subdirectory=client
+pip install git+https://github.com/azimuth-cloud/zenith.git#subdirectory=client
 # Show the Zenith client help
 zenith-client --help
 ```
@@ -172,7 +170,7 @@ zenith-ssh
 $ docker run \
     --rm \
     -v zenith-ssh:/home/zenith/.ssh \
-    ghcr.io/stackhpc/zenith-client:latest \
+    ghcr.io/azimuth-cloud/zenith-client:latest \
     zenith-client init \
       --ssh-identity-path /home/zenith/.ssh/id_zenith \
       --registrar-url ${zenith_registrar_url} \
@@ -211,7 +209,7 @@ $ docker run \
     --restart unless-stopped \
     --network zenith-test \
     -v zenith-ssh:/home/zenith/.ssh \
-    ghcr.io/stackhpc/zenith-client:latest \
+    ghcr.io/azimuth-cloud/zenith-client:latest \
     zenith-client connect \
       --ssh-identity-path /home/zenith/.ssh/id_zenith \
       --server-address ${zenith_sshd_address} \

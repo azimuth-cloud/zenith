@@ -22,7 +22,7 @@ clusterRoleName: cluster-admin
 
 # The image to use for the operator
 image:
-  repository: ghcr.io/stackhpc/zenith-operator
+  repository: ghcr.io/azimuth-cloud/zenith-operator
   pullPolicy: IfNotPresent
   tag: ""  # Defaults to appVersion if not given
 

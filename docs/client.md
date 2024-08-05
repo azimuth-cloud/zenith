@@ -36,7 +36,7 @@ The Zenith client is made available on [GitHub Packages](https://github.com/feat
 as a multi-arch container image that is built for both AMD64 and ARM64:
 
 ```bash
-docker run --rm ghcr.io/stackhpc/zenith-client:main zenith-client --help
+docker run --rm ghcr.io/azimuth-cloud/zenith-client:main zenith-client --help
 ```
 
 ### Python installation
@@ -44,10 +44,8 @@ docker run --rm ghcr.io/stackhpc/zenith-client:main zenith-client --help
 The Zenith client can also be installed directly from GitHub using [pip](https://pip.pypa.io/en/stable/):
 
 ```bash
-# configomatic is a dependency of the Zenith client
-pip install git+https://github.com/stackhpc/configomatic.git
 # Install the Zenith client
-pip install git+https://github.com/stackhpc/zenith.git#subdirectory=client
+pip install git+https://github.com/azimuth-cloud/zenith.git#subdirectory=client
 # Show the Zenith client help
 zenith-client --help
 ```

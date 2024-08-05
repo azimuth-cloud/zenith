@@ -37,7 +37,7 @@ sync:
       ingress: {}
   # The image to use for the sync component
   image:
-    repository: ghcr.io/stackhpc/zenith-sync
+    repository: ghcr.io/azimuth-cloud/zenith-sync
     pullPolicy: IfNotPresent
     tag: ""  # Defaults to appVersion if not given
   imagePullSecrets: []
@@ -67,7 +67,7 @@ sshd:
   config: {}
   # The image to use for the SSHD server
   image:
-    repository: ghcr.io/stackhpc/zenith-sshd
+    repository: ghcr.io/azimuth-cloud/zenith-sshd
     pullPolicy: IfNotPresent
     tag: ""  # Defaults to appVersion if not given
   imagePullSecrets: []
@@ -118,7 +118,7 @@ registrar:
     subdomain: registrar
   # The image to use for the registrar
   image:
-    repository: ghcr.io/stackhpc/zenith-registrar
+    repository: ghcr.io/azimuth-cloud/zenith-registrar
     pullPolicy: IfNotPresent
     tag: ""  # Defaults to appVersion if not given
   imagePullSecrets: []
