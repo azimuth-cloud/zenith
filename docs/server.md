@@ -93,7 +93,7 @@ Zenith can then be deployed using the following commands:
 
 ```bash
 # Install the Zenith Helm repository
-helm repo add zenith https://stackhpc.github.io/zenith
+helm repo add zenith https://azimuth-cloud.github.io/zenith
 
 # Check for available versions
 # Usually, the latest tag or latest commit to main should be used

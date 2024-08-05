@@ -159,7 +159,7 @@ class ZenithClientContainerImage(ContainerImage):
     Model for the image for the Zenith client container.
     """
     repository: schema.constr(pattern =r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
-        "ghcr.io/stackhpc/zenith-client",
+        "ghcr.io/azimuth-cloud/zenith-client",
         description = "The repository for the container image."
     )
 
@@ -285,7 +285,7 @@ class MITMProxyContainerImage(ContainerImage):
     Model for the image for the MITM proxy container.
     """
     repository: schema.constr(pattern =r"^([a-z0-9.-]+(:\d+)?/)?[a-z0-9._/-]+$") = Field(
-        "ghcr.io/stackhpc/zenith-proxy",
+        "ghcr.io/azimuth-cloud/zenith-proxy",
         description = "The repository for the container image."
     )
 

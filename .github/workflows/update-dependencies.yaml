@@ -41,25 +41,25 @@ jobs:
 
       - name: Check for most recent GitHub release
         id: next
-        uses: stackhpc/github-actions/github-latest-release@master
+        uses: azimuth-cloud/github-actions/github-latest-release@master
         with:
           repository: ${{ matrix.repository }}
           tags: ${{ matrix.tags || 'no' }}
 
       - name: Update dependency key
-        uses: stackhpc/github-actions/config-update@master
+        uses: azimuth-cloud/github-actions/config-update@master
         with:
           path: ${{ matrix.path }}
           updates: |
             ${{ matrix.version_jsonpath }}=${{ steps.next.outputs.version }}
 
       - name: Generate app token for PR
-        uses: stackhpc/github-actions/generate-app-token@master
+        uses: azimuth-cloud/github-actions/generate-app-token@master
         id: generate-app-token
         with:
           repository: ${{ github.repository }}
-          app-id: ${{ secrets.APP_ID }}
-          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.AUTOMATION_APP_ID }}
+          app-private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
 
       - name: Propose changes via PR if required
         uses: peter-evans/create-pull-request@v6
@@ -98,7 +98,7 @@ jobs:
 
       - name: Extract repo and chart
         id: chart-info
-        uses: stackhpc/github-actions/config-extract@master
+        uses: azimuth-cloud/github-actions/config-extract@master
         with:
           path: ${{ matrix.path }}
           outputs: |
@@ -107,25 +107,25 @@ jobs:
 
       - name: Check for updates
         id: next
-        uses: stackhpc/github-actions/helm-latest-version@master
+        uses: azimuth-cloud/github-actions/helm-latest-version@master
         with:
           repository: ${{ steps.chart-info.outputs.repo }}
           chart: ${{ steps.chart-info.outputs.name }}
 
       - name: Update chart version
-        uses: stackhpc/github-actions/config-update@master
+        uses: azimuth-cloud/github-actions/config-update@master
         with:
           path: ${{ matrix.path }}
           updates: |
             ${{ matrix.chart_version_jsonpath }}=${{ steps.next.outputs.version }}
 
       - name: Generate app token for PR
-        uses: stackhpc/github-actions/generate-app-token@master
+        uses: azimuth-cloud/github-actions/generate-app-token@master
         id: generate-app-token
         with:
           repository: ${{ github.repository }}
-          app-id: ${{ secrets.APP_ID }}
-          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.AUTOMATION_APP_ID }}
+          app-private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
 
       - name: Propose changes via PR if required
         uses: peter-evans/create-pull-request@v6
