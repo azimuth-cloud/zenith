@@ -102,8 +102,7 @@ async def metrics_handler(store: 'Store', processor: 'Processor', request):
     """
     Produce metrics for the store and processor.
     """
-    store_metrics = await store.metrics()
-    processor_metrics = await processor.metrics()
+    store_metrics, processor_metrics = await asyncio.gather(store.metrics(), processor.metrics())
     content_type, content = render_openmetrics(*store_metrics, *processor_metrics)
     return web.Response(headers = {"Content-Type": content_type}, body = content)
 

@@ -4,7 +4,7 @@ import logging
 import typing
 
 from easykube import Configuration, ApiError
-from kube_custom_resource import CustomResourceRegistry
+from kube_custom_resource import CustomResourceRegistry, CustomResource
 
 from ... import config, metrics, model
 
@@ -196,18 +196,24 @@ class Store(base.Store):
             # Wait for the configured duration
             await asyncio.sleep(self.config.crd_endpoint_check_interval)
 
+    async def _populate_metric(
+        self,
+        metric: metrics.Metric,
+        model: typing.Type[CustomResource]
+    ) -> metrics.Metric:
+        """
+        Adds instances of the specified model to the given metric.
+        """
+        ekresource = await self._ekresource_for_model(model)
+        async for instance in ekresource.list():
+            metric.add_obj(instance)
+        return metric
+
     async def metrics(self) -> typing.Iterable[metrics.Metric]:
-        ekservices = await self._ekresource_for_model(api.Service)
-        service_info_metric = ServiceInfo()
-        async for service in ekservices.list():
-            service_info_metric.add_obj(service)
-
-        ekendpoints = await self._ekresource_for_model(api.Endpoints)
-        endpoints_info_metric = ServiceEndpointInfo()
-        async for endpoints in ekendpoints.list():
-            endpoints_info_metric.add_obj(endpoints)
-
-        return [service_info_metric, endpoints_info_metric]
+        return await asyncio.gather(
+            self._populate_metric(ServiceInfo(), api.Service),
+            self._populate_metric(ServiceEndpointInfo(), api.Endpoints)
+        )
 
     @classmethod
     def from_config(cls, config_obj: config.SyncConfig) -> "Store":
