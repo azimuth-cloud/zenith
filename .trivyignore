@@ -2,3 +2,5 @@
 # Ignore until they are fixed upstream
 CVE-2023-49568
 CVE-2023-49569
+# We do not make use of the Helm functionality that is affected by this CVE
+CVE-2024-41110
