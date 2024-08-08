@@ -49,7 +49,11 @@ nginx.ingress.kubernetes.io/proxy-read-timeout: {{ quote . }}
 Annotations for TLS.
 */}}
 {{- define "zenith-service.ingress.tls.annotations" -}}
-{{- if not .Values.ingress.tls.existingCertificate.cert }}
+{{-
+  if and
+    (not .Values.ingress.tls.terminatedAtProxy)
+    (not .Values.ingress.tls.existingCertificate.cert)
+}}
 {{- with .Values.ingress.tls.annotations }}
 {{ toYaml . }}
 {{- end }}

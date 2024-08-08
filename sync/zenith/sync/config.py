@@ -134,6 +134,8 @@ class TLSConfig(Section):
     """
     #: Indicates whether TLS should be enabled
     enabled: bool = True
+    #: Indicates if the ingress controller is itself behind a proxy that is terminating TLS
+    terminated_at_proxy: bool = False
     #: The name of a secret containing a wildcard certificate
     secret_name: t.Optional[str] = None
     #: Annotations to add to ingress resources that are TLS-specific

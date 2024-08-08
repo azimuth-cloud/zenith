@@ -4,12 +4,13 @@
 {{- $registrar := deepCopy .Values.registrar.ingress }}
 {{- $ingress := mergeOverwrite $global $common $registrar }}
 {{- $defaultHost := printf "%s.%s" (tpl $ingress.subdomain .) $ingress.baseDomain }}
+{{- $ingressTLSRequired := and $ingress.tls.enabled (not $ingress.tls.terminatedAtProxy) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "zenith.componentname" (list . "registrar") }}
   labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
-  {{- $tlsAnnotations := $ingress.tls.enabled | ternary $ingress.tls.annotations dict }}
+  {{- $tlsAnnotations := $ingressTLSRequired | ternary $ingress.tls.annotations dict }}
   {{- $annotations := mergeOverwrite $ingress.annotations $tlsAnnotations }}
   {{- with $annotations }}
   annotations: {{ toYaml . | nindent 4 }}
@@ -18,7 +19,7 @@ spec:
   {{- with $ingress.className }}
   ingressClassName: {{ . }}
   {{- end }}
-  {{- if $ingress.tls.enabled }}
+  {{- if $ingressTLSRequired }}
   tls:
     - hosts:
         - {{ default $defaultHost $ingress.host | quote }}
