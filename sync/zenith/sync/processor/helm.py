@@ -22,9 +22,9 @@ class ServiceHelmStatus(metrics.Metric):
 
     def labels(self, obj):
         return {
-            "service_namespace": obj.release.namespace,
-            "service_name": obj.release.name,
-            "status": obj.status.value,
+            "service_namespace": obj["namespace"],
+            "service_name": obj["name"],
+            "status": obj["status"],
         }
 
 
@@ -288,14 +288,15 @@ class Processor(base.Processor):
         await secrets.delete(secret_name)
 
     async def metrics(self) -> typing.Iterable[metrics.Metric]:
-        releases = await self.helm_client.list_releases(
+        # Drop down to the Helm command to get statuses without extra Helm commands
+        releases = await self.helm_client._command.list(
             all = True,
             max_releases = 0,
             namespace = self.config.target_namespace
         )
         helm_status_metric = ServiceHelmStatus()
         for release in releases:
-            helm_status_metric.add_obj(await release.current_revision())
+            helm_status_metric.add_obj(release)
         return [helm_status_metric]
 
     async def _update_tls_mirror(self, source_object):
@@ -381,7 +382,10 @@ class Processor(base.Processor):
     async def run(self, store: store.Store):
         # We need to run the TLS mirror alongside the main loop
         done, not_done = await asyncio.wait(
-            [super().run(store), self._run_tls_mirror()],
+            [
+                asyncio.create_task(super().run(store)),
+                asyncio.create_task(self._run_tls_mirror()),
+            ],
             return_when = asyncio.FIRST_COMPLETED
         )
         # Any exceptions are not raised until the result is requested

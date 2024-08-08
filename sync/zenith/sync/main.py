@@ -19,7 +19,11 @@ async def run(config_obj: config.SyncConfig):
         # We can't use gather because we want the entire command to exit if one
         # of the coroutines exits, even if that exit is clean
         done, not_done = await asyncio.wait(
-            [processor.run(store), store.run(), metrics_server(store, processor)],
+            [
+                asyncio.create_task(processor.run(store)),
+                asyncio.create_task(store.run()),
+                asyncio.create_task(metrics_server(store, processor)),
+            ],
             return_when = asyncio.FIRST_COMPLETED
         )
         # However any exceptions are not raised until we try to fetch the results
