@@ -6,6 +6,8 @@ global:
     # The base domain to use for services exposed by Zenith
     # Proxied services will be made available at <subdomain>.<base domain>
     baseDomain:
+    #: Indicates whether the subdomain should be used as a path prefix
+    subdomainAsPathPrefix: false
     # The ingress class to use
     className: nginx
     # The common annotations for all ingress resources

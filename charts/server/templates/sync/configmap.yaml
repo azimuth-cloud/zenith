@@ -8,6 +8,7 @@ kubernetes:
   serviceChartVersion: {{ .Chart.Version }}
   ingress:
     baseDomain: {{ $ingress.baseDomain | quote }}
+    subdomainAsPathPrefix: {{ $ingress.subdomainAsPathPrefix }}
     className: {{ $ingress.className | quote }}
     annotations: {{ $ingress.annotations | toYaml | nindent 6 }}
     tls:

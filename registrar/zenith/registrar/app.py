@@ -161,7 +161,10 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
                 detail = "Public key is already associated with another subdomain."
             )
     # The FQDN is the requests subdomain combined with the configured base domain
-    fqdn = f"{subdomain}.{settings.base_domain}"
+    if settings.subdomain_as_path_prefix:
+        fqdn = f"{settings.base_domain}/{subdomain}"
+    else:
+        fqdn = f"{subdomain}.{settings.base_domain}"
     if req.public_key:
         # When the request contained a public key, return the fingerprint
         return Reservation(

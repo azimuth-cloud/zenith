@@ -22,14 +22,14 @@ spec:
   {{- if .Values.global.secure }}
   tls:
     - hosts:
-        - {{ .Values.global.domain }}
+        - {{ include "zenith-service.ingress.host" . }}
       secretName: {{ include "zenith-service.ingress.tls.secretName" . }}
   {{- end }}
   rules:
-    - host: {{ .Values.global.domain }}
+    - host: {{ include "zenith-service.ingress.host" . }}
       http:
         paths:
-          - path: {{ index .Values.oidc.extraArgs "proxy-prefix" }}
+          - path: {{ tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
             pathType: Prefix
             backend:
               service:

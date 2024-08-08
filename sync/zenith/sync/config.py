@@ -146,6 +146,8 @@ class IngressConfig(Section):
     """
     #: Base domain for the proxied services
     base_domain: DomainName
+    #: Indicates whether the subdomain should be used as a path prefix
+    subdomain_as_path_prefix: bool = False
     #: Annotations to add to all ingress resources
     annotations: t.Dict[str, str] = Field(default_factory = dict)
     #: The TLS configuration

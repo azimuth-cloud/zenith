@@ -1,9 +1,14 @@
 # Use globals for any values that need to be shared with the OIDC subchart
 global:
-  # The domain to use for the service
-  domain:
+  # The configured base domain
+  baseDomain:
+  # The subdomain to use for the service
+  subdomain:
   # Indicates if the service should be secured using TLS
   secure: true
+  # Indicates if the service should use the subdomain as a path prefix
+  # or an actual subdomain
+  subdomainAsPathPrefix: false
 
 # The endpoints for the service
 endpoints: []
@@ -123,7 +128,12 @@ oidc:
   # Some settings are only available as arguments
   extraArgs:
     # The path prefix to use for OAuth2 proxy endpoints
-    proxy-prefix: /_oidc
+    proxy-prefix: >-
+      {{- if .Values.global.subdomainAsPathPrefix -}}
+      /{{ .Values.global.subdomain }}/_oidc
+      {{- else -}}
+      /_oidc
+      {{- end -}}
     cookie-secret: "{{ fail \"cookie secret is required\" }}"
     # The length of time for which OAuth2 proxy cookies should last
     #   This determines the length of time until a user is forced to reauthenticate
@@ -141,8 +151,8 @@ oidc:
     # We redirect to the callback endpoint on the service domain
     redirect-url: >-
       {{- $scheme := ternary "https" "http" .Values.global.secure -}}
-      {{- $host := .Values.global.domain -}}
-      {{- $prefix := index .Values.extraArgs "proxy-prefix" -}}
+      {{- $host := include "zenith-service.ingress.host" . -}}
+      {{- $prefix := tpl (index .Values.extraArgs "proxy-prefix") . -}}
       {{- printf "%s://%s%s/callback" $scheme $host $prefix -}}
     # Allow any email address
     email-domain: "*"

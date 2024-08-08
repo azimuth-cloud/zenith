@@ -148,7 +148,9 @@ class Processor(base.Processor):
         # Build the core values for the service
         values = {
             "global": {
-                "domain": f"{service.name}.{self.config.ingress.base_domain}",
+                "baseDomain": self.config.ingress.base_domain,
+                "subdomain": service.name,
+                "subdomainAsPathPrefix": self.config.ingress.subdomain_as_path_prefix,
             },
             "endpoints": [dataclasses.asdict(ep) for ep in service.endpoints],
             "protocol": service.config.get("backend-protocol", "http"),
