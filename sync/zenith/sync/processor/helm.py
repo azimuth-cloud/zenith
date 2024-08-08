@@ -224,6 +224,14 @@ class Processor(base.Processor):
                         "issuerURL": issuer_url,
                     },
                 },
+                "alphaConfig": {
+                    "configData": {
+                        "injectResponseHeaders": [
+                            {"name": h, "values": [{"claim": c}]}
+                            for h, c in self.config.ingress.oidc.inject_request_headers.items()
+                        ],
+                    },
+                },
                 "extraArgs": {
                     "cookie-secret": cookie_secret,
                 },

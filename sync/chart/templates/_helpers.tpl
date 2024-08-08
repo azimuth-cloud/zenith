@@ -93,9 +93,14 @@ Annotations for OIDC auth.
 {{- $scheme := ternary "https" "http" .Values.global.secure }}
 {{- $oidcReleaseName := printf "%s-oidc" .Release.Name }}
 {{- $prefix := index .Values.oidc.extraArgs "proxy-prefix" }}
-nginx.ingress.kubernetes.io/auth-url: "http://{{ $oidcReleaseName }}.{{ .Release.Namespace }}.svc.cluster.local{{ $prefix }}/auth"
-nginx.ingress.kubernetes.io/auth-signin: "{{ $scheme }}://{{ .Values.global.domain }}{{ $prefix }}/start??rd=$escaped_request_uri&$args"
-nginx.ingress.kubernetes.io/auth-response-headers: "X-Remote-User,X-Remote-Group"
+nginx.ingress.kubernetes.io/auth-url: >-
+  http://{{ $oidcReleaseName }}.{{ .Release.Namespace }}.svc.cluster.local{{ $prefix }}/auth
+nginx.ingress.kubernetes.io/auth-signin: >-
+  {{ $scheme }}://{{ .Values.global.domain }}{{ $prefix }}/start?rd=$escaped_request_uri&$args
+{{- with .Values.oidc.alphaConfig.configData.injectResponseHeaders }}
+nginx.ingress.kubernetes.io/auth-response-headers: >-
+  {{ range $i, $rh := . }}{{ if $i }},{{ end }}{{ $rh.name }}{{ end }}
+{{- end }}
 nginx.ingress.kubernetes.io/configuration-snippet: |
   auth_request_set $auth_cookie__oauth2_proxy_1 $upstream_cookie__oauth2_proxy_1;
   auth_request_set $auth_cookie__oauth2_proxy_2 $upstream_cookie__oauth2_proxy_2;

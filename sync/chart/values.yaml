@@ -97,14 +97,8 @@ oidc:
     enabled: true
     # Static parts of the configuration
     configData:
-      # Make sure the claims we require are returned as headers
-      injectResponseHeaders:
-        - name: X-Remote-User
-          values:
-            - claim: preferred_username
-        - name: X-Remote-Group
-          values:
-            - claim: groups
+      # This is the claims to return as headers from the response
+      injectResponseHeaders: []
       # Just configure a "null" upstream as we are using it as an auth request
       upstreamConfig:
         upstreams:
