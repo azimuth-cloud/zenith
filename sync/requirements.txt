@@ -8,7 +8,7 @@ certifi==2024.7.4
 click==8.1.7
 configomatic==0.4.0
 easykube==0.3.3
-easysemver==0.1.0
+easysemver==0.2.0
 exceptiongroup==1.2.2
 frozenlist==1.4.1
 h11==0.14.0
