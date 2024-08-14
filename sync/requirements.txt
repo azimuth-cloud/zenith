@@ -20,7 +20,7 @@ multidict==6.0.5
 pydantic==2.8.2
 pydantic_core==2.21.0
 pyhelm3==0.4.0
-PyYAML==6.0.1
+PyYAML==6.0.2
 sniffio==1.3.1
 typing_extensions==4.12.2
 yarl==1.9.4
