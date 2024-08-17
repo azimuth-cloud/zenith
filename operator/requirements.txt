@@ -20,7 +20,7 @@ idna==3.7
 iso8601==2.1.0
 Jinja2==3.1.4
 kopf==1.37.2
-kube-custom-resource==0.4.0
+kube-custom-resource==0.5.0
 MarkupSafe==2.1.5
 multidict==6.0.5
 pycparser==2.22
