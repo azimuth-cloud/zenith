@@ -27,7 +27,7 @@ def is_reserved_subdomain(v):
 #: See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
 Subdomain = t.Annotated[
     str,
-    StringConstraints(pattern =r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63),
+    StringConstraints(pattern = r"^[a-z][a-z0-9-]*?[a-z0-9]$", max_length = 63),
     AfterValidator(is_reserved_subdomain)
 ]
 

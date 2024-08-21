@@ -3,7 +3,18 @@
 {{- $common := deepCopy .Values.common.ingress }}
 {{- $registrar := deepCopy .Values.registrar.ingress }}
 {{- $ingress := mergeOverwrite $global $common $registrar }}
-{{- $defaultHost := printf "%s.%s" (tpl $ingress.subdomain .) $ingress.baseDomain }}
+{{-
+  $defaultHost := ternary
+    $ingress.baseDomain
+    (printf "%s.%s" (tpl $ingress.subdomain .) $ingress.baseDomain)
+    $ingress.subdomainAsPathPrefix
+}}
+{{-
+  $pathPrefix := ternary
+    (tpl $ingress.subdomain . | printf "/%s")
+    ""
+    $ingress.subdomainAsPathPrefix
+}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -11,9 +22,13 @@ metadata:
   labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
   {{- $tlsAnnotations := $ingress.tls.enabled | ternary $ingress.tls.annotations dict }}
   {{- $annotations := mergeOverwrite $ingress.annotations $tlsAnnotations }}
-  {{- with $annotations }}
-  annotations: {{ toYaml . | nindent 4 }}
-  {{- end }}
+  annotations:
+    {{- if $ingress.subdomainAsPathPrefix }}
+    nginx.ingress.kubernetes.io/rewrite-target: "/associate"
+    {{- end }}
+    {{- with $annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   {{- with $ingress.className }}
   ingressClassName: {{ . }}
@@ -30,7 +45,7 @@ spec:
       http:
         paths:
           # Only the associate endpoint is made available through ingress
-          - path: /associate
+          - path: {{ printf "%s/associate" $pathPrefix | quote }}
             pathType: Prefix
             backend:
               service:
