@@ -97,7 +97,6 @@ Annotations for OIDC auth.
 {{- $scheme := ternary "https" "http" .Values.global.secure }}
 {{- $host := include "zenith-service.ingress.host" . }}
 {{- $oidcReleaseName := printf "%s-oidc" .Release.Name }}
-
 {{- $prefix := tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
 nginx.ingress.kubernetes.io/auth-url: >-
   http://{{ $oidcReleaseName }}.{{ .Release.Namespace }}.svc.cluster.local{{ $prefix }}/auth
