@@ -13,6 +13,7 @@ kubernetes:
     annotations: {{ $ingress.annotations | toYaml | nindent 6 }}
     tls:
       enabled: {{ $ingress.tls.enabled }}
+      terminatedAtProxy: {{ $ingress.tls.terminatedAtProxy }}
       {{- with $ingress.tls.secretName }}
       secretName: {{ . | quote }}
       {{- end }}

@@ -154,6 +154,9 @@ class Processor(base.Processor):
             },
             "endpoints": [dataclasses.asdict(ep) for ep in service.endpoints],
             "protocol": service.config.get("backend-protocol", "http"),
+            "ingress": {
+                "annotations": self.config.ingress.annotations,
+            },
         }
         read_timeout = service.config.get("read-timeout")
         if read_timeout:
@@ -180,6 +183,8 @@ class Processor(base.Processor):
                 "cert": service.config["tls-cert"],
                 "key": service.config["tls-key"],
             }
+        elif self.config.ingress.tls.terminated_at_proxy:
+            tls_values["terminatedAtProxy"] = True
         elif self.config.ingress.tls.secret_name:
             tls_values["secretName"] = self.config.ingress.tls.secret_name
         else:
