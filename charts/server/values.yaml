@@ -38,7 +38,14 @@ sync:
   # Configuration for the sync component
   config:
     kubernetes:
-      ingress: {}
+      ingress:
+        oidc:
+          injectRequestHeaders:
+            X-Remote-User: preferred_username
+            X-Remote-Group: groups
+            # To inject the id and/or access tokens in the named headers, include the following:
+            # X-Auth-ID-Token: id_token
+            # X-Auth-Access-Token: access_token
   # The image to use for the sync component
   image:
     repository: ghcr.io/azimuth-cloud/zenith-sync
