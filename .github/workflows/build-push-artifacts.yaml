@@ -68,6 +68,7 @@ jobs:
             type=raw,value=${{ steps.semver.outputs.short-sha }}
 
       - name: Build and push image
+        id: build-push
         uses: azimuth-cloud/github-actions/docker-multiarch-build-push@master
         with:
           cache-key: ${{ matrix.component }}
@@ -76,6 +77,14 @@ jobs:
           push: true
           tags: ${{ steps.image-meta.outputs.tags }}
           labels: ${{ steps.image-meta.outputs.labels }}
+          upload-sarif: false
+
+      - name: Upload Trivy scan results to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.build-push.outputs.sarif-file }}
+          category: ${{ matrix.component }}
+        if: ${{ always() }}
 
   # This task mirrors and tags the current latest version of the
   # required exporter images, to reduce reliance on Docker Hub
