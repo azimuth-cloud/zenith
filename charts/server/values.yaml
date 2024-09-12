@@ -25,6 +25,8 @@ global:
 
 # Common configuration
 common:
+  # A bundle of trusted CAs to use instead of the defaults
+  trustBundle:
   # Ingress configuration
   # This overrides global.ingress, and can be overridden by component-specific settings
   ingress: {}

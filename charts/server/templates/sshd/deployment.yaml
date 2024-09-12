@@ -46,6 +46,11 @@ spec:
               readOnly: true
             - name: var-run-sshd
               mountPath: /var/run/sshd
+            {{- if .Values.common.trustBundle }}
+            - name: trust-bundle
+              mountPath: /etc/ssl/certs
+              readOnly: true
+            {{- end }}
       {{- with .Values.sshd.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
@@ -70,4 +75,9 @@ spec:
             name: {{ include "zenith.componentname" (list . "sshd-conf") }}
         - name: var-run-sshd
           emptyDir: {}
+        {{- if .Values.common.trustBundle }}
+        - name: trust-bundle
+          configMap:
+            name: {{ include "zenith.componentname" (list . "trust-bundle") }}
+        {{- end }}
 {{- end }}

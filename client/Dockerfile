@@ -19,6 +19,10 @@ FROM ubuntu:jammy
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
 
+# Make requests use the system trust roots
+# By default, this means we use the roots baked into the image
+ENV REQUESTS_CA_BUNDLE /etc/ssl/certs/ca-certificates.crt
+
 # Create the user that will be used to run the client process
 ENV ZENITH_UID 1001
 ENV ZENITH_GID 1001

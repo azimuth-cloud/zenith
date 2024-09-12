@@ -1,0 +1,10 @@
+{{- if .Values.common.trustBundle }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zenith.componentname" (list . "trust-bundle") }}
+  labels: {{ include "zenith.componentLabels" (list . "trust-bundle") | nindent 4 }}
+data:
+  ca-certificates.crt: |
+    {{- nindent 4 .Values.common.trustBundle }}
+{{- end }}

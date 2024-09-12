@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import copy
 import dataclasses
 import json
 import logging
@@ -140,6 +141,34 @@ class Processor(base.Processor):
             else:
                 raise
         return base64.b64decode(secret.data["cookie-secret"]).decode()
+
+    def _get_trust_values(self) -> typing.Dict[str, typing.Any]:
+        """
+        Returns the values for configuring a custom trust bundle for the OIDC callout.
+        """
+        if self.config.trust_bundle_configmap_name:
+            # Make sure that the OIDC pods trust the bundle
+            return {
+                "oidc": {
+                    "extraVolumes": [
+                        {
+                            "name": "trust-bundle",
+                            "configMap": {
+                                "name": self.config.trust_bundle_configmap_name,
+                            },
+                        },
+                    ],
+                    "extraVolumeMounts": [
+                        {
+                            "name": "trust-bundle",
+                            "mountPath": "/etc/ssl/certs",
+                            "readOnly": True,
+                        },
+                    ],
+                },
+            }
+        else:
+            return {}
 
     def _get_service_values(self, service: model.Service) -> typing.Dict[str, typing.Any]:
         """
@@ -287,6 +316,7 @@ class Processor(base.Processor):
                 version = self.config.service_chart_version
             ),
             self.config.service_default_values,
+            self._get_trust_values(),
             self._get_service_values(service),
             self._get_ingress_enabled(service),
             self._get_tls_values(service),
@@ -326,91 +356,126 @@ class Processor(base.Processor):
             helm_status_metric.add_obj(release)
         return [helm_status_metric]
 
-    async def _update_tls_mirror(self, source_object):
+    async def _watch_events(self, ekresource, name, namespace):
         """
-        Updates the mirror secret in the target namespace.
+        Yields watch events for the specified object, including a synthetic add/delete event
+        for the initial state.
         """
-        self.logger.info(
-            "Updating mirrored TLS secret '%s' in namespace '%s'",
-            self.config.ingress.tls.secret_name,
-            self.config.target_namespace
-        )
-        await self.ekclient.apply_object(
-            {
-                "apiVersion": "v1",
-                "kind": "Secret",
-                "metadata": {
-                    "name": self.config.ingress.tls.secret_name,
-                    "namespace": self.config.target_namespace,
-                    "labels": {
-                        self.config.created_by_label: "zenith-sync",
+        initial_state, events = await ekresource.watch_one(name, namespace = namespace)
+        if initial_state:
+            yield {
+                "type": "ADDED",
+                "object": initial_state
+            }
+        else:
+            yield {
+                "type": "DELETED",
+                "object": {
+                    "metadata": {
+                        "name": name,
+                        "namespace": namespace,
                     },
-                    "annotations": {
-                        self.config.tls_mirror_annotation: "{}/{}".format(
-                            source_object["metadata"]["namespace"],
-                            source_object["metadata"]["name"]
-                        ),
-                    },
-                },
-                "type": source_object["type"],
-                "data": source_object["data"],
-            },
-            force = True
-        )
+                }
+            }
+        async for event in events:
+            yield event
 
-    async def _delete_tls_mirror(self):
+    async def _mirror_obj(self, ekresource, name, source_namespace, target_namespace):
         """
-        Deletes the mirror secret in the target namespace.
+        Mirrors the specified object from the source namespace to the target namespace.
         """
         self.logger.info(
-            "Deleting mirrored TLS secret '%s' in namespace '%s'",
-            self.config.ingress.tls.secret_name,
-            self.config.target_namespace
+            "Mirroring object [apiVersion: %s, kind: %s, name: %s, from: %s, to: %s]",
+            ekresource.api_version,
+            ekresource.kind,
+            name,
+            source_namespace,
+            target_namespace
         )
-        secrets = await self.ekclient.api("v1").resource("secrets")
-        await secrets.delete(
-            self.config.ingress.tls.secret_name,
-            namespace = self.config.target_namespace
-        )
+        async for event in self._watch_events(ekresource, name, source_namespace):
+            # Prepare the mirror object from the source object
+            mirror_obj = copy.deepcopy(event["object"])
+            # Make sure that the API version and kind are present
+            mirror_obj.setdefault("apiVersion", ekresource.api_version)
+            mirror_obj.setdefault("kind", ekresource.kind)
+            # Replace the metadata object with one containing only what we need
+            mirror_obj["metadata"] = {
+                "name": mirror_obj["metadata"]["name"],
+                # Set the namespace to the target namespace
+                "namespace": target_namespace,
+                "labels": { self.config.created_by_label: "zenith-sync" },
+                "annotations": { self.config.mirror_annotation: f"{source_namespace}/{name}" },
+            }
+
+            if event["type"] == "DELETED":
+                self.logger.info(
+                    "Deleting mirrored object [apiVersion: %s, kind: %s, name: %s, ns: %s]",
+                    ekresource.api_version,
+                    ekresource.kind,
+                    mirror_obj["metadata"]["name"],
+                    mirror_obj["metadata"]["namespace"]
+                )
+                await ekresource.delete(
+                    mirror_obj["metadata"]["name"],
+                    namespace = mirror_obj["metadata"]["namespace"]
+                )
+            else:
+                self.logger.info(
+                    "Updating mirrored object [apiVersion: %s, kind: %s, name: %s, ns: %s]",
+                    ekresource.api_version,
+                    ekresource.kind,
+                    mirror_obj["metadata"]["name"],
+                    mirror_obj["metadata"]["namespace"]
+                )
+                await ekresource.server_side_apply(
+                    mirror_obj["metadata"]["name"],
+                    mirror_obj,
+                    namespace = mirror_obj["metadata"]["namespace"],
+                    force = True
+                )
+
+    async def _run_trust_bundle_mirror(self):
+        """
+        Continuously mirrors the trust bundle into the target namespace.
+        """
+        # We need to mirror TLS secrets alongside handling events
+        if self.config.trust_bundle_configmap_name:
+            configmaps = await self.ekclient.api("v1").resource("configmaps")
+            await self._mirror_obj(
+                configmaps,
+                self.config.trust_bundle_configmap_name,
+                self.config.self_namespace,
+                self.config.target_namespace
+            )
+        else:
+            self.logger.info("Mirroring of trust bundle configmap is not required")
+            while True:
+                await asyncio.Event().wait()
 
     async def _run_tls_mirror(self):
         """
-        Runs the TLS mirror.
+        Continuously mirrors the TLS secret into the target namespace.
         """
         # We need to mirror TLS secrets alongside handling events
         if self.config.ingress.tls.enabled and self.config.ingress.tls.secret_name:
-            self.logger.info(
-                "Mirroring TLS secret [secret: %s, from: %s, to: %s]",
+            secrets = await self.ekclient.api("v1").resource("secrets")
+            await self._mirror_obj(
+                secrets,
                 self.config.ingress.tls.secret_name,
                 self.config.self_namespace,
                 self.config.target_namespace
             )
-            # Watch the named secret in the release namespace for changes
-            secrets = await self.ekclient.api("v1").resource("secrets")
-            initial_state, events = await secrets.watch_one(
-                self.config.ingress.tls.secret_name,
-                namespace = self.config.self_namespace
-            )
-            # Mirror the changes to the target namespace
-            if initial_state:
-                await self._update_tls_mirror(initial_state)
-            else:
-                await self._delete_tls_mirror()
-            async for event in events:
-                if event["type"] != "DELETED":
-                    await self._update_tls_mirror(event["object"])
-                else:
-                    await self._delete_tls_mirror()
         else:
             self.logger.info("Mirroring of wildcard TLS secret is not required")
             while True:
-                await asyncio.sleep(86400)
+                await asyncio.Event().wait()
 
     async def run(self, store: store.Store):
         # We need to run the TLS mirror alongside the main loop
         done, not_done = await asyncio.wait(
             [
                 asyncio.create_task(super().run(store)),
+                asyncio.create_task(self._run_trust_bundle_mirror()),
                 asyncio.create_task(self._run_tls_mirror()),
             ],
             return_when = asyncio.FIRST_COMPLETED

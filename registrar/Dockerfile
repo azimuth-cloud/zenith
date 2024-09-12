@@ -19,6 +19,10 @@ FROM ubuntu:jammy
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
 
+# Make httpx use the system trust roots
+# By default, this means we use the CAs from the ca-certificates package
+ENV SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
+
 # Create the user that will be used to run the app
 ENV ZENITH_UID 1001
 ENV ZENITH_GID 1001

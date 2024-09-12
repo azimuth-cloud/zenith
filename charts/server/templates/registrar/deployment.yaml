@@ -37,6 +37,11 @@ spec:
             - name: etc-zenith
               mountPath: /etc/zenith
               readOnly: true
+            {{- if .Values.common.trustBundle }}
+            - name: trust-bundle
+              mountPath: /etc/ssl/certs
+              readOnly: true
+            {{- end }}
       {{- with .Values.registrar.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
@@ -50,4 +55,9 @@ spec:
         - name: etc-zenith
           secret:
             secretName: {{ include "zenith.componentname" (list . "registrar-conf") }}
+        {{- if .Values.common.trustBundle }}
+        - name: trust-bundle
+          configMap:
+            name: {{ include "zenith.componentname" (list . "trust-bundle") }}
+        {{- end }}
 {{- end }}

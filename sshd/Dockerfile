@@ -19,6 +19,11 @@ FROM ubuntu:jammy
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
 
+# Make requests and httpx use the system trust roots
+# By default, this means we use the CAs from the ca-certificates package
+ENV SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
+ENV REQUESTS_CA_BUNDLE /etc/ssl/certs/ca-certificates.crt
+
 # Create an unprivileged user to accept tunnel requests
 # The user has a home directory, a restricted shell to allow the tunnel script
 # to run and an empty password to allow anonymous SSH
