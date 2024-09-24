@@ -9,7 +9,7 @@ certifi==2024.8.30
 cffi==1.17.1
 click==8.1.7
 configomatic==0.4.0
-cryptography==43.0.0
+cryptography==43.0.1
 easykube==0.4.0
 exceptiongroup==1.2.2
 frozenlist==1.4.1
