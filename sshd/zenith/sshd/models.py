@@ -51,6 +51,8 @@ class ClientConfig(BaseModel, extra = "forbid"):
     backend_protocol: typing.Literal["http", "https"] = "http"
     #: The read timeout for the service (in seconds)
     read_timeout: typing.Optional[conint(gt = 0)] = None
+    #: Indicates whether the service is internal, i.e. without ingress
+    internal: bool = False
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
     #: The URL of the OIDC issuer to use
@@ -197,6 +199,7 @@ class ClientConfig(BaseModel, extra = "forbid"):
         config = { "backend-protocol": self.backend_protocol }
         if self.read_timeout:
             config["read-timeout"] = self.read_timeout
+        config["internal"] = self.internal
         config["skip-auth"] = self.skip_auth
         if not self.skip_auth:
             if self.auth_oidc_issuer:
