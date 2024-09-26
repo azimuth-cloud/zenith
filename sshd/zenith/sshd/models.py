@@ -1,6 +1,7 @@
 import base64
 import socket
 import typing
+import warnings
 
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
@@ -111,6 +112,18 @@ class ClientConfig(BaseModel, extra = "forbid"):
                 return port
             else:
                 raise ValueError("Given port is not in use")
+
+    @field_validator("skip_auth")
+    @classmethod
+    def validate_skip_auth(cls, v, info: ValidationInfo):
+        """
+        Validates that auth is skipped when it is not available.
+        """
+        # Auth is always skipped for internal tunnels, as it is applied at the ingress
+        if not v and info.data.get("internal", False):
+            warnings.warn("auth is always skipped for internal tunnels")
+            return True
+        return v
 
     @field_validator("auth_external_params", mode = "before")
     @classmethod
