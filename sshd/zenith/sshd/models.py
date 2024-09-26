@@ -49,7 +49,7 @@ class ClientConfig(BaseModel, extra = "forbid"):
     #: The port for the service (the tunnel port)
     allocated_port: int
     #: The backend protocol
-    backend_protocol: typing.Literal["http", "https"] = "http"
+    backend_protocol: typing.Literal["http", "https", "ssh"] = "http"
     #: The read timeout for the service (in seconds)
     read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the service is internal, i.e. without ingress
@@ -112,6 +112,19 @@ class ClientConfig(BaseModel, extra = "forbid"):
                 return port
             else:
                 raise ValueError("Given port is not in use")
+
+    @field_validator("internal")
+    @classmethod
+    def validate_internal(cls, v, info: ValidationInfo):
+        """
+        Validates that internal is set when required.
+        """
+        # If the SSH protocol is specified, the tunnel must be internal
+        backend_protocol = info.data.get("backend_protocol", "http")
+        if not v and backend_protocol == "ssh":
+            warnings.warn("SSH protocol is only supported for internal tunnels")
+            return True
+        return v
 
     @field_validator("skip_auth")
     @classmethod
