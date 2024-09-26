@@ -169,6 +169,17 @@ class Processor(base.Processor):
                 values["readTimeout"] = read_timeout
         return values
 
+    def _get_ingress_enabled(self, service: model.Service) -> typing.Dict[str, typing.Any]:
+        """
+        Returns the values for enabling or disabling ingress as required.
+        """
+        return {
+            "ingress": {
+                # Ingress is enabled unless specified
+                "enabled": not service.config.get("internal", False),
+            },
+        }
+
     def _get_tls_values(self, service: model.Service) -> typing.Dict[str, typing.Any]:
         """
         Returns the values for configuring the TLS for a service.
@@ -277,6 +288,7 @@ class Processor(base.Processor):
             ),
             self.config.service_default_values,
             self._get_service_values(service),
+            self._get_ingress_enabled(service),
             self._get_tls_values(service),
             await self._get_auth_values(service),
             cleanup_on_fail = True,

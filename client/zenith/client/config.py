@@ -119,6 +119,8 @@ class ConnectConfig(
     liveness_failures: conint(gt = 0) = 3
     #: The read timeout for the service
     read_timeout: typing.Optional[conint(gt = 0)] = None
+    #: Indicates whether the service should be internal, i.e. no ingress
+    internal: bool = False
     #: Indicates whether the proxy authentication should be skipped
     skip_auth: bool = False
     #: The URL of the OIDC issuer to use (only used when auth_type == "oidc")

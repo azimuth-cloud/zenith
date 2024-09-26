@@ -92,6 +92,7 @@ def configure_tunnel(ssh_proc, config):
             )
             if config.read_timeout:
                 tunnel_config.update(read_timeout = config.read_timeout)
+            tunnel_config.update(internal = config.internal)
             tunnel_config.update(skip_auth = config.skip_auth)
             if not config.skip_auth:
                 if config.auth_oidc_issuer:
