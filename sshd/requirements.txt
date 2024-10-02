@@ -11,7 +11,7 @@ exceptiongroup==1.2.2
 h11==0.14.0
 httpcore==1.0.6
 httpx==0.27.2
-idna==3.8
+idna==3.10
 pycparser==2.22
 pydantic==2.9.1
 pydantic_core==2.24.0
