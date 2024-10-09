@@ -3,13 +3,7 @@
 apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
-  # Generate a suffix based on the address and port for the slice
-  name: {{
-    printf "%s:%s" .address .port |
-      sha256sum |
-      substr 0 5 |
-      printf "%s-%s" $.Release.Name
-  }}
+  name: {{ printf "%s-%s" $.Release.Name .id }}
   labels:
     {{- include "zenith-service.labels" $ | nindent 4 }}
     kubernetes.io/service-name: {{ $.Release.Name }}
