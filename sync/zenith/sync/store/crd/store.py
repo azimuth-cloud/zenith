@@ -107,8 +107,8 @@ class Store(base.Store):
         return model.Service(
             name = endpoints.metadata.name,
             endpoints = [
-                model.Endpoint(address = ep.address, port = ep.port)
-                for ep in endpoints.spec.endpoints.values()
+                model.Endpoint(id = id, address = ep.address, port = ep.port)
+                for id, ep in endpoints.spec.endpoints.items()
                 if ep.status != api.EndpointStatus.CRITICAL
             ],
             # Merge the configs associated with each endpoint

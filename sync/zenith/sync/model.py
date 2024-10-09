@@ -8,6 +8,8 @@ class Endpoint:
     """
     Represents an endpoint for a service.
     """
+    #: The ID of the endpoint
+    id: str
     #: The address for the endpoint
     address: str
     #: The port for the endpoint

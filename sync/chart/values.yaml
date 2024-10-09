@@ -12,7 +12,8 @@ global:
 
 # The endpoints for the service
 endpoints: []
-  # - address: 10.0.0.1
+  # - id: abcde
+  #   address: 10.0.0.1
   #   port: 31234
 
 # The protocol for the service
