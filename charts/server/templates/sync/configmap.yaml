@@ -3,6 +3,9 @@
 {{- $common := deepCopy .Values.common.ingress }}
 {{- $ingress := mergeOverwrite $global $common }}
 kubernetes:
+  {{- if .Values.common.trustBundle }}
+  trustBundleConfigmapName: {{ include "zenith.componentname" (list . "trust-bundle") }}
+  {{- end }}
   targetNamespace: {{ .Values.common.kubernetes.targetNamespace }}
   # By default, we use the same chart version for the service chart
   serviceChartVersion: {{ .Chart.Version }}

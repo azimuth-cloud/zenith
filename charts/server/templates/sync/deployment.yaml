@@ -46,6 +46,11 @@ spec:
             - name: etc-zenith
               mountPath: /etc/zenith
               readOnly: true
+            {{- if .Values.common.trustBundle }}
+            - name: trust-bundle
+              mountPath: /etc/ssl/certs
+              readOnly: true
+            {{- end }}
             - name: tmp
               mountPath: /tmp
       {{- with .Values.sync.nodeSelector }}
@@ -61,6 +66,11 @@ spec:
         - name: etc-zenith
           configMap:
             name: {{ include "zenith.componentname" (list . "sync-conf") }}
+        {{- if .Values.common.trustBundle }}
+        - name: trust-bundle
+          configMap:
+            name: {{ include "zenith.componentname" (list . "trust-bundle") }}
+        {{- end }}
         # Mount a writable directory at /tmp
         - name: tmp
           emptyDir: {}

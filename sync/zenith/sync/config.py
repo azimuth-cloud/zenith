@@ -212,12 +212,16 @@ class KubernetesConfig(Section):
     #: Default values for releases of the service chart
     service_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
 
+    #: The name of a configmap containing a trust bundle
+    #: If not given, the default trust will be used
+    trust_bundle_configmap_name: t.Optional[str] = None
+
     #: The label used to indicate a managed resource
     created_by_label: str = "app.kubernetes.io/created-by"
     #: The label used to indicate the corresponding Zenith service for a resource
     service_name_label: str = "zenith.stackhpc.com/service-name"
-    #: The annotation used to record that a secret is a mirror of another secret
-    tls_mirror_annotation: str = "zenith.stackhpc.com/mirrors"
+    #: The annotation used to record that a resource is a mirror of another
+    mirror_annotation: str = "zenith.stackhpc.com/mirrors"
     #: The maximum number of concurrent reconciliations
     reconciliation_max_concurrency: t.Annotated[int, Field(gt = 0)] = 20
     #: The maximum delay between retries when backing off

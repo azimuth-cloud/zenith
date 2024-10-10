@@ -59,6 +59,10 @@ FROM ubuntu:jammy
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
 
+# Make httpx use the system trust roots
+# By default, this means we use the CAs from the ca-certificates package
+ENV SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
+
 # Tell Helm to use /tmp for mutable data
 ENV HELM_CACHE_HOME /tmp/helm/cache
 ENV HELM_CONFIG_HOME /tmp/helm/config
