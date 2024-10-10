@@ -6,6 +6,7 @@ import signal
 import sys
 import time
 import typing
+import warnings
 
 import requests
 
@@ -79,7 +80,10 @@ def get_tunnel_config(
     sys.stdout.flush()
     # Parse the client data into a config object
     # This will raise validation errors if the config is incorrect
-    tunnel_config = models.ClientConfig.model_validate(config)
+    with warnings.catch_warnings(record = True) as validation_warnings:
+        tunnel_config = models.ClientConfig.model_validate(config)
+        for warning in validation_warnings:
+            logger.warning(warning.message)
     logger.info(f"Allocated port for tunnel: {tunnel_config.allocated_port}")
     return tunnel_config
 

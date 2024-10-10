@@ -11,6 +11,8 @@ spec:
       port: 80
       {{- else if eq .Values.protocol "https" }}
       port: 443
+      {{- else if eq .Values.protocol "ssh" }}
+      port: 22
       {{- else }}
       {{- fail "unsupported protocol" }}
       {{- end }}

@@ -110,7 +110,7 @@ class ConnectConfig(
     #: The number of server alive messages that can fail before the tunnel is terminated
     server_alive_failures: conint(gt = 0) = 3
     #: The backend protocol
-    backend_protocol: typing.Literal["http", "https"] = "http"
+    backend_protocol: typing.Literal["http", "https", "ssh"] = "http"
     #: An optional liveness path for the upstream service
     liveness_path: typing.Optional[UrlPath] = None
     #: The period for upstream liveness checks in seconds
