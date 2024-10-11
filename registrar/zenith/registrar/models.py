@@ -98,6 +98,8 @@ class Reservation(BaseModel):
     subdomain: Subdomain
     #: The FQDN for the subdomain that was reserved
     fqdn: constr(min_length = 1)
+    #: The internal FQDN for the subdomain that was reserved
+    internal_fqdn: constr(min_length = 1)
     #: The token to use to associate public keys with the subdomain if no keys were given
     token: t.Optional[str] = None
     #: The fingerprint of the key that was registered, if given

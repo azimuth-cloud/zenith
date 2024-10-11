@@ -122,9 +122,7 @@ sshd:
 registrar:
   enabled: true
   # The registrar configuration
-  config:
-    baseDomain: "{{ pluck \"baseDomain\" .Values.common.ingress .Values.global.ingress | first }}"
-    reservedSubdomains: []
+  config: {}
   # The registrar ingress configuration
   ingress:
     # The subdomain that will be reserved for the registrar
