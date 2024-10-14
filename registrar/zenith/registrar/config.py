@@ -37,6 +37,8 @@ class RegistrarConfig(
     #: Because we want to have at least 16 characters of randomness to use for subdomains,
     #: we limit the base domain to 47 characters (16 for subdomain plus a joining dot)
     base_domain: constr(min_length = 1, max_length = 47)
+    #: The base domain that Zenith services are proxied under internally
+    internal_base_domain: constr(min_length = 1) = "zenith-services.svc.cluster.local"
     #: A list of subdomains that are reserved and cannot be used for Zenith services
     reserved_subdomains: t.List[str] = Field(default_factory = list)
 

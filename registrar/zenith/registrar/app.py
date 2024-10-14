@@ -160,6 +160,8 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
                 status_code = 409,
                 detail = "Public key is already associated with another subdomain."
             )
+    # The internal FQDN never uses a path prefix
+    internal_fqdn = f"{subdomain}.{settings.internal_base_domain}"
     # The FQDN is the requests subdomain combined with the configured base domain
     if settings.subdomain_as_path_prefix:
         fqdn = f"{settings.base_domain}/{subdomain}"
@@ -170,6 +172,7 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
         return Reservation(
             subdomain = subdomain,
             fqdn = fqdn,
+            internal_fqdn = internal_fqdn,
             # Return a fingerprint that can be compared with the output of OpenSSH
             fingerprint = fingerprint(req.public_key)
         )
@@ -177,7 +180,12 @@ async def reserve_subdomain(request: Request, req: t.Optional[ReservationRequest
         # If no key was given, return a token that can be used to associate a key
         signature = generate_signature(subdomain)
         token = base64.urlsafe_b64encode(f"{subdomain}.{signature}".encode()).decode()
-        return Reservation(subdomain = subdomain, fqdn = fqdn, token = token)
+        return Reservation(
+            subdomain = subdomain,
+            fqdn = fqdn,
+            internal_fqdn = internal_fqdn,
+            token = token
+        )
 
 
 @app.post(
