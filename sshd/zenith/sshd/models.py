@@ -53,9 +53,9 @@ class ClientConfig(BaseModel, extra = "forbid"):
     #: The read timeout for the service (in seconds)
     read_timeout: typing.Optional[conint(gt = 0)] = None
     #: Indicates whether the service is internal, i.e. without ingress
-    internal: bool = False
+    internal: bool = Field(False, validate_default = True)
     #: Indicates whether the proxy authentication should be skipped
-    skip_auth: bool = False
+    skip_auth: bool = Field(False, validate_default = True)
     #: The URL of the OIDC issuer to use
     auth_oidc_issuer: typing.Optional[AnyHttpUrl] = None
     #: The OIDC client ID to use

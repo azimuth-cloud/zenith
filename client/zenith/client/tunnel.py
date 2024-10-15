@@ -92,9 +92,11 @@ def configure_tunnel(ssh_proc, config):
             )
             if config.read_timeout:
                 tunnel_config.update(read_timeout = config.read_timeout)
-            tunnel_config.update(internal = config.internal)
-            tunnel_config.update(skip_auth = config.skip_auth)
-            if not config.skip_auth:
+            if config.internal:
+                tunnel_config.update(internal = config.internal)
+            if config.skip_auth:
+                tunnel_config.update(skip_auth = config.skip_auth)
+            else:
                 if config.auth_oidc_issuer:
                     tunnel_config.update(auth_oidc_issuer = config.auth_oidc_issuer)
                 if config.auth_oidc_client_id:
@@ -105,12 +107,12 @@ def configure_tunnel(ssh_proc, config):
                     tunnel_config.update(auth_oidc_allowed_groups = config.auth_oidc_allowed_groups)
                 if config.auth_external_params:
                     tunnel_config.update(auth_external_params = config.auth_external_params)
-            if config.tls_cert_file:
+            if config.tls_cert_data:
                 tunnel_config.update(
                     tls_cert = config.tls_cert_data,
                     tls_key = config.tls_key_data
                 )
-            if config.tls_client_ca_file:
+            if config.tls_client_ca_data:
                 tunnel_config.update(tls_client_ca = config.tls_client_ca_data)
             if config.liveness_path:
                 tunnel_config.update(
