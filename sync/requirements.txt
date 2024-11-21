@@ -13,7 +13,7 @@ easysemver==0.2.0
 exceptiongroup==1.2.2
 frozenlist==1.5.0
 h11==0.14.0
-httpcore==1.0.6
+httpcore==1.0.7
 httpx==0.27.2
 idna==3.10
 kube-custom-resource==0.5.0
