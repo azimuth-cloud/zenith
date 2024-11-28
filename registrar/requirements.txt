@@ -4,7 +4,7 @@ certifi==2024.8.30
 cffi==1.17.1
 click==8.1.7
 configomatic==0.4.0
-cryptography==43.0.3
+cryptography==44.0.0
 easykube==0.4.0
 exceptiongroup==1.2.2
 fastapi==0.115.5
