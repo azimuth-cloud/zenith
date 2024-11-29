@@ -19,7 +19,7 @@ idna==3.10
 kube-custom-resource==0.5.0
 multidict==6.1.0
 propcache==0.2.0
-pydantic==2.9.2
+pydantic==2.10.2
 pydantic_core==2.24.0
 pyhelm3==0.4.0
 PyYAML==6.0.2
