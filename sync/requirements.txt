@@ -18,7 +18,7 @@ httpx==0.28.0
 idna==3.10
 kube-custom-resource==0.6.1
 multidict==6.1.0
-propcache==0.2.0
+propcache==0.2.1
 pydantic==2.10.2
 pydantic_core==2.27.1
 pyhelm3==0.4.0
