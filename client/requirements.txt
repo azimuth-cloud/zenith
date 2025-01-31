@@ -1,11 +1,11 @@
 annotated-types==0.7.0
-certifi==2024.8.30
-charset-normalizer==3.4.0
+certifi==2024.12.14
+charset-normalizer==3.4.1
 click==8.1.7
 configomatic==0.4.0
 idna==3.10
 pydantic==2.10.3
-pydantic_core==2.27.1
+pydantic_core==2.28.0
 PyYAML==6.0.2
 requests==2.32.3
 typing_extensions==4.12.2
