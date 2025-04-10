@@ -9,4 +9,4 @@ pydantic_core==2.28.0
 PyYAML==6.0.2
 requests==2.32.3
 typing_extensions==4.12.2
-urllib3==2.2.3
+urllib3==2.4.0
