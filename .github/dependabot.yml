@@ -23,47 +23,77 @@ updates:
     schedule:
       # Check for new versions daily
       interval: daily
+    groups:
+      pip-updates:
+        patterns: ["*"]
     labels:
       - automation
       - pip-update
       - client
+    commit-message:
+    # Prefix all commit messages with "pip: "
+      prefix: "pip"
 
   - package-ecosystem: pip
     directory: "/operator"
     schedule:
       # Check for new versions daily
       interval: daily
+    groups:
+      pip-updates:
+        patterns: ["*"]
     labels:
       - automation
       - pip-update
       - operator
+    commit-message:
+    # Prefix all commit messages with "pip: "
+      prefix: "pip"
 
   - package-ecosystem: pip
     directory: "/registrar"
     schedule:
       # Check for new versions daily
       interval: daily
+    groups:
+      pip-updates:
+        patterns: ["*"]
     labels:
       - automation
       - pip-update
       - registrar
+    commit-message:
+    # Prefix all commit messages with "pip: "
+      prefix: "pip"
 
   - package-ecosystem: pip
     directory: "/sshd"
     schedule:
       # Check for new versions daily
       interval: daily
+    groups:
+      pip-updates:
+        patterns: ["*"]
     labels:
       - automation
       - pip-update
       - sshd
+    commit-message:
+    # Prefix all commit messages with "pip: "
+      prefix: "pip"
 
   - package-ecosystem: pip
     directory: "/sync"
     schedule:
       # Check for new versions daily
       interval: daily
+    groups:
+      pip-updates:
+        patterns: ["*"]
     labels:
       - automation
       - pip-update
       - sync
+    commit-message:
+    # Prefix all commit messages with "pip: "
+      prefix: "pip"
