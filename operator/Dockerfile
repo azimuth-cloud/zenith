@@ -8,14 +8,14 @@ RUN python3 -m venv /venv && \
     /venv/bin/pip install -U pip setuptools
 
 COPY requirements.txt /app/requirements.txt
-RUN  /venv/bin/pip install --no-deps --requirement /app/requirements.txt
+RUN  /venv/bin/pip install --requirement /app/requirements.txt
 
 # Jinja2 doesn't support namespace packages properly
 # https://jinja.palletsprojects.com/en/3.1.x/api/#loaders
 # So we install here instead as an editable installation and also copy over
 # the app directory, which also avoids needing pip in the final image
 COPY . /app
-RUN /venv/bin/pip install --no-deps -e /app
+RUN /venv/bin/pip install -e /app
 
 
 FROM ubuntu:jammy

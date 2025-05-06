@@ -48,10 +48,10 @@ RUN python3 -m venv /venv && \
     /venv/bin/pip install -U pip setuptools
 
 COPY requirements.txt /app/requirements.txt
-RUN  /venv/bin/pip install --no-deps --requirement /app/requirements.txt
+RUN  /venv/bin/pip install --requirement /app/requirements.txt
 
 COPY . /app
-RUN /venv/bin/pip install --no-deps /app
+RUN /venv/bin/pip install /app
 
 
 FROM ubuntu:jammy
