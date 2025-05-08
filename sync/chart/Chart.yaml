@@ -11,5 +11,5 @@ dependencies:
   - alias: oidc
     repository: https://oauth2-proxy.github.io/manifests
     name: oauth2-proxy
-    version: 7.12.12
+    version: 7.12.13
     condition: oidc.enabled
