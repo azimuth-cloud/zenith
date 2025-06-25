@@ -5,7 +5,6 @@ import logging
 import signal
 import sys
 import time
-import typing
 import warnings
 
 import requests
@@ -19,7 +18,7 @@ class TunnelError(RuntimeError):
     """
 
 
-class TunnelExit(RuntimeError):
+class TunnelExit(RuntimeError):  # noqa: N818
     """
     Raised to exit the tunnel without signifying an error.
     """
@@ -27,7 +26,8 @@ class TunnelExit(RuntimeError):
 
 def raise_timeout_error(signum, frame):
     """
-    Utility function to raise a timeout error, used as a signal handler for the alarm signal.
+    Utility function to raise a timeout error, used as a signal handler for the alarm
+    signal.
     """
     raise TimeoutError
 
@@ -47,8 +47,7 @@ def timeout(seconds: int):
 
 
 def get_tunnel_config(
-    logger: logging.Logger,
-    server_config: config.SSHDConfig
+    logger: logging.Logger, server_config: config.SSHDConfig
 ) -> models.ClientConfig:
     """
     Returns a config object for the tunnel.
@@ -80,7 +79,7 @@ def get_tunnel_config(
     sys.stdout.flush()
     # Parse the client data into a config object
     # This will raise validation errors if the config is incorrect
-    with warnings.catch_warnings(record = True) as validation_warnings:
+    with warnings.catch_warnings(record=True) as validation_warnings:
         tunnel_config = models.ClientConfig.model_validate(config)
         for warning in validation_warnings:
             logger.warning(warning.message)
@@ -88,15 +87,16 @@ def get_tunnel_config(
     return tunnel_config
 
 
-class LivenessCheckFailed(Exception):
+class LivenessCheckFailed(Exception):  # noqa: N818
     """
     Exception that is raised when a liveness check failed.
     """
 
 
-def liveness_check(logger:logging.Logger, client_config: models.ClientConfig):
+def liveness_check(logger: logging.Logger, client_config: models.ClientConfig):
     """
-    Executes a liveness check for the tunnel and raises an exception with a message on failure.
+    Executes a liveness check for the tunnel and raises an exception with a message on
+    failure.
     """
     proto = client_config.backend_protocol
     port = client_config.allocated_port
@@ -104,9 +104,9 @@ def liveness_check(logger:logging.Logger, client_config: models.ClientConfig):
     liveness_url = f"{proto}://127.0.0.1:{port}{path}"
     logger.debug(f"Executing liveness check using {liveness_url}")
     try:
-        # It is not our job to verify SSL certificates - that is for the eventual destination,
-        # e.g. a user's browser, to decide
-        response = requests.get(liveness_url, verify = False)
+        # It is not our job to verify SSL certificates - that is for the eventual
+        # destination, e.g. a user's browser, to decide
+        response = requests.get(liveness_url, verify=False)
     except TunnelExit:
         # If TunnelExit is raised by a signal, re-raise it without any other action
         raise
@@ -126,10 +126,11 @@ def heartbeat(
     tunnel_id: str,
     heartbeat_failures: int,
     liveness_failures: int,
-    liveness_succeeded_once: bool
-) -> typing.Tuple[int, int, bool]:
+    liveness_succeeded_once: bool,
+) -> tuple[int, int, bool]:
     """
-    Updates the health check for the service depending on a query to the liveness endpoint.
+    Updates the health check for the service depending on a query to the liveness
+    endpoint.
     """
     status = backends.TunnelStatus.PASSING
     if client_config.liveness_path:
@@ -145,7 +146,8 @@ def heartbeat(
         if liveness_failures >= client_config.liveness_failures:
             status = backends.TunnelStatus.CRITICAL
         elif liveness_failures > 0:
-            # We want services to stay in the critical state until they succeed at least once
+            # We want services to stay in the critical state until they succeed at least
+            # once
             status = (
                 backends.TunnelStatus.WARNING
                 if liveness_succeeded_once
@@ -177,6 +179,7 @@ def register_signal_handlers():
     """
     Registers signal handlers for each of the exit signals we care about.
     """
+
     def signal_handler(signum, frame):
         raise TunnelExit()
 
@@ -191,6 +194,7 @@ class ReconfigurableLoggerAdapter(logging.LoggerAdapter):
     """
     Variation of LoggerAdapter where the extra can be dynamically reconfigured.
     """
+
     def update_extra(self, extra):
         self.extra.update(extra)
 
@@ -253,8 +257,7 @@ def run(server_config: config.SSHDConfig, subdomain: str):
     """
     # Initialise the logger
     logger = ReconfigurableLoggerAdapter(
-        logging.getLogger(__name__),
-        {"subdomain": subdomain, "tunnelid": ""}
+        logging.getLogger(__name__), {"subdomain": subdomain, "tunnelid": ""}
     )
     try:
         # Initialise the backend from the config
@@ -266,25 +269,23 @@ def run(server_config: config.SSHDConfig, subdomain: str):
             # This protects against the case where a badly behaved client reports
             # a different port to the one that was assigned to them
             logger.debug(
-                "Checking if service exists for '{host}:{port}'".format(
-                    host = server_config.service_host,
-                    port = client_config.allocated_port
+                "Checking if service exists for '{host}:{port}'".format(  # noqa: UP032
+                    host=server_config.service_host, port=client_config.allocated_port
                 )
             )
             if backend.tunnel_check_host_and_port(
-                server_config.service_host,
-                client_config.allocated_port
+                server_config.service_host, client_config.allocated_port
             ):
                 logger.debug("No existing service found")
             else:
                 raise TunnelError(
-                    "Consul service already exists for '{host}:{port}'".format(
-                        host = server_config.service_host,
-                        port = client_config.allocated_port
+                    "Consul service already exists for '{host}:{port}'".format(  # noqa: UP032
+                        host=server_config.service_host,
+                        port=client_config.allocated_port,
                     )
                 )
-            # Work out the TTL to use, i.e. the length of time after which the tunnel will be
-            # considered dead if we stop posting heartbeats
+            # Work out the TTL to use, i.e. the length of time after which the tunnel
+            # will be considered dead if we stop posting heartbeats
             if client_config.liveness_path:
                 tunnel_ttl = client_config.liveness_period * 2
             else:
@@ -297,16 +298,17 @@ def run(server_config: config.SSHDConfig, subdomain: str):
                 client_config.allocated_port,
                 tunnel_ttl,
                 server_config.reap_after,
-                client_config.as_sync_config()
+                client_config.as_sync_config(),
             )
             # Now we know the tunnel ID, reconfigure the logger
-            logger.update_extra({ "tunnelid": tunnel_id })
+            logger.update_extra({"tunnelid": tunnel_id})
             # Register the signal handlers to terminate the tunnel
             logger.debug("Registering signal handlers")
             register_signal_handlers()
             try:
                 # We need to send a regular heartbeat
-                # The heartbeat interval depends on whether a liveness check is configured
+                # The heartbeat interval depends on whether a liveness check is
+                # configured
                 if client_config.liveness_path:
                     heartbeat_interval = client_config.liveness_period
                 else:
@@ -315,16 +317,18 @@ def run(server_config: config.SSHDConfig, subdomain: str):
                 liveness_failures = 0
                 liveness_succeeded_once = False
                 while True:
-                    heartbeat_failures, liveness_failures, liveness_succeeded_once = heartbeat(
-                        logger,
-                        backend,
-                        server_config,
-                        client_config,
-                        subdomain,
-                        tunnel_id,
-                        heartbeat_failures,
-                        liveness_failures,
-                        liveness_succeeded_once
+                    heartbeat_failures, liveness_failures, liveness_succeeded_once = (
+                        heartbeat(
+                            logger,
+                            backend,
+                            server_config,
+                            client_config,
+                            subdomain,
+                            tunnel_id,
+                            heartbeat_failures,
+                            liveness_failures,
+                            liveness_succeeded_once,
+                        )
                     )
                     time.sleep(heartbeat_interval)
             except TunnelExit:
