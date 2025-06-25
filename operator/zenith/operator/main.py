@@ -5,6 +5,9 @@ import hashlib
 import logging
 import sys
 
+import httpx
+import kopf
+import pydantic
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
@@ -12,14 +15,7 @@ from cryptography.hazmat.primitives.serialization import (
     PrivateFormat,
     PublicFormat,
 )
-
-import httpx
-
-import kopf
-
-import pydantic
-
-from easykube import Configuration, ApiError
+from easykube import ApiError, Configuration
 from kube_custom_resource import CustomResourceRegistry
 
 from . import models
@@ -27,13 +23,13 @@ from .config import settings
 from .models import v1alpha1 as api
 from .template import default_loader
 
-
 logger = logging.getLogger(__name__)
 
 
 # Create an easykube client from the environment
-from pydantic.json import pydantic_encoder
-ekclient = Configuration.from_environment(json_encoder = pydantic_encoder).async_client()
+from pydantic.json import pydantic_encoder  # noqa: E402
+
+ekclient = Configuration.from_environment(json_encoder=pydantic_encoder).async_client()
 
 
 # Create a registry of custom resources and populate it from the models module
@@ -49,28 +45,27 @@ async def on_startup(**kwargs):
     kopf_settings = kwargs["settings"]
     kopf_settings.persistence.finalizer = f"{settings.api_group}/finalizer"
     kopf_settings.persistence.progress_storage = kopf.AnnotationsProgressStorage(
-        prefix = settings.api_group
+        prefix=settings.api_group
     )
     kopf_settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStorage(
-        prefix = settings.api_group,
-        key = "last-handled-configuration",
+        prefix=settings.api_group,
+        key="last-handled-configuration",
     )
     kopf_settings.watching.client_timeout = settings.watch_timeout
     # Apply the CRDs
     for crd in registry:
         try:
-            await ekclient.apply_object(crd.kubernetes_resource(), force = True)
+            await ekclient.apply_object(crd.kubernetes_resource(), force=True)
         except Exception:
             logger.exception(
-                "error applying CRD %s.%s - exiting",
-                crd.plural_name,
-                crd.api_group
+                "error applying CRD %s.%s - exiting", crd.plural_name, crd.api_group
             )
             sys.exit(1)
     # Give Kubernetes a chance to create the APIs for the CRDs
     await asyncio.sleep(0.5)
     # Check to see if the APIs for the CRDs are up
-    # If they are not, the kopf watches will not start properly so we exit and get restarted
+    # If they are not, the kopf watches will not start properly so we exit and get
+    # restarted
     for crd in registry:
         preferred_version = next(k for k, v in crd.versions.items() if v.storage)
         api_version = f"{crd.api_group}/{preferred_version}"
@@ -78,9 +73,7 @@ async def on_startup(**kwargs):
             _ = await ekclient.get(f"/apis/{api_version}/{crd.plural_name}")
         except Exception:
             logger.exception(
-                "api for %s.%s not available - exiting",
-                crd.plural_name,
-                crd.api_group
+                "api for %s.%s not available - exiting", crd.plural_name, crd.api_group
             )
             sys.exit(1)
 
@@ -93,7 +86,7 @@ async def on_cleanup(**kwargs):
     await ekclient.aclose()
 
 
-async def ekresource_for_model(model, subresource = None):
+async def ekresource_for_model(model, subresource=None):
     """
     Returns an easykube resource for the given model.
     """
@@ -113,10 +106,10 @@ async def save_instance_status(instance):
         instance.metadata.name,
         {
             # Include the resource version for optimistic concurrency
-            "metadata": { "resourceVersion": instance.metadata.resource_version },
-            "status": instance.status.model_dump(exclude_defaults = True),
+            "metadata": {"resourceVersion": instance.metadata.resource_version},
+            "status": instance.status.model_dump(exclude_defaults=True),
         },
-        namespace = instance.metadata.namespace
+        namespace=instance.metadata.namespace,
     )
     # Store the new resource version
     instance.metadata.resource_version = data["metadata"]["resourceVersion"]
@@ -127,12 +120,15 @@ def model_handler(model, register_fn, /, **kwargs):
     Decorator that registers a handler with kopf for the specified model.
     """
     api_version = f"{settings.api_group}/{model._meta.version}"
+
     def decorator(func):
         @functools.wraps(func)
         async def handler(**handler_kwargs):
             if "instance" not in handler_kwargs:
                 try:
-                    handler_kwargs["instance"] = model.model_validate(handler_kwargs["body"])
+                    handler_kwargs["instance"] = model.model_validate(
+                        handler_kwargs["body"]
+                    )
                 except pydantic.ValidationError as exc:
                     raise kopf.PermanentError(str(exc))
             try:
@@ -140,17 +136,19 @@ def model_handler(model, register_fn, /, **kwargs):
             except ApiError as exc:
                 if exc.status_code == 409:
                     # When a handler fails with a 409, we want to retry quickly
-                    raise kopf.TemporaryError(str(exc), delay = 5)
+                    raise kopf.TemporaryError(str(exc), delay=5)
                 else:
                     raise
+
         return register_fn(api_version, model._meta.plural_name, **kwargs)(handler)
+
     return decorator
 
 
 async def create_credential_secret(reservation, parent):
     """
-    Creates a secret containing an SSH keypair for the given reservation with the specified
-    parent as the owner.
+    Creates a secret containing an SSH keypair for the given reservation with the
+    specified parent as the owner.
     """
     private_key = Ed25519PrivateKey.generate()
     secret_data = {
@@ -163,15 +161,14 @@ async def create_credential_secret(reservation, parent):
         },
         "stringData": {
             reservation.spec.credential_secret_private_key_name: (
-                private_key
-                    .private_bytes(Encoding.PEM, PrivateFormat.OpenSSH, NoEncryption())
-                    .decode()
+                private_key.private_bytes(
+                    Encoding.PEM, PrivateFormat.OpenSSH, NoEncryption()
+                ).decode()
             ),
             reservation.spec.credential_secret_public_key_name: (
-                private_key
-                    .public_key()
-                    .public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH)
-                    .decode()
+                private_key.public_key()
+                .public_bytes(Encoding.OpenSSH, PublicFormat.OpenSSH)
+                .decode()
             ),
         },
     }
@@ -188,7 +185,10 @@ async def reservation_changed(instance, name, namespace, body, **kwargs):
     The spec of a reservation is immutable so we do not need to listen for updates.
     """
     # If the reservation is Ready or Failed, there is nothing more to do
-    if instance.status.phase in {api.ReservationPhase.READY, api.ReservationPhase.FAILED}:
+    if instance.status.phase in {
+        api.ReservationPhase.READY,
+        api.ReservationPhase.FAILED,
+    }:
         return
     # Patch the reservation phase to acknowledge that we are aware of it
     if instance.status.phase == api.ReservationPhase.UNKNOWN:
@@ -198,8 +198,7 @@ async def reservation_changed(instance, name, namespace, body, **kwargs):
     secrets = await ekclient.api("v1").resource("secrets")
     try:
         secret = await secrets.fetch(
-            instance.spec.credential_secret_name,
-            namespace = namespace
+            instance.spec.credential_secret_name, namespace=namespace
         )
     except ApiError as exc:
         if exc.status_code == 404:
@@ -213,10 +212,9 @@ async def reservation_changed(instance, name, namespace, body, **kwargs):
         raise kopf.TemporaryError("unable to find public key data in secret")
     else:
         public_key = base64.b64decode(public_key_b64).decode()
-    async with httpx.AsyncClient(base_url = settings.registrar_admin_url) as zclient:
+    async with httpx.AsyncClient(base_url=settings.registrar_admin_url) as zclient:
         response = await zclient.post(
-            "/admin/reserve",
-            json = { "public_keys": [public_key] }
+            "/admin/reserve", json={"public_keys": [public_key]}
         )
         response.raise_for_status()
         response_data = response.json()
@@ -229,9 +227,9 @@ async def reservation_changed(instance, name, namespace, body, **kwargs):
 
 
 @model_handler(api.Client, kopf.on.create)
-@model_handler(api.Client, kopf.on.update, field = "spec")
+@model_handler(api.Client, kopf.on.update, field="spec")
 @model_handler(api.Client, kopf.on.resume)
-async def client_changed(instance, name, namespace, body, **kwargs):
+async def client_changed(instance, name, namespace, body, **kwargs):  # noqa: C901
     """
     Executes when a client is created or the spec of a client is updated.
 
@@ -246,8 +244,7 @@ async def client_changed(instance, name, namespace, body, **kwargs):
     services = await ekclient.api("v1").resource("services")
     try:
         service = await services.fetch(
-            instance.spec.upstream.service_name,
-            namespace = namespace
+            instance.spec.upstream.service_name, namespace=namespace
         )
     except ApiError as exc:
         if exc.status_code == 404:
@@ -258,8 +255,7 @@ async def client_changed(instance, name, namespace, body, **kwargs):
     reservations = await ekresource_for_model(api.Reservation)
     try:
         reservation = await reservations.fetch(
-            instance.spec.reservation_name,
-            namespace = namespace
+            instance.spec.reservation_name, namespace=namespace
         )
     except ApiError as exc:
         if exc.status_code == 404:
@@ -271,7 +267,7 @@ async def client_changed(instance, name, namespace, body, **kwargs):
     # Wait for the specified reservation to become ready
     if reservation.status.phase != api.ReservationPhase.READY:
         # This condition normally only takes a short time to resolve
-        raise kopf.TemporaryError("specified reservation is not ready yet", delay = 5)
+        raise kopf.TemporaryError("specified reservation is not ready yet", delay=5)
     # Once the reservation is ready, update the status to reflect that
     if instance.status.phase == api.ClientPhase.PENDING:
         instance.status.phase = api.ClientPhase.RESERVATION_READY
@@ -280,8 +276,7 @@ async def client_changed(instance, name, namespace, body, **kwargs):
     secrets = await ekclient.api("v1").resource("secrets")
     try:
         credential = await secrets.fetch(
-            reservation.spec.credential_secret_name,
-            namespace = namespace
+            reservation.spec.credential_secret_name, namespace=namespace
         )
     except ApiError as exc:
         if exc.status_code == 404:
@@ -290,14 +285,18 @@ async def client_changed(instance, name, namespace, body, **kwargs):
             raise
     # Extract the SSH private key data from the credential
     try:
-        private_key_b64 = credential.data[reservation.spec.credential_secret_private_key_name]
+        private_key_b64 = credential.data[
+            reservation.spec.credential_secret_private_key_name
+        ]
     except KeyError:
-        raise kopf.TemporaryError("unable to find private key data in reservation secret")
+        raise kopf.TemporaryError(
+            "unable to find private key data in reservation secret"
+        )
     # Derive the upstream host from the service
-    upstream_host = "{}.{}.{}".format(
+    upstream_host = "{}.{}.{}".format(  # noqa: UP032
         service.metadata.name,
         service.metadata.namespace,
-        settings.cluster_service_domain
+        settings.cluster_service_domain,
     )
     # Derive the upstream port based on the specified port
     if instance.spec.upstream.port:
@@ -322,42 +321,44 @@ async def client_changed(instance, name, namespace, body, **kwargs):
             raise kopf.TemporaryError("service does not have any ports")
     # Parameters for the template rendering
     params = dict(
-        name = name,
-        namespace = namespace,
-        ssh_private_key_data = private_key_b64,
-        upstream_host = upstream_host,
-        upstream_port = upstream_port,
-        client = instance
+        name=name,
+        namespace=namespace,
+        ssh_private_key_data=private_key_b64,
+        upstream_host=upstream_host,
+        upstream_port=upstream_port,
+        client=instance,
     )
     # Decide whether we need the service account and cluster role and delete if not
     service_account = default_loader.load("client/serviceaccount.yaml", **params)
     kopf.adopt(service_account, body)
-    cluster_role_binding = default_loader.load("client/clusterrolebinding.yaml", **params)
+    cluster_role_binding = default_loader.load(
+        "client/clusterrolebinding.yaml", **params
+    )
     if (
-        instance.spec.mitm_proxy.enabled and
-        instance.spec.mitm_proxy.auth_inject.type == api.MITMProxyAuthInjectType.SERVICE_ACCOUNT
+        instance.spec.mitm_proxy.enabled
+        and instance.spec.mitm_proxy.auth_inject.type
+        == api.MITMProxyAuthInjectType.SERVICE_ACCOUNT
     ):
-        await ekclient.apply_object(service_account, force = True)
-        await ekclient.apply_object(cluster_role_binding, force = True)
+        await ekclient.apply_object(service_account, force=True)
+        await ekclient.apply_object(cluster_role_binding, force=True)
     else:
         await ekclient.delete_object(cluster_role_binding)
         await ekclient.delete_object(service_account)
     # Always render the secret and deployment
     secret = default_loader.load("client/secret.yaml", **params)
     kopf.adopt(secret, body)
-    await ekclient.apply_object(secret, force = True)
-    # Take a checksum of the secret data to pass to the deployment, so that it rolls over
-    hash = hashlib.sha256()
+    await ekclient.apply_object(secret, force=True)
+    # Take a checksum of the secret data to pass to the deployment,
+    # so that it rolls over
+    hash = hashlib.sha256()  # noqa: A001
     for key in sorted(secret["stringData"].keys()):
         hash.update(secret["stringData"][key].encode())
-    # when the config changes
+    # when the config changes
     deployment = default_loader.load(
-        "client/deployment.yaml",
-        **params,
-        config_checksum = hash.hexdigest()
+        "client/deployment.yaml", **params, config_checksum=hash.hexdigest()
     )
     kopf.adopt(deployment, body)
-    await ekclient.apply_object(deployment, force = True)
+    await ekclient.apply_object(deployment, force=True)
 
 
 @model_handler(api.Client, kopf.on.delete)
@@ -365,8 +366,9 @@ async def client_deleted(name, namespace, **kwargs):
     """
     Executes when a client is deleted.
     """
-    # Kubernetes does not allow cluster-scoped objects to be owned by namespace-scoped ones
-    # So we have to manually clean up the clusterrolebinding object if it exists
+    # Kubernetes does not allow cluster-scoped objects to be owned by namespace-scoped
+    # ones
+    # So we have to manually clean up the clusterrolebinding object if it exists
     name = f"zenith-client:{namespace}:{name}"
     rbac = ekclient.api("rbac.authorization.k8s.io/v1")
     clusterrolebindings = await rbac.resource("clusterrolebindings")
@@ -374,11 +376,9 @@ async def client_deleted(name, namespace, **kwargs):
 
 
 @kopf.on.event(
-    "apps",
-    "deployments",
-    labels = { f"{settings.api_group}/client": kopf.PRESENT }
+    "apps", "deployments", labels={f"{settings.api_group}/client": kopf.PRESENT}
 )
-async def client_deployment_event(type, namespace, labels, status, **kwargs):
+async def client_deployment_event(type, namespace, labels, status, **kwargs):  # noqa: A002
     """
     Executes when the deployment for a client changes.
     """
@@ -388,9 +388,7 @@ async def client_deployment_event(type, namespace, labels, status, **kwargs):
     else:
         try:
             condition = next(
-                c
-                for c in status.get("conditions", [])
-                if c["type"] == "Available"
+                c for c in status.get("conditions", []) if c["type"] == "Available"
             )
         except StopIteration:
             phase = api.ClientPhase.UNAVAILABLE
@@ -403,8 +401,8 @@ async def client_deployment_event(type, namespace, labels, status, **kwargs):
     try:
         _ = await client_status.patch(
             labels[f"{settings.api_group}/client"],
-            { "status": { "phase": phase } },
-            namespace = namespace
+            {"status": {"phase": phase}},
+            namespace=namespace,
         )
     except ApiError as exc:
         if exc.status_code != 404:
