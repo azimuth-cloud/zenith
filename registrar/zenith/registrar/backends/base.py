@@ -1,7 +1,6 @@
 import base64
-import typing
 
-from .. import config
+from .. import config  # noqa: TID252
 
 
 class BackendError(Exception):
@@ -10,62 +9,76 @@ class BackendError(Exception):
     """
 
 
-class SubdomainAlreadyReserved(BackendError):
+class SubdomainAlreadyReserved(BackendError):  # noqa: N818
     """
     Raised when an attempt is made to reserve a subdomain that is already reserved.
     """
+
     def __init__(self, subdomain: str):
         super().__init__(f"subdomain '{subdomain}' is already reserved")
 
 
-class SubdomainNotReserved(BackendError):
+class SubdomainNotReserved(BackendError):  # noqa: N818
     """
     Raised when an attempt is made to initialise a subdomain that is not reserved.
     """
+
     def __init__(self, subdomain: str):
         super().__init__(f"subdomain '{subdomain}' has not been reserved")
 
 
-class SubdomainAlreadyInitialised(BackendError):
+class SubdomainAlreadyInitialised(BackendError):  # noqa: N818
     """
-    Raised when an attempt is made to initialise a subdomain that is already initialised.
+    Raised when an attempt is made to initialise a subdomain that is already
+    initialised.
     """
+
     def __init__(self, subdomain: str):
         super().__init__(f"subdomain '{subdomain}' is already initialised")
 
 
-class PublicKeyAlreadyAssociated(BackendError):
+class PublicKeyAlreadyAssociated(BackendError):  # noqa: N818
     """
     Raised when an attempt is made to initialise a subdomain with a public key that is
     already associated with another subdomain.
     """
+
     def __init__(self, fingerprint: bytes):
         fingerprint_str = base64.b64encode(fingerprint).decode().rstrip("=")
-        super().__init__(f"public key '{fingerprint_str}' is already associated with a subdomain")
+        super().__init__(
+            f"public key '{fingerprint_str}' is already associated with a subdomain"
+        )
 
 
-class PublicKeyNotAssociated(BackendError):
+class PublicKeyNotAssociated(BackendError):  # noqa: N818
     """
     Raised during verify when a public key is not associated with a subdomain.
     """
+
     def __init__(self, fingerprint: bytes):
         fingerprint_str = base64.b64encode(fingerprint).decode().rstrip("=")
-        super().__init__(f"public key '{fingerprint_str}' is not associated with a subdomain")
+        super().__init__(
+            f"public key '{fingerprint_str}' is not associated with a subdomain"
+        )
 
 
-class PublicKeyHasMultipleAssociations(BackendError):
+class PublicKeyHasMultipleAssociations(BackendError):  # noqa: N818
     """
     Raised during verify when a public key is associated with multiple subdomains.
     """
+
     def __init__(self, fingerprint: bytes):
         fingerprint_str = base64.b64encode(fingerprint).decode().rstrip("=")
-        super().__init__(f"public key '{fingerprint_str}' is already associated with a subdomain")
+        super().__init__(
+            f"public key '{fingerprint_str}' is already associated with a subdomain"
+        )
 
 
 class Backend:
     """
     Base class for a registrar backend.
     """
+
     async def reserve_subdomain(self, subdomain: str):
         """
         Reserve a subdomain for use with an application.
@@ -87,8 +100,8 @@ class Backend:
         """
         Returns the subdomain that is associated with the given public key fingerprint.
 
-        If the public key is not associated with a subdomain, or is associated with multiple
-        subdomains, an exception is raised.
+        If the public key is not associated with a subdomain, or is associated with
+        multiple subdomains, an exception is raised.
         """
         raise NotImplementedError
 

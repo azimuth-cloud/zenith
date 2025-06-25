@@ -2,8 +2,7 @@ import base64
 
 import httpx
 
-from .. import config
-
+from .. import config  # noqa: TID252
 from . import base
 
 
@@ -15,8 +14,9 @@ class Backend(base.Backend):
     """
     Registrar backend that stores service information in Consul.
     """
+
     def __init__(self, consul_url: str, key_prefix: str):
-        self.client = httpx.AsyncClient(base_url = consul_url)
+        self.client = httpx.AsyncClient(base_url=consul_url)
         self.key_prefix = key_prefix
 
     async def reserve_subdomain(self, subdomain: str):
@@ -25,7 +25,7 @@ class Backend(base.Backend):
             # Create the subdomain record with a value of 0
             # Use a CAS operation with an index of 0 to ensure that we are the
             # creators of the record
-            json = [
+            json=[
                 {
                     "KV": {
                         "Verb": "cas",
@@ -34,7 +34,7 @@ class Backend(base.Backend):
                         "Value": base64.b64encode(b"0").decode(),
                     },
                 },
-            ]
+            ],
         )
         # If the subdomain already exists, the response will be a 409
         if response.status_code == 409:
@@ -43,7 +43,9 @@ class Backend(base.Backend):
 
     async def init_subdomain(self, subdomain: str, fingerprint: bytes):
         # Fetch the subdomain record and verify that the value is "0"
-        response = await self.client.get(f"/v1/kv/{self.key_prefix}/subdomains/{subdomain}")
+        response = await self.client.get(
+            f"/v1/kv/{self.key_prefix}/subdomains/{subdomain}"
+        )
         if response.status_code == 404:
             raise base.SubdomainNotReserved(subdomain)
         response.raise_for_status()
@@ -55,12 +57,13 @@ class Backend(base.Backend):
         # Use a transaction to update the subdomain record and pubkey records atomically
         response = await self.client.put(
             "/v1/txn",
-            json = [
+            json=[
                 {
                     "KV": {
-                        # Use a check-and-set (cas) operation with the index to update the
-                        # value of the subdomain key from zero to one
-                        # In this way, we can be sure that we are the first operation to do this
+                        # Use a check-and-set (cas) operation with the index to update
+                        # the value of the subdomain key from zero to one
+                        # In this way, we can be sure that we are the first operation to
+                        # do this
                         "Verb": "cas",
                         "Index": current_index,
                         "Key": f"{self.key_prefix}/subdomains/{subdomain}",
@@ -69,19 +72,24 @@ class Backend(base.Backend):
                 },
                 {
                     "KV": {
-                        # Use regular set operations here, as we don't care about splatting
-                        # existing pubkey records - it just means the key will only be able
-                        # to access this subdomain instead of the previous one
+                        # Use regular set operations here, as we don't care about
+                        # splatting existing pubkey records - it just means the key will
+                        # only be able to access this subdomain instead of the previous
+                        # one
                         # This shouldn't happen with a well-behaved client anyway
                         "Verb": "set",
-                        # Use a URL-safe fingerprint as the key, otherwise any "/" characters
-                        # form a nested structure that we don't want
-                        "Key": f"{self.key_prefix}/pubkeys/{fingerprint_urlsafe(fingerprint)}",
-                        # The value is the subdomain, which can be looked up by key later
+                        # Use a URL-safe fingerprint as the key, otherwise any "/"
+                        # characters form a nested structure that we don't want
+                        "Key": (
+                            f"{self.key_prefix}/pubkeys/"
+                            f"{fingerprint_urlsafe(fingerprint)}"
+                        ),
+                        # The value is the subdomain, which can be looked up by key
+                        # later
                         "Value": base64.b64encode(subdomain.encode()).decode(),
                     }
-                }
-            ]
+                },
+            ],
         )
         # If the subdomain already exists, the response will be a 409
         if response.status_code == 409:

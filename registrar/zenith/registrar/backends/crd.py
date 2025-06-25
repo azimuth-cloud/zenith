@@ -1,10 +1,9 @@
 import base64
 import logging
 
-from easykube import Configuration, ApiError
+from easykube import ApiError, Configuration
 
-from .. import config
-
+from .. import config  # noqa: TID252
 from . import base
 
 
@@ -20,15 +19,12 @@ class Backend(base.Backend):
     """
     Backend that stores services using a Kubernetes CRD.
     """
-    def __init__(self,
-        api_version: str,
-        target_namespace: str,
-        fingerprint_label: str
-    ):
+
+    def __init__(self, api_version: str, target_namespace: str, fingerprint_label: str):
         self.logger = logging.getLogger(__name__)
         # Initialise an easykube client from the environment
         self.ekclient = Configuration.from_environment().async_client(
-            default_namespace = target_namespace
+            default_namespace=target_namespace
         )
         self.api_version = api_version
         self.fingerprint_label = fingerprint_label
@@ -50,7 +46,7 @@ class Backend(base.Backend):
         # If we are the one that gets to do the create, we win any races
         ekservices = await self.ekclient.api(self.api_version).resource("services")
         try:
-            _ = await ekservices.create({ "metadata": { "name": subdomain } })
+            _ = await ekservices.create({"metadata": {"name": subdomain}})
         except ApiError as exc:
             if exc.status_code == 409:
                 raise base.SubdomainAlreadyReserved(subdomain)
@@ -71,7 +67,8 @@ class Backend(base.Backend):
         if service.get("spec", {}).get("publicKeyFingerprint"):
             raise base.SubdomainAlreadyInitialised(subdomain)
         # Check if the public key is already associated with another subdomain
-        # Note that we know that the current subdomain DOES NOT have a public key associated
+        # Note that we know that the current subdomain DOES NOT have a public key
+        # associated
         try:
             _ = await self.subdomain_for_public_key(fingerprint)
         except base.PublicKeyNotAssociated:
@@ -85,7 +82,8 @@ class Backend(base.Backend):
         # Using replace with a resource version that we know does not have a public key
         # should ensure we are the first operation to set a public key
         # Set a label that allows us to search by fingerprint later
-        # The label uses a URL-safe version of the fingerprint because of the allowed chars
+        # The label uses a URL-safe version of the fingerprint because of the allowed
+        # chars
         labels = service["metadata"].setdefault("labels", {})
         # In case the fingerprint starts with - or _, add a prefix
         labels[self.fingerprint_label] = f"fp{fingerprint_urlsafe(fingerprint)}"
@@ -103,8 +101,8 @@ class Backend(base.Backend):
         # Fetch all the subdomain records that have the fingerprint as a label
         ekresource = await self.ekclient.api(self.api_version).resource("services")
         # The label value has a prefix in case the fingerprint starts with - or _
-        labels = { self.fingerprint_label: f"fp{fingerprint_urlsafe(fingerprint)}" }
-        services = [service async for service in ekresource.list(labels = labels)]
+        labels = {self.fingerprint_label: f"fp{fingerprint_urlsafe(fingerprint)}"}
+        services = [service async for service in ekresource.list(labels=labels)]
         # If there is exactly one service, return the name
         # If not, raise the appropriate exception
         if len(services) == 1:
@@ -122,5 +120,5 @@ class Backend(base.Backend):
         return cls(
             config_obj.crd_api_version,
             config_obj.crd_target_namespace,
-            config_obj.crd_fingerprint_label
+            config_obj.crd_fingerprint_label,
         )
