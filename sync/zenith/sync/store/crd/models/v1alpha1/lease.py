@@ -9,24 +9,22 @@ class LeaseSpec(schema.BaseModel):
     """
     Model for the spec of a lease resource.
     """
+
     renewed_at: datetime.datetime = Field(
-        ...,
-        description = "Time at which the lease was renewed."
+        ..., description="Time at which the lease was renewed."
     )
-    ttl: schema.conint(gt = 0) = Field(
-        ...,
-        description = "Number of seconds after which the lease expires."
+    ttl: schema.conint(gt=0) = Field(
+        ..., description="Number of seconds after which the lease expires."
     )
-    reap_after: schema.conint(gt = 0) = Field(
-        ...,
-        description = "Number of seconds after which the lease should be reaped."
+    reap_after: schema.conint(gt=0) = Field(
+        ..., description="Number of seconds after which the lease should be reaped."
     )
 
 
 class Lease(
     CustomResource,
-    subresources = {"status": {}},
-    printer_columns = [
+    subresources={"status": {}},
+    printer_columns=[
         {
             "name": "Renewed",
             "type": "date",
@@ -42,12 +40,10 @@ class Lease(
             "type": "integer",
             "jsonPath": ".spec.reapAfter",
         },
-    ]
+    ],
 ):
     """
     Custom resource for a lease for a Zenith tunnel.
     """
-    spec: LeaseSpec = Field(
-        ...,
-        description = "The spec for the lease resource."
-    )
+
+    spec: LeaseSpec = Field(..., description="The spec for the lease resource.")

@@ -9,7 +9,6 @@ import subprocess
 import sys
 import tempfile
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -21,10 +20,10 @@ def get_allocated_port(output):
         line = line.rstrip()
         match = re.match(r"Allocated port (?P<port>\d+) for remote forward", line)
         if match is not None:
-            return int(match.group('port'))
+            return int(match.group("port"))
         else:
             # If the line is not the one we need, send it to stderr
-            print(line, file = sys.stderr)
+            print(line, file=sys.stderr)
     else:
         logger.error("No port received from server")
         sys.exit(1)
@@ -48,7 +47,8 @@ def wait_for_marker(output, marker):
 
 def raise_timeout_error(signum, frame):
     """
-    Utility function to raise a timeout error, used as a signal handler for the alarm signal.
+    Utility function to raise a timeout error, used as a signal handler for the alarm
+    signal.
     """
     raise TimeoutError
 
@@ -87,38 +87,43 @@ def configure_tunnel(ssh_proc, config):
             allocated_port = get_allocated_port(ssh_proc.stdout)
             # Build the config object
             tunnel_config = dict(
-                allocated_port = allocated_port,
-                backend_protocol = config.backend_protocol,
+                allocated_port=allocated_port,
+                backend_protocol=config.backend_protocol,
             )
             if config.read_timeout:
-                tunnel_config.update(read_timeout = config.read_timeout)
+                tunnel_config.update(read_timeout=config.read_timeout)
             if config.internal:
-                tunnel_config.update(internal = config.internal)
+                tunnel_config.update(internal=config.internal)
             if config.skip_auth:
-                tunnel_config.update(skip_auth = config.skip_auth)
+                tunnel_config.update(skip_auth=config.skip_auth)
             else:
                 if config.auth_oidc_issuer:
-                    tunnel_config.update(auth_oidc_issuer = config.auth_oidc_issuer)
+                    tunnel_config.update(auth_oidc_issuer=config.auth_oidc_issuer)
                 if config.auth_oidc_client_id:
-                    tunnel_config.update(auth_oidc_client_id = config.auth_oidc_client_id)
+                    tunnel_config.update(auth_oidc_client_id=config.auth_oidc_client_id)
                 if config.auth_oidc_client_secret:
-                    tunnel_config.update(auth_oidc_client_secret = config.auth_oidc_client_secret)
+                    tunnel_config.update(
+                        auth_oidc_client_secret=config.auth_oidc_client_secret
+                    )
                 if config.auth_oidc_allowed_groups:
-                    tunnel_config.update(auth_oidc_allowed_groups = config.auth_oidc_allowed_groups)
+                    tunnel_config.update(
+                        auth_oidc_allowed_groups=config.auth_oidc_allowed_groups
+                    )
                 if config.auth_external_params:
-                    tunnel_config.update(auth_external_params = config.auth_external_params)
+                    tunnel_config.update(
+                        auth_external_params=config.auth_external_params
+                    )
             if config.tls_cert_data:
                 tunnel_config.update(
-                    tls_cert = config.tls_cert_data,
-                    tls_key = config.tls_key_data
+                    tls_cert=config.tls_cert_data, tls_key=config.tls_key_data
                 )
             if config.tls_client_ca_data:
-                tunnel_config.update(tls_client_ca = config.tls_client_ca_data)
+                tunnel_config.update(tls_client_ca=config.tls_client_ca_data)
             if config.liveness_path:
                 tunnel_config.update(
-                    liveness_path = config.liveness_path,
-                    liveness_period = config.liveness_period,
-                    liveness_failures = config.liveness_failures
+                    liveness_path=config.liveness_path,
+                    liveness_period=config.liveness_period,
+                    liveness_failures=config.liveness_failures,
                 )
             # The server will ask for the config when it is ready
             wait_for_marker(ssh_proc.stdout, "SEND_CONFIGURATION")
@@ -126,13 +131,13 @@ def configure_tunnel(ssh_proc, config):
             config = base64.encodebytes(json.dumps(tunnel_config).encode()).decode()
             # Send each line to the SSH process
             for line in config.splitlines():
-                print(line, file = ssh_proc.stdin)
+                print(line, file=ssh_proc.stdin)
             # We need to send a newline to trigger the read on the server
-            print("", file = ssh_proc.stdin)
+            print("", file=ssh_proc.stdin)
             # Indicate that we have sent all the configuration that we will send
-            print("END_CONFIGURATION", file = ssh_proc.stdin)
+            print("END_CONFIGURATION", file=ssh_proc.stdin)
             ssh_proc.stdin.flush()
-            # Wait for the server to confirm that it received the config
+            # Wait for the server to confirm that it received the config
             wait_for_marker(ssh_proc.stdout, "RECEIVED_CONFIGURATION")
             logger.info("Tunnel configured successfully")
     except TimeoutError:
@@ -145,15 +150,15 @@ def configure_tunnel(ssh_proc, config):
 @contextlib.contextmanager
 def ssh_identity(config):
     """
-    Context manager that makes a temporary file to contain the SSH identity, populates it
-    (either using the given private key or by generating one) and yields the path.
+    Context manager that makes a temporary file to contain the SSH identity, populates
+    it (either using the given private key or by generating one) and yields the path.
     """
     # In order to support Windows, we cannot use the NamedTemporaryFile context manager
     # to wrap all the logic because the file cannot be opened by the SSH process
     # https://bugs.python.org/issue14243
     # Instead, we must clean the file up ourselves
     ssh_private_key_file_name = None
-    with tempfile.NamedTemporaryFile(delete = False) as ssh_private_key_file:
+    with tempfile.NamedTemporaryFile(delete=False) as ssh_private_key_file:
         ssh_private_key_file_name = ssh_private_key_file.name
         logger.info("Writing SSH private key data to temporary file")
         # If the private key data was given, use it (it is base64-encoded)
@@ -224,11 +229,11 @@ def create(config):
         # Open the SSH process
         ssh_proc = subprocess.Popen(
             ssh_command,
-            text = True,
-            stdin = subprocess.PIPE,
-            stdout = subprocess.PIPE,
+            text=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
             # Send stderr to the same handler as stdout
-            stderr = subprocess.STDOUT
+            stderr=subprocess.STDOUT,
         )
 
         logger.info("Negotiating tunnel configuration")
@@ -246,8 +251,7 @@ def create(config):
             logger.info("SSH process exited cleanly")
         else:
             logger.error(
-                "SSH process exited with non-zero exit code (%d)",
-                ssh_proc.returncode
+                "SSH process exited with non-zero exit code (%d)", ssh_proc.returncode
             )
 
         # Exit with the returncode from the SSH command

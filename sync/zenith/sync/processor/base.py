@@ -27,6 +27,7 @@ class EventQueue:
          more events for that service to leave the queue until it has been notified that
          processing of that event has been completed (either explicitly or by requeuing).
     """
+
     def __init__(self, requeue_max_backoff: int):
         self.requeue_max_backoff = requeue_max_backoff
         # The main queue of events
@@ -42,7 +43,7 @@ class EventQueue:
         self._handles: typing.Dict[str, asyncio.TimerHandle] = {}
 
     def _wakeup_next_dequeue(self):
-        # Wake up the next eligible dequeuer by resolving the first future in the queue
+        # Wake up the next eligible dequeuer by resolving the first future in the queue
         while self._futures:
             future = self._futures.popleft()
             if not future.done():
@@ -65,7 +66,7 @@ class EventQueue:
             # If there is such an event, extract it from the queue and return it
             if idx >= 0:
                 item = self._queue[idx]
-                self._queue = self._queue[0:idx] + self._queue[(idx + 1):]
+                self._queue = self._queue[0:idx] + self._queue[(idx + 1) :]
                 # Register the service for the event as having an active processing task
                 self._active.add(item[0].service.name)
                 return item
@@ -75,11 +76,11 @@ class EventQueue:
             await future
 
     def _do_enqueue(self, event: model.Event, retries: int = 0):
-        # Cancel any pending requeues for the same service
+        # Cancel any pending requeues for the same service
         self._cancel_requeue(event.service)
         # Append the event to the queue
         self._queue = [*self._queue, (event, retries)]
-        # Wake up the next waiting dequeuer
+        # Wake up the next waiting dequeuer
         self._wakeup_next_dequeue()
 
     def enqueue(self, event: model.Event):
@@ -88,9 +89,7 @@ class EventQueue:
         """
         # Discard any events for the same service from the queue
         self._queue = [
-            (e, r)
-            for e, r in self._queue
-            if e.service.name != event.service.name
+            (e, r) for e, r in self._queue if e.service.name != event.service.name
         ]
         # Add the new event to the end of the queue
         self._do_enqueue(event)
@@ -104,7 +103,7 @@ class EventQueue:
             self._cancel_requeue(event.service)
 
     def _cancel_requeue(self, service: model.Service):
-        # Cancel and discard any requeue handle for the same service
+        # Cancel and discard any requeue handle for the same service
         handle = self._handles.pop(service.name, None)
         if handle:
             handle.cancel()
@@ -112,7 +111,7 @@ class EventQueue:
     def requeue(self, event: model.Event, retries: int):
         """
         Requeue an event after a delay.
-         
+
         The delay is calculated using an exponential backoff with the number of retries.
 
         If a new event for the same service is already in the queue when the delay has elapsed,
@@ -124,9 +123,9 @@ class EventQueue:
         # If not, schedule a requeue after a delay
         #
         # NOTE(mkjpryor)
-        # We use a callback rather than a task to schedule the requeue
+        # We use a callback rather than a task to schedule the requeue
         # This is because it allows us to cancel the requeue cleanly without trapping
-        # CancelledError, allowing the processor as a whole to be cancelled reliably
+        # CancelledError, allowing the processor as a whole to be cancelled reliably
         if not any(e.service.name == event.service.name for e, _ in self._queue):
             # Calculate the backoff to use
             backoff = 2**retries + random.uniform(0, 1)
@@ -134,10 +133,7 @@ class EventQueue:
             # Schedule the requeue for the future and stash the handle
             loop = asyncio.get_running_loop()
             self._handles[event.service.name] = loop.call_later(
-                clamped_backoff,
-                self._do_requeue,
-                event,
-                retries + 1
+                clamped_backoff, self._do_requeue, event, retries + 1
             )
         # Marking processing as complete may make another event eligible for processing
         self.processing_complete(event)
@@ -161,6 +157,7 @@ class Processor:
     """
     Processes service events.
     """
+
     def __init__(self, logger, worker_count: int, retry_max_backoff: int):
         self.logger = logger
         self.worker_count = worker_count
@@ -183,7 +180,7 @@ class Processor:
         Called when a service is removed and should reconcile as required.
         """
         raise NotImplementedError
-    
+
     async def metrics(self) -> typing.Iterable[metrics.Metric]:
         """
         Produce metrics for the processor.
@@ -202,7 +199,7 @@ class Processor:
                 event.kind.name,
                 event.service.name,
                 worker_num,
-                retries + 1
+                retries + 1,
             )
             try:
                 # When a service has no active endpoints, we want to remove it
@@ -220,14 +217,14 @@ class Processor:
                         "Retry required for %s event for %s - %s",
                         event.kind.name,
                         event.service.name,
-                        str(exc)
+                        str(exc),
                     )
                 else:
                     # For all other exceptions, log the exception traceback
                     self.logger.exception(
                         "Error processing %s event for %s",
                         event.kind.name,
-                        event.service.name
+                        event.service.name,
                     )
                 # Requeue the event for another attempt
                 queue.requeue(event, retries)
@@ -235,20 +232,20 @@ class Processor:
                 self.logger.info(
                     "Successfully processed %s event for %s",
                     event.kind.name,
-                    event.service.name
+                    event.service.name,
                 )
                 # Indicate to the queue that the processing is complete
                 queue.processing_complete(event)
 
-    async def enqueue_events(self, queue: EventQueue, events: typing.AsyncIterable[model.Event]):
+    async def enqueue_events(
+        self, queue: EventQueue, events: typing.AsyncIterable[model.Event]
+    ):
         """
         Add events from the given async iterable to the given event queue for processing.
         """
         async for event in events:
             self.logger.info(
-                "Enqueuing %s event for %s",
-                event.kind.name,
-                event.service.name
+                "Enqueuing %s event for %s", event.kind.name, event.service.name
             )
             queue.enqueue(event)
 
@@ -276,10 +273,10 @@ class Processor:
             *[
                 asyncio.create_task(self.process_events(queue, idx))
                 for idx in range(self.worker_count)
-            ]
+            ],
         ]
         # All of the tasks should run forever, so we exit when the first one completes
-        done, not_done = await asyncio.wait(tasks, return_when = asyncio.FIRST_COMPLETED)
+        done, not_done = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in not_done:
             await util.task_cancel_and_wait(task)
         for task in done:

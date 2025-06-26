@@ -6,7 +6,7 @@ from pydantic import (
     Field,
     AfterValidator,
     StringConstraints,
-    AnyHttpUrl as PyAnyHttpUrl
+    AnyHttpUrl as PyAnyHttpUrl,
 )
 
 from configomatic import Configuration, Section, LoggingConfiguration
@@ -15,35 +15,30 @@ from easysemver import SEMVER_VERSION_REGEX
 
 
 #: Type for a string that validates as a SemVer version
-SemVerVersion = t.Annotated[str, StringConstraints(pattern = SEMVER_VERSION_REGEX)]
+SemVerVersion = t.Annotated[str, StringConstraints(pattern=SEMVER_VERSION_REGEX)]
 
 
 #: Type for a non-empty string
-NonEmptyString = t.Annotated[str, StringConstraints(min_length = 1)]
+NonEmptyString = t.Annotated[str, StringConstraints(min_length=1)]
 
 
 #: Type for a string that validates as a URL
 AnyHttpUrl = t.Annotated[
-    str,
-    AfterValidator(lambda v: str(TypeAdapter(PyAnyHttpUrl).validate_python(v)))
+    str, AfterValidator(lambda v: str(TypeAdapter(PyAnyHttpUrl).validate_python(v)))
 ]
 
 
 DNS_LABEL_REGEX = r"[a-zA-Z0-9][a-zA-Z0-9-]*?[a-zA-Z0-9]"
-DOMAIN_NAME_REGEX = (
-    r"^" +
-    r"(" + DNS_LABEL_REGEX + r"\.)+" +
-    DNS_LABEL_REGEX +
-    r"$"
-)
+DOMAIN_NAME_REGEX = r"^" + r"(" + DNS_LABEL_REGEX + r"\.)+" + DNS_LABEL_REGEX + r"$"
 #: Type for validating a string as a domain name
-DomainName = t.Annotated[str, StringConstraints(pattern = DOMAIN_NAME_REGEX)]
+DomainName = t.Annotated[str, StringConstraints(pattern=DOMAIN_NAME_REGEX)]
 
 
 class ConsulConfig(Section):
     """
     Model for the Consul configuration section.
     """
+
     #: The address of the Consul server
     address: str = "127.0.0.1"
     #: The port of the Consul server
@@ -67,18 +62,20 @@ class ConsulConfig(Section):
         return f"http://{self.address}:{self.port}"
 
 
-class ForwardedQueryParamRule(te.TypedDict, total = False):
+class ForwardedQueryParamRule(te.TypedDict, total=False):
     """
     Model for a forwarded query parameter rule.
     """
+
     value: NonEmptyString
     pattern: NonEmptyString
 
 
-class ForwardedQueryParam(te.TypedDict, total = False):
+class ForwardedQueryParam(te.TypedDict, total=False):
     """
     Model for a forwarded query parameter.
     """
+
     name: NonEmptyString
     default: t.List[NonEmptyString]
     allow: t.List[ForwardedQueryParamRule]
@@ -88,6 +85,7 @@ class OIDCConfig(Section):
     """
     Model for the ingress OIDC configuration section.
     """
+
     #: Indicates if discovery should be used for clients that don't specify an OIDC issuer
     #: This allows an external controller to place secrets in the Zenith namespace
     #: containing OIDC credentials to use for each service
@@ -100,16 +98,17 @@ class OIDCConfig(Section):
     #: For example, Keycloak allows a kc_idp_hint parameter that can be used to
     #: pre-select an identity provider
     #: See https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/alpha-config#loginurlparameter
-    forwarded_query_params: t.List[ForwardedQueryParam] = Field(default_factory = list)
+    forwarded_query_params: t.List[ForwardedQueryParam] = Field(default_factory=list)
     #: The headers to inject into the request from claims in the ID token
     #: The special claims id_token and access_token represent the ID and access tokens
-    inject_request_headers: t.Dict[str, str] = Field(default_factory = dict)
+    inject_request_headers: t.Dict[str, str] = Field(default_factory=dict)
 
 
 class ExternalAuthConfig(Section):
     """
     Model for the ingress external auth configuration section.
     """
+
     #: The external authentication URL
     #: If not supplied, no external auth is applied
     #: This URL is called as a subrequest, and so will receive the original request body
@@ -124,9 +123,9 @@ class ExternalAuthConfig(Section):
     #: These will override headers from the incoming request, which would otherwise be forwarded
     #: In particular, you may need to override the accepts header to suit the content types served
     #: by the external authentication service
-    request_headers: t.Dict[str, str] = Field(default_factory = dict)
+    request_headers: t.Dict[str, str] = Field(default_factory=dict)
     #: List of headers from the authentication response to add to the upstream request
-    response_headers: t.List[str] = Field(default_factory = list)
+    response_headers: t.List[str] = Field(default_factory=list)
     #: The additional prefix to use when passing authentication parameters to the auth service
     param_header_prefix: str = "x-"
 
@@ -135,6 +134,7 @@ class TLSConfig(Section):
     """
     Model for the ingress TLS configuration section.
     """
+
     #: Indicates whether TLS should be enabled
     enabled: bool = True
     #: Indicates if the ingress controller is itself behind a proxy that is terminating TLS
@@ -142,31 +142,33 @@ class TLSConfig(Section):
     #: The name of a secret containing a wildcard certificate
     secret_name: t.Optional[str] = None
     #: Annotations to add to ingress resources that are TLS-specific
-    annotations: t.Dict[str, str] = Field(default_factory = dict)
+    annotations: t.Dict[str, str] = Field(default_factory=dict)
 
 
 class IngressConfig(Section):
     """
     Model for the ingress configuration section.
     """
+
     #: Base domain for the proxied services
     base_domain: DomainName
     #: Indicates whether the subdomain should be used as a path prefix
     subdomain_as_path_prefix: bool = False
     #: Annotations to add to all ingress resources
-    annotations: t.Dict[str, str] = Field(default_factory = dict)
+    annotations: t.Dict[str, str] = Field(default_factory=dict)
     #: The TLS configuration
-    tls: TLSConfig = Field(default_factory = TLSConfig)
+    tls: TLSConfig = Field(default_factory=TLSConfig)
     #: The OIDC configuration
-    oidc: OIDCConfig = Field(default_factory = OIDCConfig)
+    oidc: OIDCConfig = Field(default_factory=OIDCConfig)
     #: The external auth configuration
-    external_auth: ExternalAuthConfig = Field(default_factory = ExternalAuthConfig)
+    external_auth: ExternalAuthConfig = Field(default_factory=ExternalAuthConfig)
 
 
 class HelmClientConfiguration(Section):
     """
     Configuration for the Helm client.
     """
+
     #: The default timeout to use with Helm releases
     #: Can be an integer number of seconds or a duration string like 5m, 5h
     default_timeout: t.Union[int, NonEmptyString] = "2m"
@@ -186,6 +188,7 @@ class KubernetesConfig(Section):
     """
     Model for the Kubernetes configuration section.
     """
+
     #: The field manager name to use for server-side apply
     easykube_field_manager: NonEmptyString = "zenith-sync"
 
@@ -197,12 +200,12 @@ class KubernetesConfig(Section):
     #: The API group to use for CRD resources
     crd_api_group: str = "zenith.stackhpc.com"
     #: The categories for the CRD resources
-    crd_categories: t.List[str] = Field(default_factory = lambda: ["zenith"])
+    crd_categories: t.List[str] = Field(default_factory=lambda: ["zenith"])
     #: The sleep interval for the endpoint checker
     #: Assuming the sync component is up, then the maximum time after the last heartbeart
     #: that a dead endpoint will still be included in the endpoints of a service is the
     #: ttl of the endpoint plus this interval
-    crd_endpoint_check_interval: t.Annotated[int, Field(gt = 0)] = 10
+    crd_endpoint_check_interval: t.Annotated[int, Field(gt=0)] = 10
 
     #: The Helm chart repo, name and version to use for the zenith-service chart
     #: By default, this points to a local chart that is baked into the Docker image
@@ -210,7 +213,7 @@ class KubernetesConfig(Section):
     service_chart_repo: t.Optional[AnyHttpUrl] = None
     service_chart_version: t.Optional[SemVerVersion] = None
     #: Default values for releases of the service chart
-    service_default_values: t.Dict[str, t.Any] = Field(default_factory = dict)
+    service_default_values: t.Dict[str, t.Any] = Field(default_factory=dict)
 
     #: The name of a configmap containing a trust bundle
     #: If not given, the default trust will be used
@@ -223,26 +226,29 @@ class KubernetesConfig(Section):
     #: The annotation used to record that a resource is a mirror of another
     mirror_annotation: str = "zenith.stackhpc.com/mirrors"
     #: The maximum number of concurrent reconciliations
-    reconciliation_max_concurrency: t.Annotated[int, Field(gt = 0)] = 20
+    reconciliation_max_concurrency: t.Annotated[int, Field(gt=0)] = 20
     #: The maximum delay between retries when backing off
-    reconciliation_max_backoff: t.Annotated[int, Field(gt = 0)] = 60
+    reconciliation_max_backoff: t.Annotated[int, Field(gt=0)] = 60
     #: The ingress configuration
     ingress: IngressConfig
     #: The Helm client configuration
-    helm_client: HelmClientConfiguration = Field(default_factory = HelmClientConfiguration)
+    helm_client: HelmClientConfiguration = Field(
+        default_factory=HelmClientConfiguration
+    )
 
 
 class SyncConfig(
     Configuration,
-    default_path = "/etc/zenith/sync.yaml",
-    path_env_var = "ZENITH_SYNC_CONFIG",
-    env_prefix = "ZENITH_SYNC"
+    default_path="/etc/zenith/sync.yaml",
+    path_env_var="ZENITH_SYNC_CONFIG",
+    env_prefix="ZENITH_SYNC",
 ):
     """
     Configuration model for the zenith-sync package.
     """
+
     #: The logging configuration
-    logging: LoggingConfiguration = Field(default_factory = LoggingConfiguration)
+    logging: LoggingConfiguration = Field(default_factory=LoggingConfiguration)
 
     #: The name of the processor type to use
     processor_type: NonEmptyString = "helm"
@@ -250,6 +256,6 @@ class SyncConfig(
     store_type: NonEmptyString = "crd"
 
     #: The Consul configuration
-    consul: ConsulConfig = Field(default_factory = ConsulConfig)
+    consul: ConsulConfig = Field(default_factory=ConsulConfig)
     #: The Kubernetes configuration
-    kubernetes: KubernetesConfig = Field(default_factory = KubernetesConfig)
+    kubernetes: KubernetesConfig = Field(default_factory=KubernetesConfig)

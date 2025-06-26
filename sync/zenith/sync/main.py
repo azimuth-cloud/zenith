@@ -24,7 +24,7 @@ async def run(config_obj: config.SyncConfig):
                 asyncio.create_task(store.run()),
                 asyncio.create_task(metrics_server(store, processor)),
             ],
-            return_when = asyncio.FIRST_COMPLETED
+            return_when=asyncio.FIRST_COMPLETED,
         )
         # However any exceptions are not raised until we try to fetch the results
         # We also cancel any remaining tasks

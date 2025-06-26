@@ -33,24 +33,25 @@ class Processor(base.Processor):
     """
     Reconciles services by using a Helm chart to create resources in Kubernetes.
     """
+
     def __init__(self, config: config.KubernetesConfig):
         self.config = config
         # Initialise an easykube client from the environment
         self.ekclient = Configuration.from_environment().async_client(
-            default_field_manager = self.config.easykube_field_manager,
-            default_namespace = self.config.target_namespace
+            default_field_manager=self.config.easykube_field_manager,
+            default_namespace=self.config.target_namespace,
         )
         self.helm_client = HelmClient(
-            default_timeout = config.helm_client.default_timeout,
-            executable = config.helm_client.executable,
-            history_max_revisions = config.helm_client.history_max_revisions,
-            insecure_skip_tls_verify = config.helm_client.insecure_skip_tls_verify,
-            unpack_directory = config.helm_client.unpack_directory
+            default_timeout=config.helm_client.default_timeout,
+            executable=config.helm_client.executable,
+            history_max_revisions=config.helm_client.history_max_revisions,
+            insecure_skip_tls_verify=config.helm_client.insecure_skip_tls_verify,
+            unpack_directory=config.helm_client.unpack_directory,
         )
         super().__init__(
             logging.getLogger(__name__),
             config.reconciliation_max_concurrency,
-            config.reconciliation_max_backoff
+            config.reconciliation_max_backoff,
         )
 
     async def startup(self):
@@ -65,17 +66,14 @@ class Processor(base.Processor):
         """
         await self.ekclient.__aexit__(None, None, None)
 
-    async def _reconcile_oidc_credentials(self, service: model.Service) -> typing.Tuple[
-        str,
-        str,
-        str,
-        typing.List[str]
-    ]:
+    async def _reconcile_oidc_credentials(
+        self, service: model.Service
+    ) -> typing.Tuple[str, str, str, typing.List[str]]:
         """
         Returns the OIDC issuer, client ID, secret and allowed groups for the given service.
         """
         oidc_issuer = service.config.get("auth-oidc-issuer")
-        # If the issuer is present in the config, then a client ID and secret should also be there
+        # If the issuer is present in the config, then a client ID and secret should also be there
         if oidc_issuer:
             return (
                 oidc_issuer,
@@ -88,7 +86,7 @@ class Processor(base.Processor):
         try:
             secret = await secrets.fetch(
                 self.config.ingress.oidc.discovery_secret_name_template.format(
-                    service_name = service.name
+                    service_name=service.name
                 )
             )
         except ApiError as exc:
@@ -113,8 +111,10 @@ class Processor(base.Processor):
         Returns the cookie secret for the OAuth2 proxy for the service.
         """
         secrets = await self.ekclient.api("v1").resource("secrets")
-        secret_name = self.config.ingress.oidc.oauth2_proxy_cookie_secret_template.format(
-            service_name = service.name
+        secret_name = (
+            self.config.ingress.oidc.oauth2_proxy_cookie_secret_template.format(
+                service_name=service.name
+            )
         )
         try:
             secret = await secrets.fetch(secret_name)
@@ -136,7 +136,7 @@ class Processor(base.Processor):
                             "cookie-secret": cookie_secret,
                         },
                     },
-                    force = True
+                    force=True,
                 )
             else:
                 raise
@@ -170,7 +170,9 @@ class Processor(base.Processor):
         else:
             return {}
 
-    def _get_service_values(self, service: model.Service) -> typing.Dict[str, typing.Any]:
+    def _get_service_values(
+        self, service: model.Service
+    ) -> typing.Dict[str, typing.Any]:
         """
         Returns the values for the core service configuration.
         """
@@ -198,7 +200,9 @@ class Processor(base.Processor):
                 values["readTimeout"] = read_timeout
         return values
 
-    def _get_ingress_enabled(self, service: model.Service) -> typing.Dict[str, typing.Any]:
+    def _get_ingress_enabled(
+        self, service: model.Service
+    ) -> typing.Dict[str, typing.Any]:
         """
         Returns the values for enabling or disabling ingress as required.
         """
@@ -214,7 +218,7 @@ class Processor(base.Processor):
         Returns the values for configuring the TLS for a service.
         """
         tls_enabled = self.config.ingress.tls.enabled or "tls-cert" in service.config
-        values = { "global": { "secure": tls_enabled }}
+        values = {"global": {"secure": tls_enabled}}
         if not tls_enabled:
             return values
         tls_values = values.setdefault("ingress", {}).setdefault("tls", {})
@@ -233,7 +237,9 @@ class Processor(base.Processor):
             tls_values["clientCA"] = service.config["tls-client-ca"]
         return values
 
-    async def _get_auth_values(self, service: model.Service) -> typing.Dict[str, typing.Any]:
+    async def _get_auth_values(
+        self, service: model.Service
+    ) -> typing.Dict[str, typing.Any]:
         """
         Returns the values for configuring the auth for a service.
 
@@ -241,24 +247,27 @@ class Processor(base.Processor):
         """
         # Decide what authentication to apply
         # This is done with the following precedence:
-        #   1. If the client opted out of auth, no auth is applied
-        #   2. If the client specified OIDC credentials, use them
+        #   1. If the client opted out of auth, no auth is applied
+        #   2. If the client specified OIDC credentials, use them
         #   3. If OIDC discovery is enabled, use that
         #      This allows an external controller to place secrets into the Zenith namespace
         #      containing OIDC credentials for each service
         #   4. If external auth is configured, use that
-        #   5. No auth is applied
+        #   5. No auth is applied
         values = {}
         if service.config.get("skip-auth", False):
-            values["oidc"] = { "enabled": False }
-            values["externalAuth"] = { "enabled": False }
+            values["oidc"] = {"enabled": False}
+            values["externalAuth"] = {"enabled": False}
         elif (
-            service.config.get("auth-oidc-issuer") or
-            self.config.ingress.oidc.discovery_enabled
+            service.config.get("auth-oidc-issuer")
+            or self.config.ingress.oidc.discovery_enabled
         ):
-            issuer_url, client_id, client_secret, allowed_groups = (
-                await self._reconcile_oidc_credentials(service)
-            )
+            (
+                issuer_url,
+                client_id,
+                client_secret,
+                allowed_groups,
+            ) = await self._reconcile_oidc_credentials(service)
             cookie_secret = await self._reconcile_oidc_cookie_secret(service)
             values["oidc"] = {
                 "enabled": True,
@@ -298,11 +307,9 @@ class Processor(base.Processor):
 
     async def known_services(self) -> typing.Set[str]:
         releases = await self.helm_client.list_releases(
-            all = True,
-            max_releases = 0,
-            namespace = self.config.target_namespace
+            all=True, max_releases=0, namespace=self.config.target_namespace
         )
-        return { release.name for release in releases }
+        return {release.name for release in releases}
 
     async def service_updated(self, service: model.Service):
         endpoints = ", ".join(f"{ep.address}:{ep.port}" for ep in service.endpoints)
@@ -312,8 +319,8 @@ class Processor(base.Processor):
             service.name,
             await self.helm_client.get_chart(
                 self.config.service_chart_name,
-                repo = self.config.service_chart_repo,
-                version = self.config.service_chart_version
+                repo=self.config.service_chart_repo,
+                version=self.config.service_chart_version,
             ),
             self.config.service_default_values,
             self._get_trust_values(),
@@ -321,35 +328,33 @@ class Processor(base.Processor):
             self._get_ingress_enabled(service),
             self._get_tls_values(service),
             await self._get_auth_values(service),
-            cleanup_on_fail = True,
+            cleanup_on_fail=True,
             # The namespace should exist, so we don't need to create it
-            create_namespace = False,
-            namespace = self.config.target_namespace,
+            create_namespace=False,
+            namespace=self.config.target_namespace,
             # Wait for the components to become ready
-            wait = True
+            wait=True,
         )
 
     async def service_removed(self, service: model.Service):
         self.logger.info(f"Removing {service.name}")
         # Remove the Helm release for the service
         await self.helm_client.uninstall_release(
-            service.name,
-            namespace = self.config.target_namespace,
-            wait = True
+            service.name, namespace=self.config.target_namespace, wait=True
         )
         # Delete the OIDC cookie secret if required
         secrets = await self.ekclient.api("v1").resource("secrets")
-        secret_name = self.config.ingress.oidc.oauth2_proxy_cookie_secret_template.format(
-            service_name = service.name
+        secret_name = (
+            self.config.ingress.oidc.oauth2_proxy_cookie_secret_template.format(
+                service_name=service.name
+            )
         )
         await secrets.delete(secret_name)
 
     async def metrics(self) -> typing.Iterable[metrics.Metric]:
         # Drop down to the Helm command to get statuses without extra Helm commands
         releases = await self.helm_client._command.list(
-            all = True,
-            max_releases = 0,
-            namespace = self.config.target_namespace
+            all=True, max_releases=0, namespace=self.config.target_namespace
         )
         helm_status_metric = ServiceHelmStatus()
         for release in releases:
@@ -361,12 +366,9 @@ class Processor(base.Processor):
         Yields watch events for the specified object, including a synthetic add/delete event
         for the initial state.
         """
-        initial_state, events = await ekresource.watch_one(name, namespace = namespace)
+        initial_state, events = await ekresource.watch_one(name, namespace=namespace)
         if initial_state:
-            yield {
-                "type": "ADDED",
-                "object": initial_state
-            }
+            yield {"type": "ADDED", "object": initial_state}
         else:
             yield {
                 "type": "DELETED",
@@ -375,7 +377,7 @@ class Processor(base.Processor):
                         "name": name,
                         "namespace": namespace,
                     },
-                }
+                },
             }
         async for event in events:
             yield event
@@ -390,7 +392,7 @@ class Processor(base.Processor):
             ekresource.kind,
             name,
             source_namespace,
-            target_namespace
+            target_namespace,
         )
         async for event in self._watch_events(ekresource, name, source_namespace):
             # Prepare the mirror object from the source object
@@ -403,8 +405,10 @@ class Processor(base.Processor):
                 "name": mirror_obj["metadata"]["name"],
                 # Set the namespace to the target namespace
                 "namespace": target_namespace,
-                "labels": { self.config.created_by_label: "zenith-sync" },
-                "annotations": { self.config.mirror_annotation: f"{source_namespace}/{name}" },
+                "labels": {self.config.created_by_label: "zenith-sync"},
+                "annotations": {
+                    self.config.mirror_annotation: f"{source_namespace}/{name}"
+                },
             }
 
             if event["type"] == "DELETED":
@@ -413,11 +417,11 @@ class Processor(base.Processor):
                     ekresource.api_version,
                     ekresource.kind,
                     mirror_obj["metadata"]["name"],
-                    mirror_obj["metadata"]["namespace"]
+                    mirror_obj["metadata"]["namespace"],
                 )
                 await ekresource.delete(
                     mirror_obj["metadata"]["name"],
-                    namespace = mirror_obj["metadata"]["namespace"]
+                    namespace=mirror_obj["metadata"]["namespace"],
                 )
             else:
                 self.logger.info(
@@ -425,13 +429,13 @@ class Processor(base.Processor):
                     ekresource.api_version,
                     ekresource.kind,
                     mirror_obj["metadata"]["name"],
-                    mirror_obj["metadata"]["namespace"]
+                    mirror_obj["metadata"]["namespace"],
                 )
                 await ekresource.server_side_apply(
                     mirror_obj["metadata"]["name"],
                     mirror_obj,
-                    namespace = mirror_obj["metadata"]["namespace"],
-                    force = True
+                    namespace=mirror_obj["metadata"]["namespace"],
+                    force=True,
                 )
 
     async def _run_trust_bundle_mirror(self):
@@ -445,7 +449,7 @@ class Processor(base.Processor):
                 configmaps,
                 self.config.trust_bundle_configmap_name,
                 self.config.self_namespace,
-                self.config.target_namespace
+                self.config.target_namespace,
             )
         else:
             self.logger.info("Mirroring of trust bundle configmap is not required")
@@ -463,7 +467,7 @@ class Processor(base.Processor):
                 secrets,
                 self.config.ingress.tls.secret_name,
                 self.config.self_namespace,
-                self.config.target_namespace
+                self.config.target_namespace,
             )
         else:
             self.logger.info("Mirroring of wildcard TLS secret is not required")
@@ -478,7 +482,7 @@ class Processor(base.Processor):
                 asyncio.create_task(self._run_trust_bundle_mirror()),
                 asyncio.create_task(self._run_tls_mirror()),
             ],
-            return_when = asyncio.FIRST_COMPLETED
+            return_when=asyncio.FIRST_COMPLETED,
         )
         # Any exceptions are not raised until the result is requested
         # We also cancel the other task

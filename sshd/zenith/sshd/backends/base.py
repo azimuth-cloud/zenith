@@ -2,13 +2,14 @@ import enum
 import logging
 import typing
 
-from .. import config
+from .. import config  # noqa: TID252
 
 
 class TunnelStatus(enum.Enum):
     """
     Enumeration of possible statuses for a tunnel.
     """
+
     PASSING = "passing"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -18,6 +19,7 @@ class Backend:
     """
     Base class for an SSHD backend.
     """
+
     def tunnel_check_host_and_port(self, host: str, port: int) -> bool:
         """
         Checks if there is already an existing service with the same host and port.
@@ -33,20 +35,20 @@ class Backend:
         port: int,
         ttl: int,
         reap_after: int,
-        config_dict: typing.Dict[str, typing.Any]
+        config_dict: dict[str, typing.Any],
     ) -> str:
         """
         Initialise a tunnel with the given config and return the tunnel ID.
         """
         raise NotImplementedError
 
-    def tunnel_heartbeat(self, subdomain: str, id: str, status: TunnelStatus):
+    def tunnel_heartbeat(self, subdomain: str, id: str, status: TunnelStatus):  # noqa: A002
         """
         Send a heartbeat for the specified tunnel.
         """
         raise NotImplementedError
 
-    def tunnel_terminate(self, subdomain: str, id: str):
+    def tunnel_terminate(self, subdomain: str, id: str):  # noqa: A002
         """
         Terminate the specified tunnel.
         """
@@ -70,7 +72,9 @@ class Backend:
         self.shutdown()
 
     @classmethod
-    def from_config(cls, logger: logging.Logger, config_obj: config.SSHDConfig) -> "Backend":
+    def from_config(
+        cls, logger: logging.Logger, config_obj: config.SSHDConfig
+    ) -> "Backend":
         """
         Initialises an instance of the backend from a config object.
         """

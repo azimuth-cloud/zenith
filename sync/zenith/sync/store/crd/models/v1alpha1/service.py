@@ -7,28 +7,29 @@ class ServiceSpec(schema.BaseModel):
     """
     Model for the spec of a service resource.
     """
-    public_key_fingerprint: schema.Optional[schema.constr(min_length = 1)] = Field(
+
+    public_key_fingerprint: schema.Optional[schema.constr(min_length=1)] = Field(
         None,
-        description = "The fingerprint of the public key for the service.",
-        validate_default = True
+        description="The fingerprint of the public key for the service.",
+        validate_default=True,
     )
 
 
 class Service(
     CustomResource,
-    subresources = {"status": {}},
-    printer_columns = [
+    subresources={"status": {}},
+    printer_columns=[
         {
             "name": "Fingerprint",
             "type": "string",
             "jsonPath": ".spec.publicKeyFingerprint",
         },
-    ]
+    ],
 ):
     """
     Custom resource for a Zenith service.
     """
+
     spec: ServiceSpec = Field(
-        default_factory = ServiceSpec,
-        description = "The spec for the service resource."
+        default_factory=ServiceSpec, description="The spec for the service resource."
     )

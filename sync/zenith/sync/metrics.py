@@ -13,11 +13,12 @@ class Metric:
     """
     Base class for metrics.
     """
+
     # The prefix for the metric
     prefix = None
     # The suffix for the metric
     suffix = None
-    # The type of the metric - info or guage
+    # The type of the metric - info or gauge
     type = "info"
     # The description of the metric
     description = None
@@ -64,9 +65,11 @@ def format_value(value):
     Formats a value for output, e.g. using Go formatting.
     """
     formatted = repr(value)
-    dot = formatted.find('.')
+    dot = formatted.find(".")
     if value > 0 and dot > 6:
-        mantissa = f"{formatted[0]}.{formatted[1:dot]}{formatted[dot + 1:]}".rstrip("0.")
+        mantissa = f"{formatted[0]}.{formatted[1:dot]}{formatted[dot + 1 :]}".rstrip(
+            "0."
+        )
         return f"{mantissa}e+0{dot - 1}"
     else:
         return formatted
@@ -98,26 +101,30 @@ def render_openmetrics(*metrics: Metric) -> typing.Tuple[str, bytes]:
     )
 
 
-async def metrics_handler(store: 'Store', processor: 'Processor', request):
+async def metrics_handler(store: "Store", processor: "Processor", request):
     """
     Produce metrics for the store and processor.
     """
-    store_metrics, processor_metrics = await asyncio.gather(store.metrics(), processor.metrics())
+    store_metrics, processor_metrics = await asyncio.gather(
+        store.metrics(), processor.metrics()
+    )
     content_type, content = render_openmetrics(*store_metrics, *processor_metrics)
-    return web.Response(headers = {"Content-Type": content_type}, body = content)
+    return web.Response(headers={"Content-Type": content_type}, body=content)
 
 
-async def metrics_server(store: 'Store', processor: 'Processor'):
+async def metrics_server(store: "Store", processor: "Processor"):
     """
     Launch a lightweight HTTP server to serve the metrics endpoint.
     """
     app = web.Application()
-    app.add_routes([web.get("/metrics", functools.partial(metrics_handler, store, processor))])
+    app.add_routes(
+        [web.get("/metrics", functools.partial(metrics_handler, store, processor))]
+    )
 
-    runner = web.AppRunner(app, handle_signals = False)
+    runner = web.AppRunner(app, handle_signals=False)
     await runner.setup()
 
-    site = web.TCPSite(runner, "0.0.0.0", "8080", shutdown_timeout = 1.0)
+    site = web.TCPSite(runner, "0.0.0.0", "8080", shutdown_timeout=1.0)
     await site.start()
 
     # Sleep until we need to clean up

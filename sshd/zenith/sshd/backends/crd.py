@@ -2,14 +2,13 @@ import datetime
 import logging
 import typing as t
 
-from easykube import Configuration, ApiError
+from easykube import ApiError, Configuration
 
-from .. import config
-
+from .. import config  # noqa: TID252
 from . import base
 
 
-class MaximumNumberOfEndpointsExceeded(Exception):
+class MaximumNumberOfEndpointsExceeded(Exception):  # noqa: N818
     """
     Raised when the maximum number of endpoints has been exceeded.
     """
@@ -19,25 +18,26 @@ def isotime() -> str:
     """
     Returns the current time as an ISO8601 formatted string.
     """
-    return datetime.datetime.now(tz = datetime.timezone.utc).isoformat(timespec = "seconds")
+    return datetime.datetime.now(tz=datetime.timezone.utc).isoformat(timespec="seconds")
 
 
 class Backend(base.Backend):
     """
     SSHD backend that stores information using CRD instances.
     """
+
     def __init__(
         self,
         logger: logging.Logger,
         api_version: str,
         target_namespace: str,
-        max_endpoints: int
+        max_endpoints: int,
     ):
         self.logger = logger
         self.api_version = api_version
         # Initialise an easykube client from the environment
         self.ekclient = Configuration.from_environment().sync_client(
-            default_namespace = target_namespace
+            default_namespace=target_namespace
         )
         self.max_endpoints = max_endpoints
 
@@ -56,7 +56,7 @@ class Backend(base.Backend):
         port: int,
         ttl: int,
         reap_after: int,
-        config_dict: t.Dict[str, t.Any]
+        config_dict: dict[str, t.Any],
     ) -> str:
         # Fetch the service resource, so that it can own the endpoints resource
         # It also means we fail early if something has gone awry with the registrar
@@ -118,7 +118,7 @@ class Backend(base.Backend):
                     "renewedAt": isotime(),
                     "ttl": ttl,
                     "reapAfter": reap_after,
-                }
+                },
             }
         )
 
@@ -141,12 +141,12 @@ class Backend(base.Backend):
                         },
                     },
                 },
-            }
+            },
         )
-    
+
         return tunnel_id
 
-    def tunnel_heartbeat(self, subdomain: str, id: str, status: base.TunnelStatus):
+    def tunnel_heartbeat(self, subdomain: str, id: str, status: base.TunnelStatus):  # noqa: A002
         # Renew the lease
         self.ekclient.api(self.api_version).resource("leases").patch(
             f"{subdomain}-{id}",
@@ -154,7 +154,7 @@ class Backend(base.Backend):
                 "spec": {
                     "renewedAt": isotime(),
                 },
-            }
+            },
         )
         # Update the endpoint status
         self.ekclient.api(self.api_version).resource("endpoints").patch(
@@ -167,10 +167,10 @@ class Backend(base.Backend):
                         },
                     },
                 },
-            }
+            },
         )
 
-    def tunnel_terminate(self, subdomain: str, id: str):
+    def tunnel_terminate(self, subdomain: str, id: str):  # noqa: A002
         # Remove the tunnel from the endpoints object
         self.ekclient.api(self.api_version).resource("endpoints").json_patch(
             subdomain,
@@ -179,10 +179,12 @@ class Backend(base.Backend):
                     "op": "remove",
                     "path": f"/spec/endpoints/{id}",
                 },
-            ]
+            ],
         )
         # Delete the lease
-        self.ekclient.api(self.api_version).resource("leases").delete(f"{subdomain}-{id}")
+        self.ekclient.api(self.api_version).resource("leases").delete(
+            f"{subdomain}-{id}"
+        )
 
     def startup(self):
         self.ekclient.__enter__()
@@ -191,7 +193,9 @@ class Backend(base.Backend):
         self.ekclient.__exit__(None, None, None)
 
     @classmethod
-    def from_config(cls, logger: logging.Logger, config_obj: config.SSHDConfig) -> "Backend":
+    def from_config(
+        cls, logger: logging.Logger, config_obj: config.SSHDConfig
+    ) -> "Backend":
         """
         Initialises an instance of the backend from a config object.
         """
@@ -199,5 +203,5 @@ class Backend(base.Backend):
             logger,
             config_obj.crd_api_version,
             config_obj.crd_target_namespace,
-            config_obj.crd_max_endpoints
+            config_obj.crd_max_endpoints,
         )
