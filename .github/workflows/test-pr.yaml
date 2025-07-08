@@ -39,7 +39,7 @@ jobs:
         run: exit ${{ github.event.pull_request.head.repo.full_name == 'azimuth-cloud/zenith' && '0' || '1' }}
 
   publish_artifacts:
-    needs: [unit_tests, fail_on_remote]
+    needs: [fail_on_remote]
     uses: ./.github/workflows/build-push-artifacts.yaml
     with:
       ref: ${{ github.event.pull_request.head.sha }}
