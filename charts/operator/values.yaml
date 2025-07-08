@@ -13,9 +13,9 @@ kubeconfigSecret:
 # The name of the clusterrole that the operator should be bound to
 #
 # Note that in order for the operator to grant permissions to service accounts
-# for MITM proxies, the operator itself needs to hold all of those permissions
+# for MITM proxies, the operator itself needs to hold all of those permissions
 # In particular, in order for the operator to grant the cluster-admin role
-# to service accounts for MITM proxies, it must hold cluster-admin itself
+# to service accounts for MITM proxies, it must hold cluster-admin itself
 #
 # Only used if kubeconfigSecret.name is not specified
 clusterRoleName: cluster-admin
@@ -24,7 +24,7 @@ clusterRoleName: cluster-admin
 image:
   repository: ghcr.io/azimuth-cloud/zenith-operator
   pullPolicy: IfNotPresent
-  tag: ""  # Defaults to appVersion if not given
+  tag: ""  # Defaults to appVersion if not given
 
 imagePullSecrets: []
 

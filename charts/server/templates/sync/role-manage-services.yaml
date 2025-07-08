@@ -42,8 +42,8 @@ rules:
   #   * ingresses
   # For OIDC authenticated services, we also need to manage:
   #   * configmaps
-  #   * deployments
-  #   * poddisruptionbudgets
+  #   * deployments
+  #   * poddisruptionbudgets
   #   * serviceaccounts
   #   * servicemonitors
   - apiGroups:
