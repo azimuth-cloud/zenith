@@ -1,5 +1,5 @@
 # To update manifest snapshots run helm unittest plugin with -u option:
-# docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest -u chart
+# docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest -u /path/to/chart
 suite: Manifest snapshot tests
 values:
   - values_test_overrides.yaml
