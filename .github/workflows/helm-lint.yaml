@@ -1,0 +1,78 @@
+name: Helm Lint
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        description: The Git ref under test.
+        required: true
+
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.3
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2
+
+      - name: Add helm repositories
+        run: helm repo add oauth2 https://oauth2-proxy.github.io/manifests
+
+      - name: Run chart-testing (lint)
+        run: |-
+          ct lint \
+            --target-branch ${{ github.event.repository.default_branch }} \
+            --lint-conf lintconf.yaml \
+            --chart-dirs charts,sync \
+            --all \
+            --validate-maintainers=false
+
+      - name: Run template validation on zenith-server chart
+        run: |-
+          helm template foo charts/server \
+            | docker run -i --rm ghcr.io/yannh/kubeconform:latest \
+            --strict --summary
+
+      - name: Run template validation on zenith-operator
+        run: |-
+          helm template foo charts/operator \
+            | docker run -i --rm ghcr.io/yannh/kubeconform:latest \
+            --strict --summary
+
+      - name: Run template validation on zenith-apiserver chart
+        run: |-
+          helm template foo charts/apiserver \
+            -f charts/apiserver/tests/values_test_overrides.yaml \
+            | docker run -i --rm ghcr.io/yannh/kubeconform:latest \
+            --strict --summary
+
+      - name: Run template validation on zenith-sync chart
+        run: |-
+          helm template foo sync/chart \
+            -f sync/chart/tests/values_test_overrides.yaml \
+            | docker run -i --rm ghcr.io/yannh/kubeconform:latest \
+            --strict --summary
+
+      - name: Run manifest snapshot test on zenith-server chart
+        run: docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest charts/server
+
+      - name: Run manifest snapshot test on zenith-operator
+        run: docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest charts/operator
+
+      - name: Run manifest snapshot test on zenith-apiserver
+        run: docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest charts/apiserver
+
+      - name: Run manifest snapshot test on zenith-sync
+        run: docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest sync/chart

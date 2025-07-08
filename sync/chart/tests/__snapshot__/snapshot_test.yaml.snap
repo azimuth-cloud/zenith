@@ -1,0 +1,49 @@
+templated manifests should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        nginx.ingress.kubernetes.io/backend-protocol: http
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-service-0.1.0
+        zenith.stackhpc.com/service-name: RELEASE-NAME
+      name: RELEASE-NAME
+    spec:
+      ingressClassName: nginx
+      rules:
+        - host: bar.foo
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: RELEASE-NAME
+                    port:
+                      name: dynamic
+                path: /
+                pathType: Prefix
+      tls:
+        - hosts:
+            - bar.foo
+          secretName: tls-RELEASE-NAME
+  2: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-service-0.1.0
+        zenith.stackhpc.com/service-name: RELEASE-NAME
+      name: RELEASE-NAME
+    spec:
+      ports:
+        - name: dynamic
+          port: 80
+          protocol: TCP
+          targetPort: dynamic
