@@ -1,0 +1,98 @@
+templated manifests should match snapshot:
+  1: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-operator
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-operator-0.1.0
+      name: release-name-zenith-operator
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: cluster-admin
+    subjects:
+      - kind: ServiceAccount
+        name: release-name-zenith-operator
+        namespace: NAMESPACE
+  2: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-operator
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-operator-0.1.0
+      name: release-name-zenith-operator
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: zenith-operator
+      strategy:
+        type: Recreate
+      template:
+        metadata:
+          annotations:
+            zenith.stackhpc.com/config-hash: ae0f3df2f9f087f0c375eaf010ab5b508ae882a4faf457f2ce5b8a4879505b6b
+          labels:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: zenith-operator
+        spec:
+          containers:
+            - image: ghcr.io/azimuth-cloud/zenith-operator:main
+              imagePullPolicy: IfNotPresent
+              name: operator
+              resources: {}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /etc/zenith
+                  name: etc-zenith
+                  readOnly: true
+                - mountPath: /tmp
+                  name: tmp
+          securityContext:
+            runAsNonRoot: true
+          serviceAccountName: release-name-zenith-operator
+          volumes:
+            - name: etc-zenith
+              secret:
+                secretName: release-name-zenith-operator
+            - emptyDir: {}
+              name: tmp
+  3: |
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-operator
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-operator-0.1.0
+      name: release-name-zenith-operator
+    stringData:
+      operator.yaml: |
+        defaultImageTag: main
+  4: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-operator
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-operator-0.1.0
+      name: release-name-zenith-operator

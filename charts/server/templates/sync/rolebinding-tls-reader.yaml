@@ -5,7 +5,7 @@
 {{- $ingress := mergeOverwrite $global $common $sync }}
 {{- if and $ingress.tls.enabled $ingress.tls.secretName }}
 # This role binding allows the sync service account to access the TLS secret
-# in the release namespace
+# in the release namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

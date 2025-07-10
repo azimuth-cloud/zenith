@@ -49,7 +49,7 @@ spec:
         - name: ZENITH_PROXY_UPSTREAM_PORT
           value: "6443"
         # Use the front-proxy certificate to authenticate the proxy so that our
-        # user and group headers are accepted
+        # user and group headers are accepted
         - name: ZENITH_PROXY_CLIENT_CERTIFICATE_PATH
           value: /etc/kubernetes/pki/front-proxy-client.crt
         - name: ZENITH_PROXY_CLIENT_CERTIFICATE_KEY_PATH

@@ -1,0 +1,4 @@
+zenithClient:
+  sshPrivateKeyData: foo
+  server:
+    host: foo.example.com

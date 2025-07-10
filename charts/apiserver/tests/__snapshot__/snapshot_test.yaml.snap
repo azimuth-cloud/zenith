@@ -1,0 +1,93 @@
+templated manifests should match snapshot:
+  1: |
+    apiVersion: v1
+    data:
+      client-apiserver.yaml: |
+        ssh_private_key_data: "foo"
+        server_address: foo
+        server_port: 22
+        # Skip any authentication configured at the Zenith proxy
+        skip_auth: true
+
+        # Forward traffic to the MITM in the same pod
+        forward_to_host: 127.0.0.1
+        forward_to_port: 8080
+        backend_protocol: http
+        # Use a long read timeout so that watches work
+        read_timeout: 31536000
+        # Use readyz as the liveness path
+        liveness_path: /readyz
+        liveness_period: 5
+        liveness_failures: 3
+
+        # Instruct the Zenith proxy to use the generated API server certificate for TLS,
+        # regardless of the TLS settings at the proxy
+        tls_cert_file: /etc/kubernetes/pki/apiserver.crt
+        tls_key_file: /etc/kubernetes/pki/apiserver.key
+
+        # Instruct the Zenith proxy to validate client TLS certificates against the Kubernetes CA
+        tls_client_ca_file: /etc/kubernetes/pki/ca.crt
+    kind: ConfigMap
+    metadata:
+      name: release-name-zenith-apiserver
+  2: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      labels:
+        component: release-name-zenith-apiserver
+        tier: control-plane
+      name: release-name-zenith-apiserver
+      namespace: kube-system
+    spec:
+      containers:
+        - env:
+            - name: ZENITH_CLIENT_CONFIG
+              value: /etc/zenith/client-apiserver.yaml
+          image: ghcr.io/azimuth-cloud/zenith-client:main
+          imagePullPolicy: IfNotPresent
+          name: zenith-client
+          volumeMounts:
+            - mountPath: /etc/zenith
+              name: etc-zenith
+              readOnly: true
+            - mountPath: /etc/kubernetes/pki
+              name: k8s-certs
+              readOnly: true
+        - env:
+            - name: ZENITH_PROXY_AUTH_INJECT
+              value: kubeapiserver
+            - name: ZENITH_PROXY_READ_TIMEOUT
+              value: "31536000"
+            - name: ZENITH_PROXY_UPSTREAM_SCHEME
+              value: https
+            - name: ZENITH_PROXY_UPSTREAM_HOST
+              value: 127.0.0.1
+            - name: ZENITH_PROXY_UPSTREAM_PORT
+              value: "6443"
+            - name: ZENITH_PROXY_CLIENT_CERTIFICATE_PATH
+              value: /etc/kubernetes/pki/front-proxy-client.crt
+            - name: ZENITH_PROXY_CLIENT_CERTIFICATE_KEY_PATH
+              value: /etc/kubernetes/pki/front-proxy-client.key
+          image: ghcr.io/azimuth-cloud/zenith-proxy:main
+          imagePullPolicy: IfNotPresent
+          name: mitm-proxy
+          volumeMounts:
+            - mountPath: /etc/kubernetes/pki
+              name: k8s-certs
+              readOnly: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - hostPath:
+            path: /etc/zenith
+            type: DirectoryOrCreate
+          name: etc-zenith
+        - hostPath:
+            path: /etc/kubernetes/pki
+            type: DirectoryOrCreate
+          name: k8s-certs

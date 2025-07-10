@@ -18,16 +18,16 @@ zenithClient:
   image:
     repository: ghcr.io/azimuth-cloud/zenith-client
     pullPolicy: IfNotPresent
-    tag: ""  # Defaults to appVersion if not given
+    tag: ""  # Defaults to appVersion if not given
 
 mitmProxy:
   # The port that the proxy is listening on
-  # It should listen to localhost only on plain http
+  # It should listen to localhost only on plain http
   port: 8080
   # The image to use for the proxy container
   image:
     repository: ghcr.io/azimuth-cloud/zenith-proxy
     pullPolicy: IfNotPresent
-    tag: ""  # Defaults to appVersion if not given
+    tag: ""  # Defaults to appVersion if not given
 
 imagePullSecrets: []

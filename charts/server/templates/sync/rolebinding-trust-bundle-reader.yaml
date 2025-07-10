@@ -1,6 +1,6 @@
 {{- if and .Values.sync.enabled .Values.common.trustBundle }}
 # This role binding allows the sync service account to access the trust bundle configmap
-# in the release namespace
+# in the release namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

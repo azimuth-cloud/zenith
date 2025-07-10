@@ -60,7 +60,7 @@ externalAuth:
   url:
   # The URL to redirect to on an authentication error
   signinUrl:
-  #: The URL parameter to contain the original URL when redirecting to the signin URL
+  # The URL parameter to contain the original URL when redirecting to the signin URL
   nextUrlParam: next
   # Dictionary of headers to set for authentication requests
   # These will override headers from the incoming request, which would otherwise be forwarded
@@ -133,7 +133,7 @@ oidc:
       {{- else -}}
       /_oidc
       {{- end -}}
-    cookie-secret: "{{ fail \"cookie secret is required\" }}"
+    cookie-secret: '{{ fail "cookie secret is required" }}'
     # The length of time for which OAuth2 proxy cookies should last
     #   This determines the length of time until a user is forced to reauthenticate
     cookie-expire: 24h
@@ -144,7 +144,7 @@ oidc:
     #   OIDC provider
     cookie-refresh: 1h
     # If the ingress is not using TLS, we have to allow the cookie on insecure connections
-    cookie-secure: "{{ ternary \"true\" \"false\" .Values.global.secure }}"
+    cookie-secure: '{{ ternary "true" "false" .Values.global.secure }}'
     # Allow redirections to the service domain only
     whitelist-domain: "{{ .Values.global.domain }}"
     # We redirect to the callback endpoint on the service domain

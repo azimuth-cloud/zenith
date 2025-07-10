@@ -6,7 +6,7 @@ global:
     # The base domain to use for services exposed by Zenith
     # Proxied services will be made available at <subdomain>.<base domain>
     baseDomain:
-    #: Indicates whether the subdomain should be used as a path prefix
+    # Indicates whether the subdomain should be used as a path prefix
     subdomainAsPathPrefix: false
     # The ingress class to use
     className: nginx
@@ -52,7 +52,7 @@ sync:
   image:
     repository: ghcr.io/azimuth-cloud/zenith-sync
     pullPolicy: IfNotPresent
-    tag: ""  # Defaults to appVersion if not given
+    tag: "" # Defaults to appVersion if not given
   imagePullSecrets: []
   # Customise pod-level security context for sync pods
   podSecurityContext:
@@ -82,7 +82,7 @@ sshd:
   image:
     repository: ghcr.io/azimuth-cloud/zenith-sshd
     pullPolicy: IfNotPresent
-    tag: ""  # Defaults to appVersion if not given
+    tag: "" # Defaults to appVersion if not given
   imagePullSecrets: []
   # The number of SSHD replicas to use
   replicaCount: 3
@@ -99,16 +99,16 @@ sshd:
     readOnlyRootFilesystem: true
   # The service definition for SSHD
   # Because SSH is a TCP service, it cannot be exposed with an Ingress
-  # Instead, it must be exposed with a NodePort or LoadBalancer service
+  # Instead, it must be exposed with a NodePort or LoadBalancer service
   service:
     type: LoadBalancer
     port: 22
     # Specify annotations for the service
-    # annotations:
+    # annotations:
     # Use a fixed node port
-    # nodePort: 32222
+    # nodePort: 32222
     # Use a fixed load-balancer IP
-    # loadBalancerIP:
+    # loadBalancerIP:
   # Resources for SSHD containers
   resources: {}
   # Customise node selector for SSHD pods
@@ -117,7 +117,6 @@ sshd:
   tolerations: []
   # Customise affinity rules for SSHD pods
   affinity: {}
-
 
 registrar:
   enabled: true
@@ -131,7 +130,7 @@ registrar:
   image:
     repository: ghcr.io/azimuth-cloud/zenith-registrar
     pullPolicy: IfNotPresent
-    tag: ""  # Defaults to appVersion if not given
+    tag: "" # Defaults to appVersion if not given
   imagePullSecrets: []
   # The number of replicas to use
   replicaCount: 1

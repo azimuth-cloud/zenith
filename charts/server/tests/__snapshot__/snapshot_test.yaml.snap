@@ -1,0 +1,669 @@
+templated manifests should match snapshot:
+  1: |
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: zenith-services
+  2: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/component: registrar
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-registrar
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/component: registrar
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: zenith-server
+      template:
+        metadata:
+          annotations:
+            zenith.stackhpc.com/config-hash: 9aa41f46c4b0073833b4a67be85da433b127a5057ca8978b884a8a51420851bb
+          labels:
+            app.kubernetes.io/component: registrar
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: zenith-server
+        spec:
+          containers:
+            - image: ghcr.io/azimuth-cloud/zenith-registrar:main
+              imagePullPolicy: IfNotPresent
+              name: registrar
+              ports:
+                - containerPort: 8000
+                  name: http
+                  protocol: TCP
+              resources: {}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /etc/zenith
+                  name: etc-zenith
+                  readOnly: true
+          securityContext:
+            runAsNonRoot: true
+          serviceAccountName: release-name-zenith-server-registrar
+          volumes:
+            - name: etc-zenith
+              secret:
+                secretName: release-name-zenith-server-registrar-conf
+  3: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations: null
+      labels:
+        app.kubernetes.io/component: registrar
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-registrar
+    spec:
+      ingressClassName: nginx
+      rules:
+        - host: registrar.%!s(<nil>)
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: release-name-zenith-server-registrar
+                    port:
+                      name: http
+                path: /associate
+                pathType: Prefix
+      tls:
+        - hosts:
+            - registrar.%!s(<nil>)
+          secretName: release-name-zenith-server-registrar-tls
+  4: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      labels:
+        app.kubernetes.io/component: registrar
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-registrar
+      namespace: zenith-services
+    rules:
+      - apiGroups:
+          - zenith.stackhpc.com
+        resources:
+          - services
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+  5: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      labels:
+        app.kubernetes.io/component: registrar
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-registrar
+      namespace: zenith-services
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: release-name-zenith-server-registrar
+    subjects:
+      - kind: ServiceAccount
+        name: release-name-zenith-server-registrar
+        namespace: NAMESPACE
+  6: |
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      labels:
+        app.kubernetes.io/component: registrar-conf
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-registrar-conf
+    stringData:
+      registrar.yaml: "baseDomain: \ncrdTargetNamespace: zenith-services\ninternalBaseDomain: zenith-services.svc.cluster.local\nreservedSubdomains:\n- registrar\nsubdomainAsPathPrefix: false\n"
+  7: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/component: registrar
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-registrar
+    spec:
+      ports:
+        - name: http
+          port: 80
+          protocol: TCP
+          targetPort: http
+      selector:
+        app.kubernetes.io/component: registrar
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: zenith-server
+      type: ClusterIP
+  8: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      labels:
+        app.kubernetes.io/component: registrar
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-registrar
+  9: |
+    apiVersion: v1
+    data:
+      user-config.yaml: |
+        registrarUrl: http://release-name-zenith-server-registrar
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/component: sshd-conf
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sshd-conf
+  10: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/component: sshd
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sshd
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app.kubernetes.io/component: sshd
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: zenith-server
+      template:
+        metadata:
+          annotations:
+            zenith.stackhpc.com/config-hash: 066cbceeba45b5bf80eed17ab8825db36f07e724234e10d93a33138d138dc399
+          labels:
+            app.kubernetes.io/component: sshd
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: zenith-server
+        spec:
+          containers:
+            - env:
+                - name: ZENITH_SSHD__SERVICE_HOST
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: status.podIP
+              image: ghcr.io/azimuth-cloud/zenith-sshd:main
+              imagePullPolicy: IfNotPresent
+              name: sshd
+              ports:
+                - containerPort: 2222
+                  name: sshd
+                  protocol: TCP
+              resources: {}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /etc/zenith/sshd/includes
+                  name: etc-zenith
+                  readOnly: true
+                - mountPath: /var/run/sshd
+                  name: var-run-sshd
+          securityContext:
+            runAsNonRoot: true
+          serviceAccountName: release-name-zenith-server-sshd
+          topologySpreadConstraints:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: sshd
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: zenith-server
+              maxSkew: 1
+              nodeAffinityPolicy: Honor
+              nodeTaintsPolicy: Honor
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+          volumes:
+            - configMap:
+                name: release-name-zenith-server-sshd-conf
+              name: etc-zenith
+            - emptyDir: {}
+              name: var-run-sshd
+  11: |
+    apiVersion: policy/v1
+    kind: PodDisruptionBudget
+    metadata:
+      labels:
+        app.kubernetes.io/component: sshd
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sshd
+    spec:
+      maxUnavailable: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/component: sshd
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: zenith-server
+  12: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      labels:
+        app.kubernetes.io/component: sshd
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sshd
+      namespace: zenith-services
+    rules:
+      - apiGroups:
+          - zenith.stackhpc.com
+        resources:
+          - services
+        verbs:
+          - get
+      - apiGroups:
+          - zenith.stackhpc.com
+        resources:
+          - endpoints
+        verbs:
+          - get
+          - list
+          - create
+          - patch
+      - apiGroups:
+          - zenith.stackhpc.com
+        resources:
+          - leases
+        verbs:
+          - create
+          - patch
+          - delete
+  13: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      labels:
+        app.kubernetes.io/component: sshd
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sshd
+      namespace: zenith-services
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: release-name-zenith-server-sshd
+    subjects:
+      - kind: ServiceAccount
+        name: release-name-zenith-server-sshd
+        namespace: NAMESPACE
+  14: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/component: sshd
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sshd
+    spec:
+      ports:
+        - name: sshd
+          port: 22
+          protocol: TCP
+          targetPort: sshd
+      selector:
+        app.kubernetes.io/component: sshd
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: zenith-server
+      type: LoadBalancer
+  15: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      labels:
+        app.kubernetes.io/component: sshd
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sshd
+  16: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sync-manage-crds
+    rules:
+      - apiGroups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - list
+          - get
+          - watch
+          - create
+      - apiGroups:
+          - apiextensions.k8s.io
+        resourceNames:
+          - endpoints.zenith.stackhpc.com
+          - leases.zenith.stackhpc.com
+          - services.zenith.stackhpc.com
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - update
+          - patch
+  17: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sync-manage-crds
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: release-name-zenith-server-sync-manage-crds
+    subjects:
+      - kind: ServiceAccount
+        name: release-name-zenith-server-sync
+        namespace: NAMESPACE
+  18: |
+    apiVersion: v1
+    data:
+      sync.yaml: |
+        kubernetes:
+          ingress:
+            annotations: {}
+            baseDomain: null
+            className: nginx
+            oidc:
+              injectRequestHeaders:
+                X-Remote-Group: groups
+                X-Remote-User: preferred_username
+            subdomainAsPathPrefix: false
+            tls:
+              annotations: {}
+              enabled: true
+              terminatedAtProxy: false
+          serviceChartVersion: 0.1.0
+          targetNamespace: zenith-services
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync-conf
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sync-conf
+  19: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sync
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/component: sync
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: zenith-server
+      strategy:
+        type: Recreate
+      template:
+        metadata:
+          annotations:
+            zenith.stackhpc.com/config-hash: e1953565170a813eae30b4b800f5658d5289c9ad585b4c1fceaa3c4efdc1b999
+          labels:
+            app.kubernetes.io/component: sync
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: zenith-server
+        spec:
+          containers:
+            - env:
+                - name: ZENITH_SYNC__KUBERNETES__SELF_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+              image: ghcr.io/azimuth-cloud/zenith-sync:main
+              imagePullPolicy: IfNotPresent
+              name: sync
+              ports:
+                - containerPort: 8080
+                  name: metrics
+                  protocol: TCP
+              resources: {}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /etc/zenith
+                  name: etc-zenith
+                  readOnly: true
+                - mountPath: /tmp
+                  name: tmp
+          securityContext:
+            runAsNonRoot: true
+          serviceAccountName: release-name-zenith-server-sync
+          volumes:
+            - configMap:
+                name: release-name-zenith-server-sync-conf
+              name: etc-zenith
+            - emptyDir: {}
+              name: tmp
+  20: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sync-manage-services
+      namespace: zenith-services
+    rules:
+      - apiGroups:
+          - zenith.stackhpc.com
+        resources:
+          - services
+        verbs:
+          - list
+          - get
+          - watch
+      - apiGroups:
+          - zenith.stackhpc.com
+        resources:
+          - endpoints
+        verbs:
+          - list
+          - get
+          - watch
+          - patch
+      - apiGroups:
+          - zenith.stackhpc.com
+        resources:
+          - leases
+        verbs:
+          - list
+          - patch
+          - delete
+      - apiGroups:
+          - ""
+        resources:
+          - configmaps
+          - endpoints
+          - secrets
+          - services
+          - serviceaccounts
+        verbs:
+          - '*'
+      - apiGroups:
+          - discovery.k8s.io
+        resources:
+          - endpointslices
+        verbs:
+          - '*'
+      - apiGroups:
+          - apps
+        resources:
+          - deployments
+          - replicasets
+        verbs:
+          - '*'
+      - apiGroups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - '*'
+      - apiGroups:
+          - networking.k8s.io
+        resources:
+          - ingresses
+        verbs:
+          - '*'
+      - apiGroups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - '*'
+  21: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sync-manage-services
+      namespace: zenith-services
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: release-name-zenith-server-sync-manage-services
+    subjects:
+      - kind: ServiceAccount
+        name: release-name-zenith-server-sync
+        namespace: NAMESPACE
+  22: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sync
+    spec:
+      ports:
+        - name: metrics
+          port: 8080
+          protocol: TCP
+          targetPort: metrics
+      selector:
+        app.kubernetes.io/component: sync
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: zenith-server
+      type: ClusterIP
+  23: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      labels:
+        app.kubernetes.io/component: sync
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-sync
