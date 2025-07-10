@@ -4,7 +4,7 @@ templated manifests should match snapshot:
     data:
       client-apiserver.yaml: |
         ssh_private_key_data: "foo"
-        server_address: foo
+        server_address: foo.example.com
         server_port: 22
         # Skip any authentication configured at the Zenith proxy
         skip_auth: true

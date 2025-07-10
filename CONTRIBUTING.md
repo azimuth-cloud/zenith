@@ -16,7 +16,9 @@ automated tests. The easiest way to do this is to run the helm unittest command
 inside a docker container from the repo root.
 
 ```
-docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest /path/to/chart -u
+CHART=/path/to/chart
+helm dependency update $CHART
+docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest $CHART -u
 ```
 
 where the `-u` option is used to update the existing snapshots.
