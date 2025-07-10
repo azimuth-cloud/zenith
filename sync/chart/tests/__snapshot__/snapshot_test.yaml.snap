@@ -17,7 +17,7 @@ templated manifests should match snapshot:
     spec:
       ingressClassName: nginx
       rules:
-        - host: bar.foo
+        - host: bar.foo.example.com
           http:
             paths:
               - backend:
@@ -29,7 +29,7 @@ templated manifests should match snapshot:
                 pathType: Prefix
       tls:
         - hosts:
-            - bar.foo
+            - bar.foo.example.com
           secretName: tls-RELEASE-NAME
   2: |
     apiVersion: v1
