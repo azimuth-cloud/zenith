@@ -9,7 +9,7 @@ FROM hairyhenderson/gomplate:${GOMPLATE_VERSION} AS gomplate
 # without polluting the runtime image with GPG packages
 FROM ubuntu:24.04 AS nginx-gpg-key
 
-ENV NGINX_GPG_KEY="573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62"
+ENV NGINX_GPG_KEY="2FD21310B49F6B46"
 
 RUN apt-get update && \
     apt-get install -y gnupg2 && \
