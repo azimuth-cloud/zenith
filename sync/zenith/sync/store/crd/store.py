@@ -3,13 +3,11 @@ import datetime
 import logging
 import typing
 
-from easykube import Configuration, ApiError
-from kube_custom_resource import CustomResourceRegistry, CustomResource
+from easykube import ApiError, Configuration
+from kube_custom_resource import CustomResource, CustomResourceRegistry
 
-from ... import config, metrics, model
-
-from .. import base
-
+from ... import config, metrics, model  # noqa: TID252
+from .. import base  # noqa: TID252
 from . import models as crds
 from .models import v1alpha1 as api
 
@@ -108,7 +106,7 @@ class Store(base.Store):
             name=endpoints.metadata.name,
             endpoints=[
                 model.Endpoint(id=id, address=ep.address, port=ep.port)
-                for id, ep in endpoints.spec.endpoints.items()
+                for id, ep in endpoints.spec.endpoints.items()  # noqa: A001
                 if ep.status != api.EndpointStatus.CRITICAL
             ],
             # Merge the configs associated with each endpoint
@@ -136,9 +134,7 @@ class Store(base.Store):
 
     async def watch(
         self,
-    ) -> typing.Tuple[
-        typing.Iterable[model.Service], typing.AsyncIterable[model.Event]
-    ]:
+    ) -> tuple[typing.Iterable[model.Service], typing.AsyncIterable[model.Event]]:
         ekresource = await self._ekresource_for_model(api.Endpoints)
         initial_eps, ep_events = await ekresource.watch_list()
         return (
@@ -156,7 +152,7 @@ class Store(base.Store):
             async for lease in ekleases.list():
                 lease = api.Lease.model_validate(lease)
                 # Split the lease name into the subdomain and ID
-                subdomain, id = lease.metadata.name.split("-", maxsplit=1)
+                subdomain, id = lease.metadata.name.split("-", maxsplit=1)  # noqa: A001
                 # Check if the lease has expired or needs reaping
                 reap_after_delta = datetime.timedelta(seconds=lease.spec.reap_after)
                 ttl_delta = datetime.timedelta(seconds=lease.spec.ttl)
@@ -173,7 +169,8 @@ class Store(base.Store):
                             ],
                         )
                     except ApiError as exc:
-                        # If the endpoint is already gone, which is fine, we will get a 422
+                        # If the endpoint is already gone, which is fine,
+                        # we will get a 422
                         if exc.status_code != 422:
                             raise
                     await ekleases.delete(lease.metadata.name)
@@ -191,14 +188,15 @@ class Store(base.Store):
                             ],
                         )
                     except ApiError as exc:
-                        # If the endpoint is not present, which is fine, we will get a 422
+                        # If the endpoint is not present, which is fine,
+                        # we will get a 422
                         if exc.status_code != 422:
                             raise
             # Wait for the configured duration
             await asyncio.sleep(self.config.crd_endpoint_check_interval)
 
     async def _populate_metric(
-        self, metric: metrics.Metric, model: typing.Type[CustomResource]
+        self, metric: metrics.Metric, model: type[CustomResource]
     ) -> metrics.Metric:
         """
         Adds instances of the specified model to the given metric.
