@@ -1,18 +1,17 @@
 import typing as t
-import typing_extensions as te
 
+import typing_extensions as te
+from configomatic import Configuration, LoggingConfiguration, Section
+from easysemver import SEMVER_VERSION_REGEX
 from pydantic import (
-    TypeAdapter,
-    Field,
     AfterValidator,
+    Field,
     StringConstraints,
+    TypeAdapter,
+)
+from pydantic import (
     AnyHttpUrl as PyAnyHttpUrl,
 )
-
-from configomatic import Configuration, Section, LoggingConfiguration
-
-from easysemver import SEMVER_VERSION_REGEX
-
 
 #: Type for a string that validates as a SemVer version
 SemVerVersion = t.Annotated[str, StringConstraints(pattern=SEMVER_VERSION_REGEX)]
@@ -77,8 +76,8 @@ class ForwardedQueryParam(te.TypedDict, total=False):
     """
 
     name: NonEmptyString
-    default: t.List[NonEmptyString]
-    allow: t.List[ForwardedQueryParamRule]
+    default: list[NonEmptyString]
+    allow: list[ForwardedQueryParamRule]
 
 
 class OIDCConfig(Section):
@@ -86,22 +85,24 @@ class OIDCConfig(Section):
     Model for the ingress OIDC configuration section.
     """
 
-    #: Indicates if discovery should be used for clients that don't specify an OIDC issuer
+    #: Indicates if discovery should be used for clients that don't specify an OIDC
+    #: issuer
     #: This allows an external controller to place secrets in the Zenith namespace
     #: containing OIDC credentials to use for each service
     discovery_enabled: bool = False
     #: The template to use for the names of discovery secrets
     discovery_secret_name_template: NonEmptyString = "oidc-discovery-{service_name}"
-    #: The template to use for the secret containing the cookie secret for the OAuth2 proxy
+    #: The template to use for the secret containing the cookie secret for the OAuth2
+    #: proxy
     oauth2_proxy_cookie_secret_template: NonEmptyString = "oidc-cookie-{service_name}"
     #: The query parameters that are passed to the IDP in the authorize request
     #: For example, Keycloak allows a kc_idp_hint parameter that can be used to
     #: pre-select an identity provider
     #: See https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/alpha-config#loginurlparameter
-    forwarded_query_params: t.List[ForwardedQueryParam] = Field(default_factory=list)
+    forwarded_query_params: list[ForwardedQueryParam] = Field(default_factory=list)
     #: The headers to inject into the request from claims in the ID token
     #: The special claims id_token and access_token represent the ID and access tokens
-    inject_request_headers: t.Dict[str, str] = Field(default_factory=dict)
+    inject_request_headers: dict[str, str] = Field(default_factory=dict)
 
 
 class ExternalAuthConfig(Section):
@@ -112,21 +113,23 @@ class ExternalAuthConfig(Section):
     #: The external authentication URL
     #: If not supplied, no external auth is applied
     #: This URL is called as a subrequest, and so will receive the original request body
-    #: and headers. If it returns a response with a 2xx status code, the request proceeds
-    #: to the upstream. If it returns a 401 or a 403, the access is denied.
-    url: t.Optional[AnyHttpUrl] = None
+    #: and headers. If it returns a response with a 2xx status code, the request
+    #: proceeds to the upstream. If it returns a 401 or a 403, the access is denied.
+    url: AnyHttpUrl | None = None
     #: The URL to redirect to on an authentication error
-    signin_url: t.Optional[AnyHttpUrl] = None
+    signin_url: AnyHttpUrl | None = None
     #: The URL parameter to contain the original URL when redirecting to the signin URL
     next_url_param: str = "next"
     #: Dictionary of headers to set for authentication requests
-    #: These will override headers from the incoming request, which would otherwise be forwarded
-    #: In particular, you may need to override the accepts header to suit the content types served
-    #: by the external authentication service
-    request_headers: t.Dict[str, str] = Field(default_factory=dict)
+    #: These will override headers from the incoming request, which would otherwise be
+    #: forwarded
+    #: In particular, you may need to override the accepts header to suit the content
+    #: types served by the external authentication service
+    request_headers: dict[str, str] = Field(default_factory=dict)
     #: List of headers from the authentication response to add to the upstream request
-    response_headers: t.List[str] = Field(default_factory=list)
-    #: The additional prefix to use when passing authentication parameters to the auth service
+    response_headers: list[str] = Field(default_factory=list)
+    #: The additional prefix to use when passing authentication parameters to the auth
+    #: service
     param_header_prefix: str = "x-"
 
 
@@ -137,12 +140,13 @@ class TLSConfig(Section):
 
     #: Indicates whether TLS should be enabled
     enabled: bool = True
-    #: Indicates if the ingress controller is itself behind a proxy that is terminating TLS
+    #: Indicates if the ingress controller is itself behind a proxy that is terminating
+    #: TLS
     terminated_at_proxy: bool = False
     #: The name of a secret containing a wildcard certificate
-    secret_name: t.Optional[str] = None
+    secret_name: str | None = None
     #: Annotations to add to ingress resources that are TLS-specific
-    annotations: t.Dict[str, str] = Field(default_factory=dict)
+    annotations: dict[str, str] = Field(default_factory=dict)
 
 
 class IngressConfig(Section):
@@ -155,7 +159,7 @@ class IngressConfig(Section):
     #: Indicates whether the subdomain should be used as a path prefix
     subdomain_as_path_prefix: bool = False
     #: Annotations to add to all ingress resources
-    annotations: t.Dict[str, str] = Field(default_factory=dict)
+    annotations: dict[str, str] = Field(default_factory=dict)
     #: The TLS configuration
     tls: TLSConfig = Field(default_factory=TLSConfig)
     #: The OIDC configuration
@@ -171,7 +175,7 @@ class HelmClientConfiguration(Section):
 
     #: The default timeout to use with Helm releases
     #: Can be an integer number of seconds or a duration string like 5m, 5h
-    default_timeout: t.Union[int, NonEmptyString] = "2m"
+    default_timeout: int | NonEmptyString = "2m"
     #: The executable to use
     #: By default, we assume Helm is on the PATH
     executable: NonEmptyString = "helm"
@@ -181,7 +185,7 @@ class HelmClientConfiguration(Section):
     insecure_skip_tls_verify: bool = False
     #: The directory to use for unpacking charts
     #: By default, the system temporary directory is used
-    unpack_directory: t.Optional[str] = None
+    unpack_directory: str | None = None
 
 
 class KubernetesConfig(Section):
@@ -200,24 +204,24 @@ class KubernetesConfig(Section):
     #: The API group to use for CRD resources
     crd_api_group: str = "zenith.stackhpc.com"
     #: The categories for the CRD resources
-    crd_categories: t.List[str] = Field(default_factory=lambda: ["zenith"])
+    crd_categories: list[str] = Field(default_factory=lambda: ["zenith"])
     #: The sleep interval for the endpoint checker
-    #: Assuming the sync component is up, then the maximum time after the last heartbeart
-    #: that a dead endpoint will still be included in the endpoints of a service is the
-    #: ttl of the endpoint plus this interval
+    #: Assuming the sync component is up, then the maximum time after the last
+    #  heartbeart that a dead endpoint will still be included in the endpoints of a
+    #  service is the ttl of the endpoint plus this interval
     crd_endpoint_check_interval: t.Annotated[int, Field(gt=0)] = 10
 
     #: The Helm chart repo, name and version to use for the zenith-service chart
     #: By default, this points to a local chart that is baked into the Docker image
     service_chart_name: NonEmptyString = "/charts/zenith-service"
-    service_chart_repo: t.Optional[AnyHttpUrl] = None
-    service_chart_version: t.Optional[SemVerVersion] = None
+    service_chart_repo: AnyHttpUrl | None = None
+    service_chart_version: SemVerVersion | None = None
     #: Default values for releases of the service chart
-    service_default_values: t.Dict[str, t.Any] = Field(default_factory=dict)
+    service_default_values: dict[str, t.Any] = Field(default_factory=dict)
 
     #: The name of a configmap containing a trust bundle
     #: If not given, the default trust will be used
-    trust_bundle_configmap_name: t.Optional[str] = None
+    trust_bundle_configmap_name: str | None = None
 
     #: The label used to indicate a managed resource
     created_by_label: str = "app.kubernetes.io/created-by"

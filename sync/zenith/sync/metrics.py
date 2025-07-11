@@ -75,7 +75,7 @@ def format_value(value):
         return formatted
 
 
-def render_openmetrics(*metrics: Metric) -> typing.Tuple[str, bytes]:
+def render_openmetrics(*metrics: Metric) -> tuple[str, bytes]:
     """
     Renders the metrics using OpenMetrics text format.
     """
@@ -87,7 +87,7 @@ def render_openmetrics(*metrics: Metric) -> typing.Tuple[str, bytes]:
 
         for labels, value in metric.samples():
             if labels:
-                labelstr = "{{{0}}}".format(
+                labelstr = "{{{}}}".format(
                     ",".join([f'{k}="{escape(v)}"' for k, v in sorted(labels.items())])
                 )
             else:
