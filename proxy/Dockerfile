@@ -7,7 +7,7 @@ FROM hairyhenderson/gomplate:${GOMPLATE_VERSION} AS gomplate
 
 # This intermediate image is used to fetch the GPG key for the NGINX repo
 # without polluting the runtime image with GPG packages
-FROM ubuntu:jammy AS nginx-gpg-key
+FROM ubuntu:24.04 AS nginx-gpg-key
 
 ENV NGINX_GPG_KEY="573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62"
 
@@ -19,7 +19,7 @@ RUN gpg2 --keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options timeout=1
     gpg2 --export "$NGINX_GPG_KEY" > /usr/share/keyrings/nginx-archive-keyring.gpg
 
 
-FROM ubuntu:jammy
+FROM ubuntu:24.04
 
 ARG NGINX_VERSION=1.29.0
 
@@ -35,7 +35,6 @@ RUN apt-get update && \
     apt-get install --no-install-recommends --no-install-suggests -y \
       "nginx=${NGINX_VERSION}*" \
       "nginx-module-njs=${NGINX_VERSION}*" \
-      tini \
     && \
     rm -rf /var/lib/apt/lists/* && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
@@ -50,5 +49,4 @@ COPY --from=gomplate /gomplate /usr/bin/gomplate
 COPY ./bin /usr/bin/
 COPY ./etc /etc/
 
-ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["/usr/bin/nginx-start"]
