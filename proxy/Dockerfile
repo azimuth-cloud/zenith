@@ -29,7 +29,7 @@ COPY --from=nginx-gpg-key /usr/share/keyrings/nginx-archive-keyring.gpg /usr/sha
 # We install NGINX from the official repository
 RUN apt-get update && \
     apt-get install --no-install-recommends --no-install-suggests -y ca-certificates && \
-    echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] https://nginx.org/packages/mainline/ubuntu/ jammy nginx" \
+    echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] https://nginx.org/packages/mainline/ubuntu/ noble nginx" \
       > /etc/apt/sources.list.d/nginx.list && \
     apt-get update && \
     apt-get install --no-install-recommends --no-install-suggests -y \
