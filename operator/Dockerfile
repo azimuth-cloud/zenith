@@ -1,4 +1,4 @@
-FROM ubuntu:jammy AS python-builder
+FROM ubuntu:24.04 AS python-builder
 
 RUN apt-get update && \
     apt-get install -y python3 python3-venv && \
@@ -18,7 +18,7 @@ COPY . /app
 RUN /venv/bin/pip install -e /app
 
 
-FROM ubuntu:jammy
+FROM ubuntu:24.04
 
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
@@ -42,14 +42,13 @@ RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
       $ZENITH_USER
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates python3 tini && \
+    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates python3 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=python-builder /venv /venv
 COPY --from=python-builder /app /app
 
 USER $ZENITH_UID
-ENTRYPOINT ["tini", "-g", "--"]
 CMD [ \
     "/venv/bin/kopf", \
     "run", \

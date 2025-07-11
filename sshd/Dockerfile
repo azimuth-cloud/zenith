@@ -1,4 +1,4 @@
-FROM ubuntu:jammy AS python-builder
+FROM ubuntu:24.04 AS python-builder
 
 RUN apt-get update && \
     apt-get install -y python3 python3-venv && \
@@ -14,7 +14,7 @@ COPY . /app
 RUN /venv/bin/pip install /app
 
 
-FROM ubuntu:jammy
+FROM ubuntu:24.04
 
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
@@ -45,7 +45,7 @@ RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
 # Install tini, which we will use to marshal the processes, Python and the OpenSSH client
 # Make sure to remove the built-in keys
 RUN apt-get update && \
-    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates openssh-server python3 tini && \
+    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates openssh-server python3 && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /etc/ssh/ssh_host_*_key && \
     mkdir -p /var/run/sshd && \
@@ -58,5 +58,4 @@ COPY --from=python-builder /venv /venv
 RUN ln -s /venv/bin/zenith-sshd /usr/local/bin/
 
 USER $ZENITH_UID
-ENTRYPOINT ["tini", "-g", "--"]
 CMD ["zenith-sshd", "start"]
