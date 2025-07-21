@@ -1,6 +1,5 @@
-from pydantic import Field
-
 from kube_custom_resource import CustomResource, schema
+from pydantic import Field
 
 
 class ServiceSpec(schema.BaseModel):
