@@ -1,7 +1,7 @@
-FROM ubuntu:jammy as helm
+FROM ubuntu:24.04 as helm
 
 RUN apt-get update && \
-    apt-get install -y curl && \
+    apt-get install -y wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Install yq from the official Docker image
@@ -15,7 +15,7 @@ RUN set -ex; \
         aarch64) helm_arch=arm64 ;; \
         *) false ;; \
     esac; \
-    curl -fsSL https://get.helm.sh/helm-${HELM_VERSION}-linux-${helm_arch}.tar.gz | \
+    wget -q -O - https://get.helm.sh/helm-${HELM_VERSION}-linux-${helm_arch}.tar.gz | \
       tar -xz --strip-components 1 -C /usr/bin linux-${helm_arch}/helm; \
     helm version
 
@@ -38,7 +38,7 @@ RUN set -e; \
     yq -i ".version += \"+$CHECKSUM\"" /charts/zenith-service/Chart.yaml
 
 
-FROM ubuntu:jammy AS python-builder
+FROM ubuntu:24.04 AS python-builder
 
 RUN apt-get update && \
     apt-get install -y python3 python3-venv && \
@@ -54,7 +54,7 @@ COPY . /app
 RUN /venv/bin/pip install /app
 
 
-FROM ubuntu:jammy
+FROM ubuntu:24.04
 
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED 1
@@ -83,7 +83,7 @@ RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
       $ZENITH_USER
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates python3 tini && \
+    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates python3 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=helm /usr/bin/helm /usr/bin/helm
@@ -91,5 +91,4 @@ COPY --from=helm /charts /charts
 COPY --from=python-builder /venv /venv
 
 USER $ZENITH_UID
-ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["/venv/bin/zenith-sync"]

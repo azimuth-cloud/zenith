@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         subdir: ['client', 'operator', 'registrar', 'sshd', 'sync']
-        python-version: ['3.10', '3.12']
+        python-version: ['3.12']
 
     steps:
       - name: Check out the repository
