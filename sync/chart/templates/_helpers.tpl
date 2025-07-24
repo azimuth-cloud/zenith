@@ -32,7 +32,7 @@ Annotations for the ingress resource.
 {{ toYaml .Values.ingress.annotations }}
 nginx.ingress.kubernetes.io/backend-protocol: {{ quote .Values.protocol }}
 {{- with .Values.readTimeout }}
-nginx.ingress.kubernetes.io/proxy-read-timeout: {{ quote . }}
+nginx.ingress.kubernetes.io/proxy-read-timeout: {{ int64 . | quote }}
 {{- end }}
 {{- if .Values.global.secure }}
 {{- include "zenith-service.ingress.tls.annotations" . }}
