@@ -6,8 +6,7 @@ import typing
 
 import httpx
 
-from .. import config, model, util
-
+from .. import config, model, util  # noqa: TID252
 from . import base
 
 
@@ -68,7 +67,8 @@ class Store(base.Store):
                         "wait": f"{self.config.blocking_query_timeout}s",
                     },
                     # Consul adds a jitter of up to wait / 16
-                    # So we wait one second longer than that so that most requests succeed
+                    # So we wait one second longer than that so that most requests
+                    # succeed
                     timeout=(
                         self.config.blocking_query_timeout
                         + math.ceil(self.config.blocking_query_timeout / 16)
@@ -96,13 +96,14 @@ class Store(base.Store):
                     self.logger.error("Blocking query failed for %s", path)
                     response.raise_for_status()
             # Wait for the specified amount of time before retrying
-            # We add jitter of up to 1s either side of the wait time to spread out requests
+            # We add jitter of up to 1s either side of the wait time to spread out
+            # requests
             await asyncio.sleep(self.config.query_interval - 1 + random.uniform(0, 2))
 
     async def _wait_services(self, index=0):
         """
-        Waits for the list of services to change using a blocking query at the given index
-        and returns a set of service names that match the given tag.
+        Waits for the list of services to change using a blocking query at the given
+        index and returns a set of service names that match the given tag.
         """
         self.logger.info("Watching for changes to service list")
         services, next_idx = await self._wait("/v1/catalog/services", index)
@@ -121,20 +122,23 @@ class Store(base.Store):
         index and returns a service instance.
         """
         self.logger.info("Watching for changes to %s", name)
-        # The return value from the health endpoint for the service is a list of instances
+        # The return value from the health endpoint for the service is a list of
+        # instances
         instances, next_idx = await self._wait(f"/v1/health/service/{name}", index)
         # Request the configurations for each instance in parallel
         configs = await asyncio.gather(*[self._config(i) for i in instances])
         service = model.Service(
             name=name,
-            # Get the address and port of each instance for which all the checks are passing
+            # Get the address and port of each instance for which all the checks are
+            # passing
             endpoints=[
                 model.Endpoint(
                     address=instance["Service"]["Address"],
                     port=instance["Service"]["Port"],
                 )
                 for instance in instances
-                # Allow instances in the warning state as a grace period for health checks
+                # Allow instances in the warning state as a grace period for health
+                # checks
                 if all(
                     c["Status"] in {"passing", "warning"} for c in instance["Checks"]
                 )
@@ -187,7 +191,8 @@ class Store(base.Store):
                     services_task = asyncio.create_task(self._wait_services(idx))
                 else:
                     self.logger.info("Service query task completed")
-                    # If the completed task was a service health task, process the update
+                    # If the completed task was a service health task,
+                    # process the update
                     service, service_idx = completed_task.result()
                     self.logger.info(
                         "Service query task completed for %s", service.name
@@ -202,9 +207,7 @@ class Store(base.Store):
 
     async def watch(
         self,
-    ) -> typing.Tuple[
-        typing.Iterable[model.Service], typing.AsyncIterable[model.Event]
-    ]:
+    ) -> tuple[typing.Iterable[model.Service], typing.AsyncIterable[model.Event]]:
         """
         Watches Consul services until cancelled.
         """

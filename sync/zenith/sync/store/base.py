@@ -1,7 +1,7 @@
 import asyncio
 import typing
 
-from .. import config, metrics, model
+from .. import config, metrics, model  # noqa: TID252
 
 
 class Store:
@@ -17,11 +17,10 @@ class Store:
 
     async def watch(
         self,
-    ) -> typing.Tuple[
-        typing.Iterable[model.Service], typing.AsyncIterable[model.Event]
-    ]:
+    ) -> tuple[typing.Iterable[model.Service], typing.AsyncIterable[model.Event]]:
         """
-        Connect to the store and return a tuple of (initial services, async iterable of events).
+        Connect to the store and return a tuple of (initial services, async iterable of
+        events).
         """
         raise NotImplementedError
 
@@ -30,7 +29,7 @@ class Store:
         Run any long-running tasks associated with the store.
         """
         # By default, this loops forever
-        while True:
+        while True:  # noqa: ASYNC110
             await asyncio.sleep(86400)
 
     async def startup(self):

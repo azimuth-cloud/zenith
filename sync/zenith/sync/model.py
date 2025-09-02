@@ -54,4 +54,4 @@ class Event:
     #: The kind of the event
     kind: EventKind
     #: The new state of the service that the event affects
-    service: typing.Optional[Service] = None
+    service: Service | None = None

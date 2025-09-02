@@ -7,12 +7,10 @@ import logging
 import os
 import typing
 
-from easykube import Configuration, ApiError
-
+from easykube import ApiError, Configuration
 from pyhelm3 import Client as HelmClient
 
-from .. import config, metrics, model, store, util
-
+from .. import config, metrics, model, store, util  # noqa: TID252
 from . import base
 
 
@@ -68,12 +66,14 @@ class Processor(base.Processor):
 
     async def _reconcile_oidc_credentials(
         self, service: model.Service
-    ) -> typing.Tuple[str, str, str, typing.List[str]]:
+    ) -> tuple[str, str, str, list[str]]:
         """
-        Returns the OIDC issuer, client ID, secret and allowed groups for the given service.
+        Returns the OIDC issuer, client ID, secret and allowed groups for the given
+        service.
         """
         oidc_issuer = service.config.get("auth-oidc-issuer")
-        # If the issuer is present in the config, then a client ID and secret should also be there
+        # If the issuer is present in the config, then a client ID and secret should
+        # also be there
         if oidc_issuer:
             return (
                 oidc_issuer,
@@ -142,7 +142,7 @@ class Processor(base.Processor):
                 raise
         return base64.b64decode(secret.data["cookie-secret"]).decode()
 
-    def _get_trust_values(self) -> typing.Dict[str, typing.Any]:
+    def _get_trust_values(self) -> dict[str, typing.Any]:
         """
         Returns the values for configuring a custom trust bundle for the OIDC callout.
         """
@@ -170,9 +170,7 @@ class Processor(base.Processor):
         else:
             return {}
 
-    def _get_service_values(
-        self, service: model.Service
-    ) -> typing.Dict[str, typing.Any]:
+    def _get_service_values(self, service: model.Service) -> dict[str, typing.Any]:
         """
         Returns the values for the core service configuration.
         """
@@ -200,9 +198,7 @@ class Processor(base.Processor):
                 values["readTimeout"] = read_timeout
         return values
 
-    def _get_ingress_enabled(
-        self, service: model.Service
-    ) -> typing.Dict[str, typing.Any]:
+    def _get_ingress_enabled(self, service: model.Service) -> dict[str, typing.Any]:
         """
         Returns the values for enabling or disabling ingress as required.
         """
@@ -213,7 +209,7 @@ class Processor(base.Processor):
             },
         }
 
-    def _get_tls_values(self, service: model.Service) -> typing.Dict[str, typing.Any]:
+    def _get_tls_values(self, service: model.Service) -> dict[str, typing.Any]:
         """
         Returns the values for configuring the TLS for a service.
         """
@@ -237,9 +233,7 @@ class Processor(base.Processor):
             tls_values["clientCA"] = service.config["tls-client-ca"]
         return values
 
-    async def _get_auth_values(
-        self, service: model.Service
-    ) -> typing.Dict[str, typing.Any]:
+    async def _get_auth_values(self, service: model.Service) -> dict[str, typing.Any]:
         """
         Returns the values for configuring the auth for a service.
 
@@ -250,8 +244,8 @@ class Processor(base.Processor):
         #   1. If the client opted out of auth, no auth is applied
         #   2. If the client specified OIDC credentials, use them
         #   3. If OIDC discovery is enabled, use that
-        #      This allows an external controller to place secrets into the Zenith namespace
-        #      containing OIDC credentials for each service
+        #      This allows an external controller to place secrets into the Zenith
+        #      namespace containing OIDC credentials for each service
         #   4. If external auth is configured, use that
         #   5. No auth is applied
         values = {}
@@ -275,7 +269,9 @@ class Processor(base.Processor):
                     "clientID": client_id,
                     "clientSecret": client_secret,
                     "allowedGroups": allowed_groups,
-                    "loginURLParameters": self.config.ingress.oidc.forwarded_query_params,
+                    "loginURLParameters": (
+                        self.config.ingress.oidc.forwarded_query_params
+                    ),
                     "oidcConfig": {
                         "issuerURL": issuer_url,
                     },
@@ -284,7 +280,9 @@ class Processor(base.Processor):
                     "configData": {
                         "injectResponseHeaders": [
                             {"name": h, "values": [{"claim": c}]}
-                            for h, c in self.config.ingress.oidc.inject_request_headers.items()
+                            for h, c in (
+                                self.config.ingress.oidc.inject_request_headers.items()
+                            )
                         ],
                     },
                 },
@@ -300,12 +298,14 @@ class Processor(base.Processor):
                 "nextUrlParam": self.config.ingress.external_auth.next_url_param,
                 "requestHeaders": self.config.ingress.external_auth.request_headers,
                 "responseHeaders": self.config.ingress.external_auth.response_headers,
-                "paramHeaderPrefix": self.config.ingress.external_auth.param_header_prefix,
+                "paramHeaderPrefix": (
+                    self.config.ingress.external_auth.param_header_prefix
+                ),
                 "params": service.config.get("auth-external-params", {}),
             }
         return values
 
-    async def known_services(self) -> typing.Set[str]:
+    async def known_services(self) -> set[str]:
         releases = await self.helm_client.list_releases(
             all=True, max_releases=0, namespace=self.config.target_namespace
         )
@@ -363,8 +363,8 @@ class Processor(base.Processor):
 
     async def _watch_events(self, ekresource, name, namespace):
         """
-        Yields watch events for the specified object, including a synthetic add/delete event
-        for the initial state.
+        Yields watch events for the specified object, including a synthetic add/delete
+        event for the initial state.
         """
         initial_state, events = await ekresource.watch_one(name, namespace=namespace)
         if initial_state:
@@ -413,7 +413,7 @@ class Processor(base.Processor):
 
             if event["type"] == "DELETED":
                 self.logger.info(
-                    "Deleting mirrored object [apiVersion: %s, kind: %s, name: %s, ns: %s]",
+                    "Deleting mirrored object [apiVersion: %s, kind: %s, name: %s, ns: %s]",  # noqa: E501
                     ekresource.api_version,
                     ekresource.kind,
                     mirror_obj["metadata"]["name"],
@@ -425,7 +425,7 @@ class Processor(base.Processor):
                 )
             else:
                 self.logger.info(
-                    "Updating mirrored object [apiVersion: %s, kind: %s, name: %s, ns: %s]",
+                    "Updating mirrored object [apiVersion: %s, kind: %s, name: %s, ns: %s]",  # noqa: E501
                     ekresource.api_version,
                     ekresource.kind,
                     mirror_obj["metadata"]["name"],
