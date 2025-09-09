@@ -6,7 +6,7 @@ anyio==4.10.0
 async-timeout==5.0.1
 attrs==25.3.0
 certifi==2025.8.3
-cffi==1.17.1
+cffi==2.0.0
 click==8.1.8
 configomatic==0.4.0
 cryptography==45.0.7
@@ -24,7 +24,7 @@ kube-custom-resource==0.6.1
 MarkupSafe==3.0.2
 multidict==6.6.4
 propcache==0.3.2
-pycparser==2.22
+pycparser==2.23
 pydantic==2.11.7
 python-json-logger==3.3.0
 PyYAML==6.0.2
