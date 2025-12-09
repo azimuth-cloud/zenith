@@ -19,7 +19,7 @@ httpx==0.28.1
 idna==3.11
 iso8601==2.1.0
 Jinja2==3.1.6
-kopf==1.38.0
+kopf==1.39.0
 kube-custom-resource==0.6.1
 MarkupSafe==3.0.3
 multidict==6.7.0
