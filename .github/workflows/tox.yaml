@@ -44,7 +44,7 @@ jobs:
 
       - name: Archive coverage results
         if: success()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: "coverage-${{ matrix.subdir }}-${{ matrix.python-version }}"
           path: ${{ matrix.subdir }}/cover/
