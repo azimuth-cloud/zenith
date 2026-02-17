@@ -21,7 +21,7 @@ RUN gpg2 --keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options timeout=1
 
 FROM ubuntu:24.04
 
-ARG NGINX_VERSION=1.29.4
+ARG NGINX_VERSION=1.29.5
 
 # Copy the GPG key from the intermediate container
 COPY --from=nginx-gpg-key /usr/share/keyrings/nginx-archive-keyring.gpg /usr/share/keyrings/
