@@ -7,7 +7,7 @@ RUN apt-get update && \
 # Install yq from the official Docker image
 COPY --from=mikefarah/yq /usr/bin/yq /usr/bin/
 
-ARG HELM_VERSION=v3.19.0
+ARG HELM_VERSION=v4.1.1
 RUN set -ex; \
     OS_ARCH="$(uname -m)"; \
     case "$OS_ARCH" in \
