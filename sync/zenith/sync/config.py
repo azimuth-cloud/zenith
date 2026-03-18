@@ -97,7 +97,7 @@ class OIDCConfig(Section):
     oauth2_proxy_cookie_secret_template: NonEmptyString = "oidc-cookie-{service_name}"
     #: The query parameters that are passed to the IDP in the authorize request
     #: For example, Keycloak allows a kc_idp_hint parameter that can be used to
-    #: pre-select an identity provider
+    #: preselect an identity provider
     #: See https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/alpha-config#loginurlparameter
     forwarded_query_params: list[ForwardedQueryParam] = Field(default_factory=list)
     #: The headers to inject into the request from claims in the ID token
