@@ -160,6 +160,10 @@ class IngressConfig(Section):
     subdomain_as_path_prefix: bool = False
     #: Annotations to add to all ingress resources
     annotations: dict[str, str] = Field(default_factory=dict)
+    #: The routing type to use for exposing services
+    #: 'ingress' uses a standard Kubernetes Ingress (compatible with nginx-ingress-controller)
+    #: 'ingressroute' uses a Traefik IngressRoute CRD (for Traefik with kubernetesCRD provider)
+    routing_type: str = "ingress"
     #: The TLS configuration
     tls: TLSConfig = Field(default_factory=TLSConfig)
     #: The OIDC configuration
