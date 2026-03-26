@@ -1,0 +1,5 @@
+ignore:
+  - vulnerability: GHSA-p77j-4mvh-x3m3
+    package:
+      location: "/usr/local/bin/gomplate"
+
