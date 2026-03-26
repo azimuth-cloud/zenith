@@ -1,0 +1,11 @@
+ignore:
+  # CVE in grpc package used by gomplate, we only use
+  # gomplate to template out files based on local env vars
+  # rather than remote datasources so shouldn't affect us
+  - vulnerability: GHSA-p77j-4mvh-x3m3
+    package:
+      location: "/usr/bin/gomplate"
+  # Server-side auth bypass so Helm client shouldn't be vulnerable
+  - vulnerability: GHSA-p77j-4mvh-x3m3
+    package:
+      location: "/usr/bin/helm"
