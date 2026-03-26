@@ -4,5 +4,5 @@ ignore:
   # rather than remote datasources so shouldn't affect us
   - vulnerability: GHSA-p77j-4mvh-x3m3
     package:
-      location: "/usr/local/bin/gomplate"
+      location: "/usr/bin/gomplate"
 
