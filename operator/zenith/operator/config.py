@@ -12,7 +12,7 @@ AnyHttpUrl = t.Annotated[
 ]
 
 
-class ContainerImagePullPolicy(str, enum.Enum):
+class ContainerImagePullPolicy(enum.StrEnum):
     """
     Enum of possible options for the container image pull policy.
     """

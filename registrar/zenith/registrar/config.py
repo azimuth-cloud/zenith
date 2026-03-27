@@ -5,7 +5,7 @@ from pydantic import Field, conbytes, conint, conset, constr
 
 
 @enum.unique
-class SSHPublicKeyType(str, enum.Enum):
+class SSHPublicKeyType(enum.StrEnum):
     """
     Enumeration of the possible SSH public key types.
     """
