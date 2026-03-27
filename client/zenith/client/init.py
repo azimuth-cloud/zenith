@@ -20,9 +20,7 @@ def ensure_ssh_identity(config):
             [
                 config.ssh_keygen_executable,
                 "-t",
-                "rsa",
-                "-b",
-                "2048",
+                "ed25519",
                 "-N",
                 "",
                 "-C",
