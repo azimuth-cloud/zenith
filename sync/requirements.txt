@@ -1,12 +1,12 @@
 aiohappyeyeballs==2.6.1
-aiohttp==3.13.4
+aiohttp==3.13.5
 aiosignal==1.4.0
 annotated-types==0.7.0
 anyio==4.13.0
 async-timeout==5.0.1
 attrs==26.1.0
 certifi==2026.2.25
-click==8.3.1
+click==8.3.2
 configomatic==0.4.0
 easykube==0.6.0
 easysemver==0.2.0
