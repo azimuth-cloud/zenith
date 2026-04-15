@@ -44,6 +44,12 @@ jobs:
     with:
       ref: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+      security-events: write
+      pull-requests: write
 
   run_azimuth_tests:
     needs: [publish_artifacts]
