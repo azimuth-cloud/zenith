@@ -9,6 +9,5 @@ Dockerfile
 # Exclude dev/test files not needed for the build
 .dockerignore
 .gitignore
-shell.nix
 test-requirements.txt
 tox.ini
