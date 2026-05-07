@@ -1,6 +1,6 @@
 ruff~=0.15.12
 coverage!=4.4,>=7.13.5 # Apache-2.0
-python-subunit>=1.4.5 # Apache-2.0/BSD
+python-subunit>=1.4.6 # Apache-2.0/BSD
 stestr>=4.2.1 # Apache-2.0
 testtools>=2.9.1 # MIT
 codespell
