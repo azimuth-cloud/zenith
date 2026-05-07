@@ -1,7 +1,7 @@
 FROM ubuntu:24.04 as helm
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends --no-install-suggests -y wget && \
+    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Install yq from the official Docker image
