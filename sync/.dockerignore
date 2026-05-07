@@ -1,0 +1,14 @@
+# Exclude the dockerfile itself
+Dockerfile
+
+# Exclude Python caches and build artifacts
+**/__pycache__
+**/*.pyc
+*.egg-info
+
+# Exclude dev/test files not needed for the build
+# Note: chart/ is intentionally included — it is COPYed into the helm build stage
+.dockerignore
+.gitignore
+test-requirements.txt
+tox.ini
