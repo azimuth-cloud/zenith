@@ -23,7 +23,7 @@ kopf==1.44.5
 kube-custom-resource==0.6.1
 MarkupSafe==3.0.3
 multidict==6.7.1
-propcache==0.4.1
+propcache==0.5.2
 pycparser==3.0
 pydantic==2.13.4
 python-json-logger==4.1.0
