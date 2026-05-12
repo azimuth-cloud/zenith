@@ -15,10 +15,10 @@ frozenlist==1.8.0
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
-idna==3.13
+idna==3.14
 kube-custom-resource==0.6.1
 multidict==6.7.1
-propcache==0.4.1
+propcache==0.5.2
 pydantic==2.13.4
 pyhelm3==0.4.0
 PyYAML==6.0.3
