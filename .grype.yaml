@@ -3,4 +3,14 @@ ignore:
   - vulnerability: GHSA-p77j-4mvh-x3m3
     package:
       location: "/usr/bin/helm"
-
+  # Running govulncheck on the upstream code https://github.com/hairyhenderson/gomplate/tree/v5.1.0
+  # shows no vulnerabilities as affected symbols are absent
+  - vulnerability: GO-2026-5020
+  - vulnerability: GO-2026-5026
+  - vulnerability: GO-2026-5023
+  - vulnerability: GO-2026-5006
+  - vulnerability: GO-2026-5021
+  - vulnerability: GO-2026-5006
+  - vulnerability: GO-2026-5017
+  - vulnerability: GO-2026-5019
+  - vulnerability: GO-2026-5005
