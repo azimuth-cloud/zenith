@@ -8,7 +8,22 @@ global:
     baseDomain:
     # Indicates whether the subdomain should be used as a path prefix
     subdomainAsPathPrefix: false
-    # The ingress class to use
+    # The routing type to use for the registrar ingress resource.
+    # 'ingress' uses a standard Kubernetes Ingress (for nginx-ingress-controller).
+    # 'httproute' uses a Gateway API HTTPRoute (for Traefik with kubernetesGateway
+    # provider or any Gateway API compatible controller).
+    routingType: ingress
+    # Gateway API configuration (used when routingType is 'httproute')
+    gateway:
+      # The name of the Gateway resource to attach HTTPRoutes to
+      name: ""
+      # The namespace of the Gateway resource
+      namespace: ""
+    # Default timeouts for Gateway API routes (used when routingType is 'httproute')
+    timeouts:
+      request: 600s
+      backendRequest: 600s
+    # The ingress class to use (only used when routingType is 'ingress')
     className: nginx
     # The common annotations for all ingress resources
     annotations: {}

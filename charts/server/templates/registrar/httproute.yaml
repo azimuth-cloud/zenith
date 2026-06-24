@@ -1,0 +1,38 @@
+{{- $ingress := mergeOverwrite (deepCopy .Values.global.ingress) .Values.common.ingress .Values.registrar.ingress }}
+{{- if and .Values.registrar.enabled (eq $ingress.routingType "httproute") -}}
+{{-
+  $host := ternary
+    $ingress.baseDomain
+    (printf "%s.%s" (tpl $ingress.subdomain .) $ingress.baseDomain)
+    $ingress.subdomainAsPathPrefix
+}}
+{{-
+  $pathPrefix := ternary
+    (tpl $ingress.subdomain . | printf "/%s")
+    ""
+    $ingress.subdomainAsPathPrefix
+}}
+{{- $ingressTLSRequired := and $ingress.tls.enabled (not $ingress.tls.terminatedAtProxy) }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "zenith.componentname" (list . "registrar") }}
+  labels: {{ include "zenith.componentLabels" (list . "registrar") | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ required "global.ingress.gateway.name is required when routingType is httproute" $ingress.gateway.name }}
+      namespace: {{ required "global.ingress.gateway.namespace is required when routingType is httproute" $ingress.gateway.namespace }}
+  hostnames:
+    - {{ default $host $ingress.host | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ printf "%s/associate" $pathPrefix | quote }}
+      timeouts:
+        request: {{ $ingress.timeouts.request }}
+        backendRequest: {{ $ingress.timeouts.backendRequest }}
+      backendRefs:
+        - name: {{ include "zenith.componentname" (list . "registrar") }}
+          port: 80
+{{- end }}
