@@ -10,15 +10,29 @@ kubeconfigSecret:
   # The key of the kubeconfig file in the secret
   key: value
 
-# The name of the clusterrole that the operator should be bound to
+# When true, a purpose-scoped ClusterRole is created for the operator covering
+# only the permissions it needs: zenith CRDs/CRs, secrets, services, service
+# accounts, deployments, and clusterrolebindings.
 #
-# Note that in order for the operator to grant permissions to service accounts
-# for MITM proxies, the operator itself needs to hold all of those permissions
-# In particular, in order for the operator to grant the cluster-admin role
-# to service accounts for MITM proxies, it must hold cluster-admin itself
+# Set to false when you need to bind a pre-existing role (e.g. cluster-admin
+# for MITM-proxy deployments that inject service-account tokens) and supply
+# the role name in clusterRoleName below.
 #
-# Only used if kubeconfigSecret.name is not specified
-clusterRoleName: cluster-admin
+# Only used if kubeconfigSecret.name is not specified.
+createClusterRole: true
+
+# The name of the ClusterRole that the operator ServiceAccount is bound to.
+#
+# Defaults to the chart fullname (i.e. the scoped ClusterRole created above).
+#
+# IMPORTANT — privilege escalation: Kubernetes prevents an operator from granting
+# a ClusterRole to a ServiceAccount unless the operator itself holds every
+# permission in that role. If you use MITM-proxy auth-inject with a role that
+# exceeds the scoped ClusterRole (e.g. cluster-admin), you must set this field
+# explicitly to that role name and set createClusterRole: false.
+#
+# Only used if kubeconfigSecret.name is not specified.
+clusterRoleName: ""
 
 # The image to use for the operator
 image:

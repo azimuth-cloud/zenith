@@ -1,0 +1,42 @@
+{{- if and (not .Values.kubeconfigSecret.name) .Values.createClusterRole }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "zenith-operator.fullname" . }}
+  labels: {{ include "zenith-operator.labels" . | nindent 4 }}
+rules:
+  # CRD management (applied at operator startup)
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Zenith custom resources watched and reconciled by the operator
+  - apiGroups: ["zenith.stackhpc.com"]
+    resources: ["reservations", "clients"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["zenith.stackhpc.com"]
+    resources: ["reservations/status", "clients/status"]
+    verbs: ["get", "update", "patch"]
+  # Secrets for SSH keypairs and client configuration
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Services — read-only, used for upstream host resolution
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+  # ServiceAccounts created for MITM-proxy pods
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Deployments for zenith-client pods (created and watched)
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # ClusterRoleBindings for MITM-proxy ServiceAccounts
+  # Note: Kubernetes prevents privilege escalation — the operator can only bind roles
+  # it already holds. To bind cluster-admin to MITM-proxy ServiceAccounts, set
+  # createClusterRole: false and clusterRoleName: cluster-admin explicitly.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterrolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+{{- end }}
