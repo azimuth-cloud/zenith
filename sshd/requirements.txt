@@ -2,7 +2,7 @@ annotated-types==0.7.0
 anyio==4.14.1
 certifi==2026.6.17
 cffi==2.0.0
-charset-normalizer==3.4.7
+charset-normalizer==3.4.8
 click==8.4.2
 configomatic==0.4.0
 cryptography==49.0.0
