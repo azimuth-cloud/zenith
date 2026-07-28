@@ -352,8 +352,7 @@ class Processor(base.Processor):
         await secrets.delete(secret_name)
 
     async def metrics(self) -> typing.Iterable[metrics.Metric]:
-        # Drop down to the Helm command to get statuses without extra Helm commands
-        releases = await self.helm_client._command.list(
+        releases = await self.helm_client.list_release_definitions(
             all=True, max_releases=0, namespace=self.config.target_namespace
         )
         helm_status_metric = ServiceHelmStatus()
