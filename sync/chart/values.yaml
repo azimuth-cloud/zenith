@@ -26,13 +26,17 @@ readTimeout:
 ingress:
   # Indicates if the ingress should be enabled or not
   enabled: true
-  # The ingress class name to use
+  # The ingress class name to use for the nginx ingress
   className: nginx
-  # The annotations to use with the ingress
+  # The ingress class name to use for the traefik ingress
+  traefikClassName: traefik
+  # The annotations to use with the nginx ingress
   annotations:
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+  # The annotations to use with the traefik ingress
+  traefikAnnotations: {}
   # The TLS configuration for the ingress
   tls:
     # Indicates if the ingress controller is itself behind a proxy that is terminating TLS
@@ -40,7 +44,7 @@ ingress:
     # TLS-specific annotations
     # Only used if no existing certificate is given, e.g. to configure cert-manager
     annotations: {}
-    # The name of the TLS service (defaults to tls-<service> if not given)
+    # The name of the TLS secret to use for the nginx ingress (defaults to tls-<service> if not given)
     secretName:
     # The certificate and key of an existing TLS certificate to use
     existingCertificate:
