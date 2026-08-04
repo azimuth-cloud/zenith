@@ -1,0 +1,84 @@
+{{-
+  if and
+    (mustRegexMatch "^https?$" .Values.protocol)
+    .Values.ingress.enabled
+    (eq .Values.ingress.controller "traefik")
+    .Values.externalAuth.enabled
+}}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ printf "%s-external-auth" .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  forwardAuth:
+    address: {{ .Values.externalAuth.url | required "external auth URL is required" | quote }}
+    trustForwardHeader: true
+    {{- with .Values.externalAuth.responseHeaders }}
+    authResponseHeaders:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+{{- end }}
+
+{{-
+  if and
+    (mustRegexMatch "^https?$" .Values.protocol)
+    .Values.ingress.enabled
+    .Values.externalAuth.enabled
+    .Values.externalAuth.signinUrl
+}}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ printf "%s-external-auth-errors" .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  errors:
+    status:
+      - "401-403"
+    statusRewrites:
+      "401": 302
+      "403": 302
+    service:
+      name: {{ required "externalAuth.signinService is required on Traefik so the signin redirect can be proxied to a Service" .Values.externalAuth.signinService.name }}
+      port: {{ required "externalAuth.signinService.port is required on Traefik" .Values.externalAuth.signinService.port }}
+    query: >-
+      {{ .Values.externalAuth.signinUrl }}?{{ .Values.externalAuth.nextUrlParam }}={url}
+{{- end }}
+
+{{-
+  if and
+    (mustRegexMatch "^https?$" .Values.protocol)
+    .Values.ingress.enabled
+    (eq .Values.ingress.controller "traefik")
+    .Values.externalAuth.enabled
+    (or .Values.externalAuth.requestHeaders .Values.externalAuth.params)
+}}
+{{/*
+Injects the configured static/param headers onto the request before it reaches the
+external-auth forwardAuth middleware (which forwards whatever headers are present on
+the request at that point), replicating nginx's auth-snippet proxy_set_header lines.
+*/}}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ printf "%s-external-auth-headers" .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  headers:
+    customRequestHeaders:
+      {{- with .Values.externalAuth.requestHeaders }}
+      {{- range $k, $v := . }}
+      {{ $k }}: {{ $v | quote }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.externalAuth.params }}
+      {{- $prefix := $.Values.externalAuth.paramHeaderPrefix }}
+      {{- range $k, $v := . }}
+      {{ printf "%s%s" $prefix $k }}: {{ $v | quote }}
+      {{- end }}
+      {{- end }}
+{{- end }}

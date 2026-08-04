@@ -1,0 +1,32 @@
+{{-
+  if and
+    (mustRegexMatch "^https?$" .Values.protocol)
+    .Values.ingress.enabled
+}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+  annotations:
+    {{- include "zenith-service.traefik.ingress.annotations" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if and .Values.global.secure (not .Values.ingress.tls.terminatedAtProxy) }}
+  tls:
+    - hosts:
+        - {{ include "zenith-service.ingress.host" . }}
+      secretName: {{ include "zenith-service.ingress.tls.secretName" . }}
+  {{- end }}
+  rules:
+    - host: {{ include "zenith-service.ingress.host" . }}
+      http:
+        paths:
+          - path: {{ include "zenith-service.ingress.pathPrefix" . | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port:
+                  name: dynamic
+{{- end }}
