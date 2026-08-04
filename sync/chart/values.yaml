@@ -62,6 +62,10 @@ externalAuth:
   signinUrl:
   # The URL parameter to contain the original URL when redirecting to the signin URL
   nextUrlParam: next
+  # A Kubernetes Service, in the same namespace, that serves the signinUrl
+  signinService:
+    name:
+    port:
   # Dictionary of headers to set for authentication requests
   # These will override headers from the incoming request, which would otherwise be forwarded
   # In particular, you may need to override the accepts header to suit the content types served

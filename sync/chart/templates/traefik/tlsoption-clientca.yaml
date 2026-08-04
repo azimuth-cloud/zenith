@@ -1,0 +1,18 @@
+{{-
+  if and
+    (mustRegexMatch "^https?$" .Values.protocol)
+    .Values.global.secure
+    .Values.ingress.enabled
+    .Values.ingress.tls.clientCA
+}}
+apiVersion: traefik.io/v1alpha1
+kind: TLSOption
+metadata:
+  name: {{ printf "%s-client-ca" .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  clientAuth:
+    secretNames:
+      - {{ include "zenith-service.ingress.tls.clientCASecretName" . }}
+    clientAuthType: VerifyClientCertIfGiven
+{{- end }}
