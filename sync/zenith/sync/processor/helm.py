@@ -7,11 +7,145 @@ import logging
 import os
 import typing
 
+import yaml
 from easykube import ApiError, Configuration
 from pyhelm3 import Client as HelmClient
 
 from .. import config, metrics, model, store, util  # noqa: TID252
 from . import base
+
+
+SIGNIN_REDIRECT_NAME = "zenith-signin-redirect"
+
+
+def _signin_redirect_labels() -> dict[str, str]:
+    return {"app.kubernetes.io/name": SIGNIN_REDIRECT_NAME}
+
+
+def _signin_redirect_configmap(
+    external_auth: config.ExternalAuthConfig,
+) -> dict[str, typing.Any]:
+    """
+    Returns the ConfigMap holding the dynamic configuration for the signin-redirect Traefik instance
+    """
+    dynamic_config = {
+        "http": {
+            "routers": {
+                "redirect": {
+                    "entryPoints": ["web"],
+                    "rule": "PathPrefix(`/`)",
+                    "service": "noop",
+                    "middlewares": ["redirect"],
+                },
+            },
+            "middlewares": {
+                "redirect": {
+                    "redirectRegex": {
+                        "regex": r"^https?://[^/]+/\?rd=(.*)$",
+                        "replacement": (
+                            f"{external_auth.signin_url}"
+                            f"?{external_auth.next_url_param}=${{1}}"
+                        ),
+                        "permanent": False,
+                    },
+                },
+            },
+            "services": {
+                "noop": {
+                    "loadBalancer": {"servers": [{"url": "http://localhost:1"}]},
+                },
+            },
+        },
+    }
+    return {
+        "apiVersion": "v1",
+        "kind": "ConfigMap",
+        "metadata": {
+            "name": SIGNIN_REDIRECT_NAME,
+            "labels": _signin_redirect_labels(),
+        },
+        "data": {
+            "dynamic.yaml": yaml.safe_dump(dynamic_config, default_flow_style=False),
+        },
+    }
+
+
+def _signin_redirect_deployment(
+    image: config.SigninRedirectImageConfig,
+) -> dict[str, typing.Any]:
+    labels = _signin_redirect_labels()
+    return {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+            "name": SIGNIN_REDIRECT_NAME,
+            "labels": labels,
+        },
+        "spec": {
+            "replicas": 1,
+            "selector": {"matchLabels": labels},
+            "template": {
+                "metadata": {"labels": labels},
+                "spec": {
+                    "automountServiceAccountToken": False,
+                    "containers": [
+                        {
+                            "name": "traefik",
+                            "image": f"{image.repository}:{image.tag}",
+                            "args": [
+                                "--entrypoints.web.address=:8080",
+                                "--providers.file.filename=/config/dynamic.yaml",
+                                "--providers.file.watch=false",
+                                "--api.dashboard=false",
+                                "--ping=true",
+                                "--ping.entrypoint=web",
+                            ],
+                            "ports": [{"name": "http", "containerPort": 8080}],
+                            "readinessProbe": {
+                                "httpGet": {"path": "/ping", "port": "http"},
+                            },
+                            "livenessProbe": {
+                                "httpGet": {"path": "/ping", "port": "http"},
+                            },
+                            "resources": {
+                                "requests": {"cpu": "10m", "memory": "32Mi"},
+                                "limits": {"cpu": "100m", "memory": "64Mi"},
+                            },
+                            "volumeMounts": [
+                                {
+                                    "name": "config",
+                                    "mountPath": "/config",
+                                    "readOnly": True,
+                                },
+                            ],
+                        },
+                    ],
+                    "volumes": [
+                        {
+                            "name": "config",
+                            "configMap": {"name": SIGNIN_REDIRECT_NAME},
+                        },
+                    ],
+                },
+            },
+        },
+    }
+
+
+def _signin_redirect_service() -> dict[str, typing.Any]:
+    labels = _signin_redirect_labels()
+    return {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {
+            "name": SIGNIN_REDIRECT_NAME,
+            "labels": labels,
+        },
+        "spec": {
+            "selector": labels,
+            "ports": [{"name": "http", "port": 8080, "targetPort": "http"}],
+        },
+    }
 
 
 class ServiceHelmStatus(metrics.Metric):
@@ -57,6 +191,25 @@ class Processor(base.Processor):
         Perform any startup tasks that are required.
         """
         await self.ekclient.__aenter__()
+        await self._ensure_signin_redirect()
+
+    async def _ensure_signin_redirect(self):
+        """
+        Ensures that the Traefik signin-redirect ConfigMap, Deployment and
+        Service exist in the target namespace.
+        """
+        external_auth = self.config.ingress.external_auth
+        if not (external_auth.url and external_auth.signin_url):
+            return
+        self.logger.info(
+            f"Ensuring signin-redirect resources [name: {SIGNIN_REDIRECT_NAME}]"
+        )
+        for obj in (
+            _signin_redirect_configmap(external_auth),
+            _signin_redirect_deployment(external_auth.signin_redirect_image),
+            _signin_redirect_service(),
+        ):
+            await self.ekclient.apply_object(obj, force=True)
 
     async def shutdown(self):
         """
