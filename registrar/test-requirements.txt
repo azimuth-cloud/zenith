@@ -1,4 +1,4 @@
-ruff~=0.16.4
+ruff~=0.16.5
 coverage!=4.4,>=7.15.4 # Apache-2.0
 python-subunit>=1.4.6 # Apache-2.0/BSD
 stestr>=4.2.1 # Apache-2.0
