@@ -1,6 +1,7 @@
 [tool.uv.workspace]
 members = [
     "client",
+    "operator",
 ]
 
 [tool.ruff]
@@ -37,6 +38,7 @@ ignore = [
     "UP038", # deprecated
     "UP017", # remove and fix once 3.10 no longer tested in CI
     "C901",
+    "RUF100",
 ]
 
 [tool.mypy]
