@@ -229,7 +229,7 @@ async def reservation_changed(instance, name, namespace, body, **kwargs):
 @model_handler(api.Client, kopf.on.create)
 @model_handler(api.Client, kopf.on.update, field="spec")
 @model_handler(api.Client, kopf.on.resume)
-async def client_changed(instance, name, namespace, body, **kwargs):  # noqa: C901
+async def client_changed(instance, name, namespace, body, **kwargs):
     """
     Executes when a client is created or the spec of a client is updated.
 
