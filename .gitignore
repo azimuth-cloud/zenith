@@ -5,3 +5,4 @@ sync/chart/charts
 __pycache__
 *.egg-info
 kubeconfig
+.stestr
