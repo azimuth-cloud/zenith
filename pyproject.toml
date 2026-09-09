@@ -3,7 +3,8 @@ members = [
     "client",
     "operator",
     "registrar",
-    "sshd"
+    "sshd",
+    "sync",
 ]
 
 [tool.ruff]

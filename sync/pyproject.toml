@@ -1,44 +1,47 @@
-[tool.ruff]
-line-length = 88
-target-version = "py312"
-
-[tool.ruff.format]
-line-ending = "lf"
-
-[tool.ruff.lint]
-select = [
-    # pycodestyle
-    "E",
-    # Pyflakes
-    "F",
-    # flake8-builtins
-    "A",
-    # Ruff rules
-    "RUF",
-    # flake8-async
-    "ASYNC",
-    # pyupgrade
-    "UP",
-    # tidy imports
-    "TID",
-    # sorted imports
-    "I",
-    # check complexity
-    "C90",
-    # pep8 naming
-    "N",
-]
-ignore = [
-    "UP038", # deprecated
-    "UP017", # remove and fix once 3.10 no longer tested in CI
+[project]
+name = "zenith-sync"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp>=3.14.3",
+    "click>=8.5.0",
+    "configomatic[yaml]>=0.4.0",
+    "easykube>=0.6.0",
+    "easysemver>=0.2.0",
+    "httpx>=0.28.1",
+    "kube-custom-resource>=0.6.1",
+    "pydantic<3",
+    "pyhelm3>=0.5.5",
+    "pyyaml>=6.0.3",
 ]
 
-[tool.mypy]
-follow_imports = "silent"
-warn_redundant_casts = true
-warn_unused_ignores = true
-check_untyped_defs = true
+[project.scripts]
+zenith-sync = "zenith.sync.cli:main"
 
-[tool.ruff.lint.mccabe]
-# Flag errors (`C901`) whenever the complexity level exceeds 5.
-max-complexity = 15
+[dependency-groups]
+dev = [
+    "autopep8>=2.3.2",
+    "black~=26.5.1",
+    "codespell>=2.4.3",
+    "coverage!=4.4,>=7.15.0",
+    "mypy>=2.3.1",
+    "python-subunit>=1.4.6",
+    "ruff~=0.15.20",
+    "stestr>=4.2.1",
+    "testtools>=2.9.1",
+    "types-pyyaml>=6.0.12.20260906",
+    "types-setuptools>=84.0.0.20260812",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.1+unknown"
+
+[tool.hatch.build.targets.sdist]
+packages = ["zenith"]
+[tool.hatch.build.targets.wheel]
+packages = ["zenith"]
