@@ -23,6 +23,6 @@ source = "vcs"
 fallback-version = "0.0.1+unknown"
 
 [tool.hatch.build.targets.sdist]
-packages = ["operator"]
+packages = ["zenith"]
 [tool.hatch.build.targets.wheel]
-packages = ["operator"]
+packages = ["zenith"]

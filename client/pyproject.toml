@@ -21,6 +21,6 @@ source = "vcs"
 fallback-version = "0.0.1+unknown"
 
 [tool.hatch.build.targets.sdist]
-packages = ["client"]
+packages = ["zenith"]
 [tool.hatch.build.targets.wheel]
-packages = ["client"]
+packages = ["zenith"]

@@ -12,7 +12,7 @@ dependencies = [
     "uvicorn>=0.52.4",
 ]
 
-[project.scripts]
+[project.entry-points."zenith.registrar.backends"]
 consul = "zenith.registrar.backends.consul:Backend"
 crd    = "zenith.registrar.backends.crd:Backend"
 
@@ -25,6 +25,6 @@ source = "vcs"
 fallback-version = "0.0.1+unknown"
 
 [tool.hatch.build.targets.sdist]
-packages = ["registrar"]
+packages = ["zenith"]
 [tool.hatch.build.targets.wheel]
-packages = ["registrar"]
+packages = ["zenith"]

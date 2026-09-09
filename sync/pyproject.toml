@@ -18,6 +18,13 @@ dependencies = [
 [project.scripts]
 zenith-sync = "zenith.sync.cli:main"
 
+[project.entry-points."zenith.sync.processors"]
+helm = "zenith.sync.processor.helm:Processor"
+
+[project.entry-points."zenith.sync.stores"]
+consul = "zenith.sync.store.consul:Store"
+crd    = "zenith.sync.store.crd:Store"
+
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
