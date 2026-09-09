@@ -1,4 +1,3 @@
-.python-version
 charts/*/charts
 sync/chart/charts
 **/Chart.lock

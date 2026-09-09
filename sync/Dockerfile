@@ -1,26 +1,24 @@
-FROM ubuntu:24.04 as helm
+FROM docker.io/ubuntu:24.04 as helm
 
-RUN apt-get update && \
-    apt-get install -y wget && \
-    rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt update && \
+    apt-get install -y --no-install-suggests --no-install-recommends \
+    wget \
+    ca-certificates
 
 # Install yq from the official Docker image
-COPY --from=mikefarah/yq /usr/bin/yq /usr/bin/
+COPY --from=docker.io/mikefarah/yq /usr/bin/yq /usr/bin/
 
 ARG HELM_VERSION=v4.3.0
-RUN set -ex; \
-    OS_ARCH="$(uname -m)"; \
-    case "$OS_ARCH" in \
-        x86_64) helm_arch=amd64 ;; \
-        aarch64) helm_arch=arm64 ;; \
-        *) false ;; \
-    esac; \
-    wget -q -O - https://get.helm.sh/helm-${HELM_VERSION}-linux-${helm_arch}.tar.gz | \
-      tar -xz --strip-components 1 -C /usr/bin linux-${helm_arch}/helm; \
-    helm version
+# TARGETATCH is automatically populated by docker
+ARG TARGETARCH
+ADD https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz /tmp/helm.tar.gz
+RUN tar -xz --strip-components 1 -C /usr/bin -f /tmp/helm.tar.gz linux-${TARGETARCH}/helm \
+    && helm version
 
 # Install the zenith-service chart
-COPY ./chart /charts/zenith-service
+COPY ./sync/chart /charts/zenith-service
 # Pull in the dependencies
 RUN helm dependency update /charts/zenith-service
 # Generate a checksum to add to the version that depends on the contents
@@ -38,35 +36,77 @@ RUN set -e; \
     yq -i ".version += \"+$CHECKSUM\"" /charts/zenith-service/Chart.yaml
 
 
-FROM ubuntu:24.04 AS python-builder
+############################
+## INSTALL AND BUILD APP ###
+############################
+FROM ghcr.io/astral-sh/uv:trixie AS build
+# Note: distro should match final image stage to ensure build compat. trixie=debian13
+# Non-slim version required for git.
 
-RUN apt-get update && \
-    apt-get install -y python3 python3-venv && \
-    rm -rf /var/lib/apt/lists/*
+# These env vars setup UV for a docker installation as opposed to
+# the defaults which are optimised for local development.
+# https://docs.astral.sh/uv/guides/integration/docker/#optimizations
+# https://docs.astral.sh/uv/reference/environment/
+ENV UV_NO_DEV=1 \
+    UV_NO_EDITABLE=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_FROZEN=1 \
+    UV_CACHE_DIR=/uv-cache/ \
+    UV_PYTHON_INSTALL_DIR=/python \
+    UV_PYTHON_INSTALL_BIN=0 \
+    UV_PYTHON_PREFERENCE=only-managed
 
-RUN python3 -m venv /venv && \
-    /venv/bin/pip install -U pip setuptools
+WORKDIR /app-source
 
-COPY requirements.txt /app/requirements.txt
-RUN  /venv/bin/pip install --requirement /app/requirements.txt
+### INSTALL PINNED PYTHON ###
+# https://docs.astral.sh/uv/guides/install-python/
+COPY .python-version /app-source
+RUN uv python install \
+    && chmod -R ugo=rX /python
 
-COPY . /app
-RUN /venv/bin/pip install /app
+### INSTALL PROJECT INTO VENV ###
+# uv sync --active makes uv (re)create the currently
+# active venv and install into it.
+ENV VIRTUAL_ENV=/app
 
+### INSTALL PINNED DEPENDENCIES ###
+# --frozen makes uv install the versions which are pinned in uv.lock
+# Installing the dependencies first optimizes caching so if the app
+# changes but not the deps there is no need to rebuild this.
+COPY uv.lock pyproject.toml /app-source
+COPY sync/pyproject.toml /app-source/sync
+RUN --mount=type=cache,target=/uv-cache/ \
+    uv sync --package zenith-sync \
+            --active \
+            --frozen \
+            --no-install-project \
+            --no-install-workspace \
+    && chmod -R ugo=rX /app
 
-FROM ubuntu:24.04
+### INSTALL THE PROJECT ###
+# Then install the app.
+COPY . /app-source
+RUN --mount=type=cache,target=/uv-cache/ \
+    uv sync --package zenith-sync \
+            --active \
+            --frozen \
+            --no-install-workspace \
+    && chmod -R ugo=rX /app
+
+FROM docker.io/ubuntu:24.04
 
 # Don't buffer stdout and stderr as it breaks realtime logging
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
 
 # Make httpx use the system trust roots
 # By default, this means we use the CAs from the ca-certificates package
-ENV SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 # Tell Helm to use /tmp for mutable data
-ENV HELM_CACHE_HOME /tmp/helm/cache
-ENV HELM_CONFIG_HOME /tmp/helm/config
-ENV HELM_DATA_HOME /tmp/helm/data
+ENV HELM_CACHE_HOME=/tmp/helm/cache \
+    HELM_CONFIG_HOME=/tmp/helm/config \
+    HELM_DATA_HOME=/tmp/helm/data
 
 # Create the user that will be used to run the app
 ENV ZENITH_UID 1001
@@ -82,13 +122,16 @@ RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
       --uid $ZENITH_UID \
       $ZENITH_USER
 
-RUN apt-get update && \
-    apt-get install --no-install-recommends --no-install-suggests -y ca-certificates python3 && \
-    rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt update && \
+    apt-get install -y --no-install-suggests --no-install-recommends \
+    ca-certificates
 
 COPY --from=helm /usr/bin/helm /usr/bin/helm
 COPY --from=helm /charts /charts
-COPY --from=python-builder /venv /venv
+COPY --from=build /python /python
+COPY --from=build /app /app
 
 USER $ZENITH_UID
-CMD ["/venv/bin/zenith-sync"]
+CMD ["/app/bin/zenith-sync"]
