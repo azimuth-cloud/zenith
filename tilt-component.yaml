@@ -2,13 +2,16 @@ chart: ./charts/server
 
 images:
   zenith-registrar:
-    context: ./registrar
+    context: .
+    dockerfile: registrar/Dockerfile
     chart_path: registrar.image
 
   zenith-sshd:
-    context: ./sshd
+    context: .
+    dockerfile: sshd/Dockerfile
     chart_path: sshd.image
 
   zenith-sync:
-    context: ./sync
+    context: .
+    dockerfile: sync/Dockerfile
     chart_path: sync.image
