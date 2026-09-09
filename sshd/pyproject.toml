@@ -12,6 +12,9 @@ dependencies = [
 ]
 
 [project.scripts]
+zenith-sshd = "zenith.sshd.cli:main"
+
+[project.entry-points."zenith.sshd.backends"]
 consul = "zenith.sshd.backends.consul:Backend"
 crd    = "zenith.sshd.backends.crd:Backend"
 
@@ -24,6 +27,6 @@ source = "vcs"
 fallback-version = "0.0.1+unknown"
 
 [tool.hatch.build.targets.sdist]
-packages = ["sshd"]
+packages = ["zenith"]
 [tool.hatch.build.targets.wheel]
-packages = ["sshd"]
+packages = ["zenith"]

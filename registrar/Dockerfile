@@ -83,4 +83,4 @@ COPY --from=build /app /app
 # By default, this means we use the CAs from the ca-certificates package
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-CMD ["/venv/bin/uvicorn", "--host", "0.0.0.0", "--port", "8000", "--access-log", "zenith.registrar:app"]
+CMD ["/app/bin/uvicorn", "--host", "0.0.0.0", "--port", "8000", "--access-log", "zenith.registrar:app"]

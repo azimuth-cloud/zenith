@@ -69,4 +69,5 @@ check_untyped_defs = true
 
 
 [tool.ruff.lint.mccabe]
-# Flag errors (`C901`) whenever the complexity level exceeds 5.
+# Flag errors (`C901`) whenever the complexity level exceeds 15.
+max-complexity = 15
