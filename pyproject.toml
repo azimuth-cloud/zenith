@@ -7,6 +7,23 @@ members = [
     "sync",
 ]
 
+[dependency-groups]
+dev = [
+    "autopep8",
+    "black",
+    "codespell",
+    "coverage",
+    "mypy",
+    "python-subunit",
+    "ruff",
+    "stestr",
+    "testtools",
+    "tox",
+    "tox-uv",
+    "types-pyyaml",
+    "types-setuptools",
+]
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"
@@ -49,6 +66,7 @@ follow_imports = "silent"
 warn_redundant_casts = true
 warn_unused_ignores = true
 check_untyped_defs = true
+
 
 [tool.ruff.lint.mccabe]
 # Flag errors (`C901`) whenever the complexity level exceeds 5.

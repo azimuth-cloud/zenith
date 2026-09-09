@@ -15,21 +15,6 @@ dependencies = [
 consul = "zenith.sshd.backends.consul:Backend"
 crd    = "zenith.sshd.backends.crd:Backend"
 
-[dependency-groups]
-dev = [
-    "autopep8>=2.3.2",
-    "black~=26.5.1",
-    "codespell>=2.4.3",
-    "coverage!=4.4,>=7.15.0",
-    "mypy>=2.3.1",
-    "python-subunit>=1.4.6",
-    "ruff~=0.15.20",
-    "stestr>=4.2.1",
-    "testtools>=2.9.1",
-    "types-pyyaml>=6.0.12.20260906",
-    "types-setuptools>=84.0.0.20260812",
-]
-
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"

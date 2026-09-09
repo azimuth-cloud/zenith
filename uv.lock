@@ -17,6 +17,23 @@ members = [
     "zenith-sync",
 ]
 
+[manifest.dependency-groups]
+dev = [
+    { name = "autopep8" },
+    { name = "black" },
+    { name = "codespell" },
+    { name = "coverage" },
+    { name = "mypy" },
+    { name = "python-subunit" },
+    { name = "ruff" },
+    { name = "stestr" },
+    { name = "testtools" },
+    { name = "tox" },
+    { name = "tox-uv" },
+    { name = "types-pyyaml" },
+    { name = "types-setuptools" },
+]
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.7.1"
@@ -2795,46 +2812,12 @@ dependencies = [
     { name = "requests" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "autopep8" },
-    { name = "black" },
-    { name = "codespell" },
-    { name = "coverage" },
-    { name = "mypy" },
-    { name = "python-subunit" },
-    { name = "ruff" },
-    { name = "stestr" },
-    { name = "testtools" },
-    { name = "tox" },
-    { name = "tox-uv" },
-    { name = "types-pyyaml" },
-    { name = "types-setuptools" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.5.0" },
     { name = "configomatic", extras = ["yaml"], specifier = ">=0.4.0" },
     { name = "pydantic", specifier = "<3" },
     { name = "requests", specifier = ">=2.34.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "autopep8", specifier = ">=2.3.2" },
-    { name = "black", specifier = "~=26.5.1" },
-    { name = "codespell", specifier = ">=2.4.3" },
-    { name = "coverage", specifier = ">=7.15.0" },
-    { name = "mypy", specifier = ">=2.3.1" },
-    { name = "python-subunit", specifier = ">=1.4.6" },
-    { name = "ruff", specifier = ">=0.15.20" },
-    { name = "stestr", specifier = ">=4.2.1" },
-    { name = "testtools", specifier = ">=2.9.1" },
-    { name = "tox", specifier = ">=4.61.2" },
-    { name = "tox-uv", specifier = ">=1.36.0" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20260906" },
-    { name = "types-setuptools", specifier = ">=84.0.0.20260812" },
 ]
 
 [[package]]
@@ -2852,23 +2835,6 @@ dependencies = [
     { name = "pyyaml" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "autopep8" },
-    { name = "black" },
-    { name = "codespell" },
-    { name = "coverage" },
-    { name = "mypy" },
-    { name = "python-subunit" },
-    { name = "ruff" },
-    { name = "stestr" },
-    { name = "testtools" },
-    { name = "tox" },
-    { name = "tox-uv" },
-    { name = "types-pyyaml" },
-    { name = "types-setuptools" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "configomatic", extras = ["yaml"], specifier = ">=0.4.0" },
@@ -2880,23 +2846,6 @@ requires-dist = [
     { name = "kube-custom-resource", specifier = ">=0.6.1" },
     { name = "pydantic", specifier = "<3" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "autopep8", specifier = ">=2.3.2" },
-    { name = "black", specifier = "~=26.5.1" },
-    { name = "codespell", specifier = ">=2.4.3" },
-    { name = "coverage", specifier = "!=4.4,>=7.15.0" },
-    { name = "mypy", specifier = ">=2.3.1" },
-    { name = "python-subunit", specifier = ">=1.4.6" },
-    { name = "ruff", specifier = ">=0.15.20" },
-    { name = "stestr", specifier = ">=4.2.1" },
-    { name = "testtools", specifier = ">=2.9.1" },
-    { name = "tox", specifier = ">=4.61.2" },
-    { name = "tox-uv", specifier = ">=1.36.0" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20260906" },
-    { name = "types-setuptools", specifier = ">=84.0.0.20260812" },
 ]
 
 [[package]]
@@ -2912,21 +2861,6 @@ dependencies = [
     { name = "uvicorn" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "autopep8" },
-    { name = "black" },
-    { name = "codespell" },
-    { name = "coverage" },
-    { name = "mypy" },
-    { name = "python-subunit" },
-    { name = "ruff" },
-    { name = "stestr" },
-    { name = "testtools" },
-    { name = "types-pyyaml" },
-    { name = "types-setuptools" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "configomatic", extras = ["yaml"], specifier = ">=0.4.0" },
@@ -2936,21 +2870,6 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pydantic", specifier = "<3" },
     { name = "uvicorn", specifier = ">=0.52.4" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "autopep8", specifier = ">=2.3.2" },
-    { name = "black", specifier = "~=26.5.1" },
-    { name = "codespell", specifier = ">=2.4.3" },
-    { name = "coverage", specifier = "!=4.4,>=7.14.3" },
-    { name = "mypy", specifier = ">=2.3.1" },
-    { name = "python-subunit", specifier = ">=1.4.6" },
-    { name = "ruff", specifier = "~=0.15.20" },
-    { name = "stestr", specifier = ">=4.2.1" },
-    { name = "testtools", specifier = ">=2.9.1" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20260906" },
-    { name = "types-setuptools", specifier = ">=84.0.0.20260812" },
 ]
 
 [[package]]
@@ -2965,21 +2884,6 @@ dependencies = [
     { name = "requests" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "autopep8" },
-    { name = "black" },
-    { name = "codespell" },
-    { name = "coverage" },
-    { name = "mypy" },
-    { name = "python-subunit" },
-    { name = "ruff" },
-    { name = "stestr" },
-    { name = "testtools" },
-    { name = "types-pyyaml" },
-    { name = "types-setuptools" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.5.0" },
@@ -2988,21 +2892,6 @@ requires-dist = [
     { name = "easykube", specifier = ">=0.6.0" },
     { name = "pydantic", specifier = "<3" },
     { name = "requests", specifier = ">=2.34.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "autopep8", specifier = ">=2.3.2" },
-    { name = "black", specifier = "~=26.5.1" },
-    { name = "codespell", specifier = ">=2.4.3" },
-    { name = "coverage", specifier = "!=4.4,>=7.15.0" },
-    { name = "mypy", specifier = ">=2.3.1" },
-    { name = "python-subunit", specifier = ">=1.4.6" },
-    { name = "ruff", specifier = "~=0.15.20" },
-    { name = "stestr", specifier = ">=4.2.1" },
-    { name = "testtools", specifier = ">=2.9.1" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20260906" },
-    { name = "types-setuptools", specifier = ">=84.0.0.20260812" },
 ]
 
 [[package]]
@@ -3021,21 +2910,6 @@ dependencies = [
     { name = "pyyaml" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "autopep8" },
-    { name = "black" },
-    { name = "codespell" },
-    { name = "coverage" },
-    { name = "mypy" },
-    { name = "python-subunit" },
-    { name = "ruff" },
-    { name = "stestr" },
-    { name = "testtools" },
-    { name = "types-pyyaml" },
-    { name = "types-setuptools" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.14.3" },
@@ -3048,19 +2922,4 @@ requires-dist = [
     { name = "pydantic", specifier = "<3" },
     { name = "pyhelm3", specifier = ">=0.5.5" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "autopep8", specifier = ">=2.3.2" },
-    { name = "black", specifier = "~=26.5.1" },
-    { name = "codespell", specifier = ">=2.4.3" },
-    { name = "coverage", specifier = "!=4.4,>=7.15.0" },
-    { name = "mypy", specifier = ">=2.3.1" },
-    { name = "python-subunit", specifier = ">=1.4.6" },
-    { name = "ruff", specifier = "~=0.15.20" },
-    { name = "stestr", specifier = ">=4.2.1" },
-    { name = "testtools", specifier = ">=2.9.1" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20260906" },
-    { name = "types-setuptools", specifier = ">=84.0.0.20260812" },
 ]
