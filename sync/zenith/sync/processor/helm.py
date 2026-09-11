@@ -14,7 +14,6 @@ from pyhelm3 import Client as HelmClient
 from .. import config, metrics, model, store, util  # noqa: TID252
 from . import base
 
-
 SIGNIN_REDIRECT_NAME = "zenith-signin-redirect"
 
 
@@ -26,7 +25,8 @@ def _signin_redirect_configmap(
     external_auth: config.ExternalAuthConfig,
 ) -> dict[str, typing.Any]:
     """
-    Returns the ConfigMap holding the dynamic configuration for the signin-redirect Traefik instance
+    Returns the ConfigMap holding the dynamic configuration for the
+    signin-redirect Traefik instance
     """
     dynamic_config = {
         "http": {
