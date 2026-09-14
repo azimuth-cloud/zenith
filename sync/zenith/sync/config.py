@@ -105,6 +105,17 @@ class OIDCConfig(Section):
     inject_request_headers: dict[str, str] = Field(default_factory=dict)
 
 
+class SigninRedirectImageConfig(Section):
+    """
+    Model for the image used for the shared Traefik signin-redirect deployment.
+    """
+
+    #: The image repository
+    repository: NonEmptyString = "traefik"
+    #: The image tag
+    tag: NonEmptyString = "v3.2"
+
+
 class ExternalAuthConfig(Section):
     """
     Model for the ingress external auth configuration section.
@@ -131,6 +142,9 @@ class ExternalAuthConfig(Section):
     #: The additional prefix to use when passing authentication parameters to the auth
     #: service
     param_header_prefix: str = "x-"
+    signin_redirect_image: SigninRedirectImageConfig = Field(
+        default_factory=SigninRedirectImageConfig
+    )
 
 
 class TLSConfig(Section):
