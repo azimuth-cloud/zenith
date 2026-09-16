@@ -1,4 +1,5 @@
-{{- if .Values.registrar.enabled -}}
+{{- $ingress := mergeOverwrite (deepCopy .Values.global.ingress) .Values.common.ingress .Values.registrar.ingress }}
+{{- if and .Values.registrar.enabled (eq $ingress.routingType "ingress") -}}
 {{- $global := deepCopy .Values.global.ingress }}
 {{- $common := deepCopy .Values.common.ingress }}
 {{- $registrar := deepCopy .Values.registrar.ingress }}
