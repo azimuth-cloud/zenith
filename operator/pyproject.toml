@@ -1,44 +1,28 @@
-[tool.ruff]
-line-length = 88
-target-version = "py312"
-
-[tool.ruff.format]
-line-ending = "lf"
-
-[tool.ruff.lint]
-select = [
-    # pycodestyle
-    "E",
-    # Pyflakes
-    "F",
-    # flake8-builtins
-    "A",
-    # Ruff rules
-    "RUF",
-    # flake8-async
-    "ASYNC",
-    # pyupgrade
-    "UP",
-    # tidy imports
-    "TID",
-    # sorted imports
-    "I",
-    # check complexity
-    "C90",
-    # pep8 naming
-    "N",
-]
-ignore = [
-    "UP038", # deprecated
-    "UP017", # remove and fix once 3.10 not tested in CI
+[project]
+name = "zenith-operator"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "configomatic[yaml]>=0.4.0",
+    "cryptography>=50.0.1",
+    "easykube>=0.6.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "kopf>=1.44.6",
+    "kube-custom-resource>=0.6.1",
+    "pydantic<3",
+    "pyyaml>=6.0.3",
 ]
 
-[tool.mypy]
-follow_imports = "silent"
-warn_redundant_casts = true
-warn_unused_ignores = true
-check_untyped_defs = true
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.ruff.lint.mccabe]
-# Flag errors (`C901`) whenever the complexity level exceeds 5.
-max-complexity = 15
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.1+unknown"
+
+[tool.hatch.build.targets.sdist]
+packages = ["zenith"]
+[tool.hatch.build.targets.wheel]
+packages = ["zenith"]
