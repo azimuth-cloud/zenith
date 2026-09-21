@@ -3,9 +3,9 @@ certifi==2026.7.22
 charset-normalizer==3.5.1
 click==8.5.0
 configomatic==0.4.0
-idna==3.19
+idna==3.20
 pydantic==2.13.5
 PyYAML==6.0.3
 requests==2.34.2
 typing_extensions==4.16.0
-urllib3==2.7.0
+urllib3==2.8.0
