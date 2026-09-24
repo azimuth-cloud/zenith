@@ -2,6 +2,7 @@
   if and
     (mustRegexMatch "^https?$" .Values.protocol)
     .Values.ingress.enabled
+    (eq .Values.ingress.routingType "ingress")
 }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
