@@ -291,11 +291,22 @@ class Processor(base.Processor):
                 },
             }
         elif self.config.ingress.external_auth.url:
+            error_service = self.config.ingress.external_auth.error_service
             values["externalAuth"] = {
                 "enabled": True,
                 "url": self.config.ingress.external_auth.url,
                 "signinUrl": self.config.ingress.external_auth.signin_url,
                 "nextUrlParam": self.config.ingress.external_auth.next_url_param,
+                "errorService": (
+                    {
+                        "name": error_service.name,
+                        "namespace": error_service.namespace,
+                        "port": error_service.port,
+                        "path": error_service.path,
+                    }
+                    if error_service
+                    else None
+                ),
                 "requestHeaders": self.config.ingress.external_auth.request_headers,
                 "responseHeaders": self.config.ingress.external_auth.response_headers,
                 "paramHeaderPrefix": (

@@ -10,25 +10,48 @@ const getHeader = (req, header) => (
 );
 
 /**
+ * Extract the subject DN of a verified client certificate from the request
+ */
+const getSubjectDN = req => {
+    const nginxDN = getHeader(req, "ssl-client-subject-dn");
+    if( nginxDN ) {
+        return nginxDN;
+    }
+    const traefikCertInfo = getHeader(req, "x-forwarded-tls-client-cert-info");
+    if( traefikCertInfo ) {
+        try {
+            const match = decodeURIComponent(traefikCertInfo).match(/Subject="([^"]*)"/);
+            if( match ) {
+                return match[1];
+            }
+        }
+        catch(err) {
+            // malformed percent-encoding in the header
+        }
+    }
+    return undefined;
+};
+
+/**
  * Extracts an auth value from the request that will be used as the value of the
  * remote user/group header for upstream requests.
  *
  * There are three possible cases:
  *
  *   1. An SSL client certificate was verified by a downstream proxy server.
- *      In this case, the DN will be available in the "ssl-client-subject-dn"
- *      header, and the given field should be extracted and returned.
+ *      In this case, the DN will be available, and the given
+ *      field should be extracted and returned.
  *
  *   2. An "authorization" header is present, in which case the empty string should
  *      be returned to prevent the remote user/group header being added to the
  *      upstream request.
  *
- *   3. Neither the "ssl-client-subject-dn" or "authorization" headers are
- *      present, in which case the request should be treated as anonymous and
- *      the anonymous value should be returned.
+ *   3. Neither a client certificate DN nor an "authorization" header is present,
+ *      in which case the request should be treated as anonymous and the anonymous
+ *      value should be returned.
  */
 const getAuthFromRequest = (dnField, anonymousValue) => req => {
-    const dn = getHeader(req, "ssl-client-subject-dn");
+    const dn = getSubjectDN(req);
     if( dn ) {
         // If the processing of the DN fails, that means the DN does not have the correct format
         // In this case, return the empty string so that the request is treated as unauthenticated
