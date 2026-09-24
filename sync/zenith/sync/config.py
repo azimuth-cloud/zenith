@@ -105,15 +105,22 @@ class OIDCConfig(Section):
     inject_request_headers: dict[str, str] = Field(default_factory=dict)
 
 
-class SigninRedirectImageConfig(Section):
+class ExternalAuthErrorServiceConfig(Section):
     """
-    Model for the image used for the shared Traefik signin-redirect deployment.
+    Model for a Kubernetes service that produces the sign-in redirect response
+    when the external auth service denies a request.
     """
 
-    #: The image repository
-    repository: NonEmptyString = "traefik"
-    #: The image tag
-    tag: NonEmptyString = "v3.2"
+    #: The name of the Kubernetes service
+    name: NonEmptyString
+    #: The namespace of the Kubernetes service
+    #: Defaults to the namespace that the Zenith service is deployed into
+    namespace: NonEmptyString | None = None
+    #: The port of the Kubernetes service
+    port: int = 80
+    #: The path (and query string) of the subrequest that is sent to the service
+    #: The literal string "{url}" is replaced with the original request URL
+    path: NonEmptyString = "/?rd={url}"
 
 
 class ExternalAuthConfig(Section):
@@ -128,9 +135,14 @@ class ExternalAuthConfig(Section):
     #: proceeds to the upstream. If it returns a 401 or a 403, the access is denied.
     url: AnyHttpUrl | None = None
     #: The URL to redirect to on an authentication error
+    #: Only used by the NGINX ingress, via its `auth-signin` annotation
     signin_url: AnyHttpUrl | None = None
     #: The URL parameter to contain the original URL when redirecting to the signin URL
+    #: Only used by the NGINX ingress, via its `auth-signin-redirect-param` annotation
     next_url_param: str = "next"
+    #: The Kubernetes service that produces the sign-in redirect response
+    #: Only used by the Traefik ingress - see ExternalAuthErrorServiceConfig
+    error_service: ExternalAuthErrorServiceConfig | None = None
     #: Dictionary of headers to set for authentication requests
     #: These will override headers from the incoming request, which would otherwise be
     #: forwarded
@@ -142,9 +154,6 @@ class ExternalAuthConfig(Section):
     #: The additional prefix to use when passing authentication parameters to the auth
     #: service
     param_header_prefix: str = "x-"
-    signin_redirect_image: SigninRedirectImageConfig = Field(
-        default_factory=SigninRedirectImageConfig
-    )
 
 
 class TLSConfig(Section):

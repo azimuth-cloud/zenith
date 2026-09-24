@@ -55,7 +55,7 @@ Builds the comma-separated list of Traefik middlewares to attach to the router.
 {{- if or .Values.externalAuth.requestHeaders .Values.externalAuth.params -}}
 {{- $middlewares = append $middlewares (printf "%s-%s-external-auth-headers@kubernetescrd" .Release.Namespace .Release.Name) -}}
 {{- end -}}
-{{- if .Values.externalAuth.signinUrl -}}
+{{- if .Values.externalAuth.errorService.name -}}
 {{- $middlewares = append $middlewares (printf "%s-%s-external-auth-errors@kubernetescrd" .Release.Namespace .Release.Name) -}}
 {{- end -}}
 {{- $middlewares = append $middlewares (printf "%s-%s-external-auth@kubernetescrd" .Release.Namespace .Release.Name) -}}
