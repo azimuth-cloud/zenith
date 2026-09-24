@@ -63,9 +63,23 @@ externalAuth:
   # to the upstream. If it returns a 401 or a 403, the access is denied.
   url:
   # The URL to redirect to on an authentication error
+  # Only used by the NGINX ingress, via its auth-signin annotation
   signinUrl:
   # The URL parameter to contain the original URL when redirecting to the signin URL
+  # Only used by the NGINX ingress, via its auth-signin-redirect-param annotation
   nextUrlParam: next
+  # The Kubernetes service that produces the sign-in redirect response
+  # Only used by the Traefik ingress, which has no equivalent of NGINX's auth-signin
+  errorService:
+    # The name of the Kubernetes service
+    name:
+    # The namespace of the Kubernetes service (defaults to the release namespace)
+    namespace:
+    # The port of the Kubernetes service
+    port: 80
+    # The path (and query string) of the subrequest sent to the service
+    # The literal string "{url}" is replaced with the original request URL
+    path: "/?rd={url}"
   # Dictionary of headers to set for authentication requests
   # These will override headers from the incoming request, which would otherwise be forwarded
   # In particular, you may need to override the accepts header to suit the content types served
