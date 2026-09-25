@@ -36,9 +36,9 @@ jobs:
           - component: sync
     permissions:
       contents: read
-      id-token: write         # needed for signing the images with GitHub OIDC Token
-      packages: write         # required for pushing container images
-      security-events: write  # required for pushing SARIF files
+      id-token: write # needed for signing the images with GitHub OIDC Token
+      packages: write # required for pushing container images
+      security-events: write # required for pushing SARIF files
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,7 +71,8 @@ jobs:
         uses: azimuth-cloud/github-actions/docker-multiarch-build-push@master
         with:
           cache-key: ${{ matrix.component }}
-          context: ./${{ matrix.component }}
+          context: .
+          file: ./${{ matrix.component }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.image-meta.outputs.tags }}
