@@ -91,7 +91,6 @@ RUN --mount=type=cache,target=/uv-cache/ \
     uv sync --package zenith-sync \
             --active \
             --frozen \
-            --no-install-workspace \
     && chmod -R ugo=rX /app
 
 FROM docker.io/ubuntu:24.04

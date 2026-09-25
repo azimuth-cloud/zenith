@@ -57,7 +57,6 @@ RUN --mount=type=cache,target=/uv-cache/ \
     uv sync --package zenith-registrar \
             --active \
             --frozen \
-            --no-install-workspace \
     && chmod -R ugo=rX /app
 
 ###########################
