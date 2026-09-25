@@ -37,7 +37,7 @@ ENV VIRTUAL_ENV=/app
 # Installing the dependencies first optimizes caching so if the app
 # changes but not the deps there is no need to rebuild this.
 COPY uv.lock pyproject.toml /app-source
-COPY sshd/pyproject.toml /app-source/sshd
+COPY sshd/pyproject.toml /app-source/sshd/
 RUN --mount=type=cache,target=/uv-cache/ \
     uv sync --package zenith-sshd \
             --active \

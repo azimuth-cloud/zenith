@@ -41,7 +41,7 @@ ENV VIRTUAL_ENV=/app
 # Installing the dependencies first optimizes caching so if the app
 # changes but not the deps there is no need to rebuild this.
 COPY uv.lock pyproject.toml /app-source
-COPY operator/pyproject.toml /app-source/operator
+COPY operator/pyproject.toml /app-source/operator/
 RUN --mount=type=cache,target=/uv-cache/ \
     uv sync --package zenith-operator \
             --active \

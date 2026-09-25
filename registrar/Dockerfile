@@ -41,7 +41,7 @@ ENV VIRTUAL_ENV=/app
 # Installing the dependencies first optimizes caching so if the app
 # changes but not the deps there is no need to rebuild this.
 COPY uv.lock pyproject.toml /app-source
-COPY registrar/pyproject.toml /app-source/registrar
+COPY registrar/pyproject.toml /app-source/registrar/
 RUN --mount=type=cache,target=/uv-cache/ \
     uv sync --package zenith-registrar \
             --active \
