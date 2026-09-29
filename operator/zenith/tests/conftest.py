@@ -14,6 +14,17 @@ os.environ.pop("ZENITH_OPERATOR_CONFIG", None)
 from unittest import mock
 
 import pytest
+from easykube import Configuration
+
+# Don't load a kubeconfig or service account from the environment, which may not
+# exist (e.g. in CI) or may point at a real cluster
+mock.patch.object(
+    Configuration,
+    "from_environment",
+    lambda **kwargs: Configuration(
+        base_url="https://kubernetes.example.invalid", **kwargs
+    ),
+).start()
 
 
 @pytest.fixture
