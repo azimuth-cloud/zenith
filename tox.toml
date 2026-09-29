@@ -1,9 +1,9 @@
 requires = ["tox>=4.58", "tox-uv>=1.36"]
 env_list = [
-    "ruff",
-    "codespell",
+    "lint",
+    { product = [["mypy"], { component = ["client", "operator", "registrar", "sshd", "sync"] }] },
     { product = [["test"], { component = ["client", "operator", "registrar", "sshd", "sync"] }] },
-    "autofix",
+    "coverage",
 ]
 
 # Allows running all the tests with 'tox -m test'
@@ -19,6 +19,7 @@ runner = "uv-venv-lock-runner"
 base_python = [
     { replace = "if", condition = "env.UV", then = "{env:VIRTUAL_ENV}/bin/python", else = "/run-tox-via-uv-run" },
 ]
+set_env = { COVERAGE_FILE = "{tox_root}/.coverage.{env_name}", PYTHONWARNINGS = "default::DeprecationWarning" }
 
 # Envs that apply to all components
 [env.autofix]
@@ -28,14 +29,24 @@ commands = [
     ["ruff", "check", "{tox_root}", "--fix"],
 ]
 
-[env.codespell]
-commands = [["codespell", { replace = "posargs", extend = true }]]
-
-[env.ruff]
-description = "Run Ruff checks"
+[env.lint]
+description = "Run ruff and codespell"
 commands = [
     ["ruff", "check", "{tox_root}"],
     ["ruff", "format", "{tox_root}", "--check"],
+    ["codespell"],
+]
+
+# Combine the coverage from all the test envs into one report
+[env.coverage]
+depends = ["test-*"]
+commands = [
+    ["coverage", "combine", "--data-file", "{tox_root}/.coverage", { replace = "glob", pattern = "{tox_root}/.coverage.test-*", extend = true }],
+    ["coverage", "report", "--data-file", "{tox_root}/.coverage"],
+    ["coverage", "xml", "--data-file", "{tox_root}/.coverage", "-o", "{tox_root}/coverage.xml"],
+    # Report the coverage of the lines changed since origin/main (CI overrides this)
+    # In GitHub Actions, the annotations mark uncovered lines on the PR's diff
+    ["diff-cover", "{tox_root}/coverage.xml", "--compare-branch", "{env:DIFF_COVER_COMPARE_BRANCH:origin/main}", "--format", "markdown:{tox_root}/diff-cover.md,github-annotations:warning"],
 ]
 
 # Per-component envs
@@ -44,12 +55,11 @@ commands = [
 factors = [{ component = ["client", "operator", "registrar", "sshd", "sync"] }]
 change_dir = "{factor:component}"
 package_root = "{factor:component}"
-set_env = { PYTHONWARNINGS = "default::DeprecationWarning" }
-commands = [["pytest", { replace = "posargs", extend = true }]]
+commands = [["pytest", "--cov=zenith", "--cov-report=", { replace = "posargs", extend = true }]]
 
 # mypy-client, mypy-operator, ... (run them all with `tox -m mypy`)
 [env_base.mypy]
 factors = [{ component = ["client", "operator", "registrar", "sshd", "sync"] }]
 change_dir = "{factor:component}"
 package_root = "{factor:component}"
-commands = [["mypy", "--config-file", "{tox_root}/pyproject.toml", "zenith", "tests", { replace = "posargs", extend = true }]]
+commands = [["mypy", "--config-file", "{tox_root}/pyproject.toml", "--follow-untyped-imports", "--disallow-untyped-defs", "zenith", "tests", { replace = "posargs", extend = true }]]
