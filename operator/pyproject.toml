@@ -26,3 +26,8 @@ fallback-version = "0.0.1+unknown"
 packages = ["zenith"]
 [tool.hatch.build.targets.wheel]
 packages = ["zenith"]
+
+[tool.pytest]
+testpaths = ["zenith/tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
