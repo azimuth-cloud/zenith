@@ -60,8 +60,7 @@ RUN --mount=type=cache,target=/uv-cache/ \
 ###########################
 # This cannot be distroless because zenith-client
 # requires the openssh client
-# However the final image should match the build image
-FROM docker.io/debian:trixie-slim
+FROM ubuntu:24.04
 
 # Don't buffer stdout and stderr as it breaks realtime logging
 ENV PYTHONUNBUFFERED=1
