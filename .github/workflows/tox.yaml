@@ -25,23 +25,22 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - name: Set up uv and Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install tox
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install tox
+      # Sync from the workspace root so the root dev group (tox, tox-uv) is installed
+      - name: Install workspace dependencies
+        run: uv sync --locked
 
       - name: Run tox in ${{ matrix.subdir }}
         working-directory: ${{ matrix.subdir }}
-        run: tox
+        run: uv run tox
 
       - name: Generate coverage report (optional)
         working-directory: ${{ matrix.subdir }}
-        run: tox -e cover || echo "No cover env, skipping"
+        run: uv run tox -e cover || echo "No cover env, skipping"
 
       - name: Archive coverage results
         if: success()
