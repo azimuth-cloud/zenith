@@ -71,10 +71,10 @@ ENV PYTHONUNBUFFERED=1
 ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 # Create the user that will be used to run the client process
-ENV ZENITH_UID 1001
-ENV ZENITH_GID 1001
-ENV ZENITH_USER zenith
-ENV ZENITH_GROUP zenith
+ENV ZENITH_UID=1001
+ENV ZENITH_GID=1001
+ENV ZENITH_USER=zenith
+ENV ZENITH_GROUP=zenith
 RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
     useradd \
       --no-create-home \
@@ -85,7 +85,7 @@ RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
       $ZENITH_USER
 
 # By default, we run as root but switch to the zenith user after reading configuration
-ENV ZENITH_CLIENT__RUN_AS_USER 1001
+ENV ZENITH_CLIENT__RUN_AS_USER=1001
 
 # Install tini, which we will use to marshal the processes, Python and the OpenSSH client
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \

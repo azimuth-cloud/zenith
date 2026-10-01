@@ -108,10 +108,10 @@ ENV HELM_CACHE_HOME=/tmp/helm/cache \
     HELM_DATA_HOME=/tmp/helm/data
 
 # Create the user that will be used to run the app
-ENV ZENITH_UID 1001
-ENV ZENITH_GID 1001
-ENV ZENITH_USER zenith
-ENV ZENITH_GROUP zenith
+ENV ZENITH_UID=1001
+ENV ZENITH_GID=1001
+ENV ZENITH_USER=zenith
+ENV ZENITH_GROUP=zenith
 RUN groupadd --gid $ZENITH_GID $ZENITH_GROUP && \
     useradd \
       --no-create-home \
