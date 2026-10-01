@@ -19,7 +19,6 @@ concurrency:
 
 jobs:
   publish_artifacts:
-    needs: [fail_on_remote]
     uses: ./.github/workflows/build-push-artifacts.yaml
     with:
       ref: ${{ github.event.pull_request.head.sha }}
