@@ -7,3 +7,18 @@ tests:
   - it: templated manifests should match snapshot
     asserts:
       - matchSnapshot: {}
+  - it: templated manifests should match snapshot with external auth enabled
+    set:
+      externalAuth.enabled: true
+      externalAuth.url: http://auth.example.com/verify
+      externalAuth.signinUrl: https://auth.example.com/login
+    asserts:
+      - matchSnapshot: {}
+  - it: templated manifests should match snapshot with external auth error service
+    set:
+      externalAuth.enabled: true
+      externalAuth.url: http://auth.example.com/verify
+      externalAuth.errorService.name: my-auth-service
+      externalAuth.errorService.port: 8080
+    asserts:
+      - matchSnapshot: {}

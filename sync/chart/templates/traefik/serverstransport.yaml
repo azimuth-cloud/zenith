@@ -1,0 +1,15 @@
+{{-
+  if and
+    (mustRegexMatch "^https?$" .Values.protocol)
+    .Values.ingress.enabled
+    .Values.readTimeout
+}}
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: {{ printf "%s-transport" .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  forwardingTimeouts:
+    responseHeaderTimeout: {{ printf "%ds" (int .Values.readTimeout) }}
+{{- end }}
