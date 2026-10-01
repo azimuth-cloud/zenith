@@ -46,7 +46,7 @@ RUN apt-get update && \
 # Install gomplate from the previous stage
 COPY --from=gomplate /gomplate /usr/bin/gomplate
 
-COPY ./bin /usr/bin/
-COPY ./etc /etc/
+COPY ./proxy/bin /usr/bin/
+COPY ./proxy/etc /etc/
 
 CMD ["/usr/bin/nginx-start"]

@@ -1,44 +1,26 @@
-[tool.ruff]
-line-length = 88
-target-version = "py312"
-
-[tool.ruff.format]
-line-ending = "lf"
-
-[tool.ruff.lint]
-select = [
-    # pycodestyle
-    "E",
-    # Pyflakes
-    "F",
-    # flake8-builtins
-    "A",
-    # Ruff rules
-    "RUF",
-    # flake8-async
-    "ASYNC",
-    # pyupgrade
-    "UP",
-    # tidy imports
-    "TID",
-    # sorted imports
-    "I",
-    # check complexity
-    "C90",
-    # pep8 naming
-    "N",
-]
-ignore = [
-    "UP038", # deprecated
-    "UP017", # remove and fix once 3.10 no longer tested in CI
+[project]
+name = "zenith-client"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.5.0",
+    "configomatic[yaml]>=0.4.0",
+    "pydantic<3",
+    "requests>=2.34.2",
 ]
 
-[tool.mypy]
-follow_imports = "silent"
-warn_redundant_casts = true
-warn_unused_ignores = true
-check_untyped_defs = true
+[project.scripts]
+zenith-client = "zenith.client.cli:main"
 
-[tool.ruff.lint.mccabe]
-# Flag errors (`C901`) whenever the complexity level exceeds 5.
-max-complexity = 15
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.1+unknown"
+
+[tool.hatch.build.targets.sdist]
+packages = ["zenith"]
+[tool.hatch.build.targets.wheel]
+packages = ["zenith"]
