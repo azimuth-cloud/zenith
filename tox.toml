@@ -1,0 +1,55 @@
+requires = ["tox>=4.58", "tox-uv>=1.36"]
+env_list = [
+    "ruff",
+    "codespell",
+    { product = [["test"], { component = ["client", "operator", "registrar", "sshd", "sync"] }] },
+    "autofix",
+]
+
+# Allows running all the tests with 'tox -m test'
+[labels]
+test = ["test-client", "test-operator", "test-registrar", "test-sshd", "test-sync"]
+mypy = ["mypy-client", "mypy-operator", "mypy-registrar", "mypy-sshd", "mypy-sync"]
+
+# Global config for ALL envs
+[env_run_base]
+runner = "uv-venv-lock-runner"
+# tox-uv always passes python to uv, so .python-version is not used.
+# Get the python version from UV_PYTHON (which reads .python-version) instead.
+base_python = [
+    { replace = "if", condition = "env.UV", then = "{env:VIRTUAL_ENV}/bin/python", else = "/run-tox-via-uv-run" },
+]
+
+# Envs that apply to all components
+[env.autofix]
+commands = [
+    ["ruff", "format", "{tox_root}"],
+    ["codespell", "{tox_root}", "-w"],
+    ["ruff", "check", "{tox_root}", "--fix"],
+]
+
+[env.codespell]
+commands = [["codespell", { replace = "posargs", extend = true }]]
+
+[env.ruff]
+description = "Run Ruff checks"
+commands = [
+    ["ruff", "check", "{tox_root}"],
+    ["ruff", "format", "{tox_root}", "--check"],
+]
+
+# Per-component envs
+# test-client, test-operator, ... (run them all with `tox -m test`)
+[env_base.test]
+factors = [{ component = ["client", "operator", "registrar", "sshd", "sync"] }]
+change_dir = "{factor:component}"
+package_root = "{factor:component}"
+set_env = { PYTHONWARNINGS = "default::DeprecationWarning" }
+commands = [["pytest", { replace = "posargs", extend = true }]]
+
+# mypy-client, mypy-operator, ... (run them all with `tox -m mypy`)
+[env_base.mypy]
+factors = [{ component = ["client", "operator", "registrar", "sshd", "sync"] }]
+change_dir = "{factor:component}"
+package_root = "{factor:component}"
+commands = [["mypy", "--config-file", "{tox_root}/pyproject.toml", "zenith", "tests", { replace = "posargs", extend = true }]]

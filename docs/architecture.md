@@ -149,7 +149,7 @@ the presence of this record prevents the subdomain from being reserved again. Wh
 registrar token is used to register public keys for a subdomain, the value of this subdomain
 records is flipped from `0` to `1` at the same time as the public keys are stored. Only the
 first client to perform this operation will succeed, hence the tokens are single-use. This
-is acheived using [transactions](https://www.consul.io/api-docs/txn) and
+is achieved using [transactions](https://www.consul.io/api-docs/txn) and
 [check-and-set (CAS)](https://www.consul.io/commands/kv/put#cas) operations in Consul.
 
 ## Why not use Consul Service Sync?

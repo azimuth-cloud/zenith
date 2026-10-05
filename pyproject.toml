@@ -9,15 +9,10 @@ members = [
 
 [dependency-groups]
 dev = [
-    "autopep8",
-    "black",
     "codespell",
-    "coverage",
     "mypy",
-    "python-subunit",
+    "pytest",
     "ruff",
-    "stestr",
-    "testtools",
     "tox",
     "tox-uv",
     "types-pyyaml",
@@ -61,6 +56,9 @@ ignore = [
     "RUF100",
 ]
 
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+
 [tool.mypy]
 follow_imports = "silent"
 warn_redundant_casts = true
@@ -71,3 +69,7 @@ check_untyped_defs = true
 [tool.ruff.lint.mccabe]
 # Flag errors (`C901`) whenever the complexity level exceeds 15.
 max-complexity = 15
+
+[tool.codespell]
+ignore-words = ".codespellignore"
+skip = "uv.lock,.venv,.tox,.git,.ruff_cache,.pytest_cache"

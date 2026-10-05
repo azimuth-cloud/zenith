@@ -4,4 +4,5 @@ sync/chart/charts
 __pycache__
 *.egg-info
 kubeconfig
-.stestr
+.pytest_cache
+.tox
