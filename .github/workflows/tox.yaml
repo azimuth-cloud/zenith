@@ -27,12 +27,8 @@ jobs:
         run: uv run --locked tox -e ruff,codespell
 
   tox-test:
-    name: Tox in ${{ matrix.component }}
+    name: Tox tests
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        component: ['client', 'operator', 'registrar', 'sshd', 'sync']
 
     steps:
       - name: Check out the repository
@@ -43,5 +39,5 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7.0.0
 
-      - name: Run tox in ${{ matrix.component }}
-        run: uv run --locked tox -e test-${{ matrix.component }}
+      - name: Run tests
+        run: uv run --locked tox -m test
