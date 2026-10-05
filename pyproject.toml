@@ -7,6 +7,9 @@ members = [
     "sync",
 ]
 
+[tool.uv]
+exclude-newer = "7 days"
+
 [dependency-groups]
 dev = [
     "codespell",
