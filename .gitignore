@@ -1,8 +1,8 @@
-.python-version
 charts/*/charts
 sync/chart/charts
 **/Chart.lock
 __pycache__
 *.egg-info
 kubeconfig
-.stestr
+.pytest_cache
+.tox

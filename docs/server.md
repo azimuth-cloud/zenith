@@ -287,7 +287,7 @@ common:
 If you use one of the
 [supported DNS providers](https://cert-manager.io/docs/configuration/acme/dns01/#supported-dns01-providers),
 cert-manager can automatically request and renew a wildcard certificate from Let's Encrypt
-using the [DNS-01 challange type](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge).
+using the [DNS-01 challenge type](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge).
 
 To do this, you first need to create an issuer that uses the DNS-01 challenge type,
 then create a [Certificate resource](https://cert-manager.io/docs/usage/certificate/) that
