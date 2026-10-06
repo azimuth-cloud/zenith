@@ -11,7 +11,7 @@ dependencies = [
     "httpx>=0.28.1",
     "kube-custom-resource>=0.6.1",
     "pydantic<3",
-    "pyhelm3>=0.5.5",
+    "pyhelm3>=0.5.7",
     "pyyaml>=6.0.3",
 ]
 

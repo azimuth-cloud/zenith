@@ -9,7 +9,7 @@ dependencies = [
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "pydantic<3",
-    "uvicorn>=0.52.4",
+    "uvicorn>=0.54.0",
 ]
 
 [project.entry-points."zenith.registrar.backends"]
