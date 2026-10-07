@@ -2,6 +2,9 @@ name: Tox unit tests
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
   workflow_call:
     inputs:
       ref:
@@ -10,34 +13,31 @@ on:
         required: true
 
 jobs:
-  tox-lint:
-    name: Tox lint
+  tox:
+    name: Tox
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
+          # Fetch the parent commit so diff-cover can compare against it
+          fetch-depth: 2
 
       - name: Install uv
         uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7.0.0
 
-      - name: Run linters
-        run: uv run --locked tox -e ruff,codespell
+      - name: Run tox
+        run: uv run --locked tox
+        env:
+          # On PRs, HEAD is GitHub's merge commit, so its first parent is the base branch
+          DIFF_COVER_COMPARE_BRANCH: HEAD^1
 
-  tox-test:
-    name: Tox tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7.0.0
-
-      - name: Run tests
-        run: uv run --locked tox -m test
+      - name: Add coverage reports to the job summary
+        run: |
+          cat diff-cover.md >> "$GITHUB_STEP_SUMMARY"
+          echo "# Coverage" >> "$GITHUB_STEP_SUMMARY"
+          uv run --locked coverage report --data-file .coverage --format=markdown >> "$GITHUB_STEP_SUMMARY"
