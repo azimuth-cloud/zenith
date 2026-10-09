@@ -5,7 +5,7 @@ requires-python = ">=3.10"
 dependencies = [
     "click>=8.5.0",
     "configomatic[yaml]>=0.4.0",
-    "cryptography>=50.0.1",
+    "cryptography>=50.0.2",
     "easykube>=0.6.0",
     "pydantic<3",
     "requests>=2.34.2",
