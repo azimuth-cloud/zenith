@@ -4,7 +4,7 @@ dynamic = ["version"]
 requires-python = ">=3.10"
 dependencies = [
     "configomatic[yaml]>=0.4.0",
-    "cryptography>=50.0.1",
+    "cryptography>=50.0.2",
     "easykube>=0.6.0",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
