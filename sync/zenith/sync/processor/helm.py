@@ -182,21 +182,35 @@ class Processor(base.Processor):
                 "subdomainAsPathPrefix": self.config.ingress.subdomain_as_path_prefix,
             },
             "endpoints": [dataclasses.asdict(ep) for ep in service.endpoints],
-            "protocol": service.config.get("backend-protocol", "http"),
+            "protocol": self._get_protocol(service),
             "ingress": {
                 "annotations": self.config.ingress.annotations,
             },
         }
-        read_timeout = service.config.get("read-timeout")
+        read_timeout = self._get_read_timeout(service)
         if read_timeout:
-            # Check that the read timeout is an int - if it isn't don't use it
-            try:
-                read_timeout = int(read_timeout)
-            except ValueError:
-                self.logger.warn("Given read timeout is not a valid integer")
-            else:
-                values["readTimeout"] = read_timeout
+            values["readTimeout"] = read_timeout
         return values
+
+    def _get_protocol(self, service: model.Service) -> str:
+        """
+        Returns the protocol for the service.
+        """
+        return service.config.get("backend-protocol", "http")
+
+    def _get_read_timeout(self, service: model.Service) -> int | None:
+        """
+        Returns the read timeout for the service, if one is given.
+        """
+        read_timeout = service.config.get("read-timeout")
+        if not read_timeout:
+            return None
+        # Check that the read timeout is an int - if it isn't don't use it
+        try:
+            return int(read_timeout)
+        except ValueError:
+            self.logger.warning("Given read timeout is not a valid integer")
+            return None
 
     def _get_ingress_enabled(self, service: model.Service) -> dict[str, typing.Any]:
         """
@@ -276,9 +290,14 @@ class Processor(base.Processor):
                         "issuerURL": issuer_url,
                     },
                 },
+                # The OAuth2 proxy forwards authenticated requests to the service
+                "upstream": {
+                    "protocol": self._get_protocol(service),
+                    "readTimeout": self._get_read_timeout(service),
+                },
                 "alphaConfig": {
                     "configData": {
-                        "injectResponseHeaders": [
+                        "injectRequestHeaders": [
                             {"name": h, "values": [{"claim": c}]}
                             for h, c in (
                                 self.config.ingress.oidc.inject_request_headers.items()

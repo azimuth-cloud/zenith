@@ -26,7 +26,14 @@ spec:
             pathType: Prefix
             backend:
               service:
+                {{- if .Values.oidc.enabled }}
+                # With OIDC, the OAuth2 proxy receives all traffic for the service
+                name: {{ .Release.Name }}-oidc
+                port:
+                  name: http
+                {{- else }}
                 name: {{ .Release.Name }}
                 port:
                   name: dynamic
+                {{- end }}
 {{- end }}
