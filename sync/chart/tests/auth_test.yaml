@@ -1,0 +1,148 @@
+# Tests for the auth and TLS annotations on the ingress
+# These annotations must be supported by both ingress-nginx and Traefik's NGINX
+# compatibility (kubernetesIngressNGINX provider)
+# To update manifest snapshots run helm unittest plugin with -u option:
+# docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest -u /path/to/chart
+suite: Ingress auth annotations
+values:
+  - values_test_overrides.yaml
+templates:
+  - templates/ingress.yaml
+tests:
+  - it: OIDC ingress should match snapshot
+    set: &oidc
+      oidc:
+        enabled: true
+        provider:
+          clientID: client-id
+          clientSecret: client-secret
+          oidcConfig:
+            issuerURL: https://identity.example.com/realms/test
+        alphaConfig:
+          configData:
+            injectResponseHeaders:
+              - name: X-Remote-User
+                values:
+                  - claim: preferred_username
+              - name: X-Remote-Group
+                values:
+                  - claim: groups
+        extraArgs:
+          cookie-secret: cookie-secret-value
+    asserts:
+      - matchSnapshot: {}
+
+  - it: OIDC ingress should not use Lua
+    set: *oidc
+    asserts:
+      - notMatchRegex:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/configuration-snippet"]
+          pattern: _by_lua
+      - notMatchRegex:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/configuration-snippet"]
+          pattern: upstream_cookie_
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+          value: https://bar.foo.example.com/_oidc/start?rd=$escaped_request_uri&$args
+
+  - it: OIDC ingress should use the path prefix when using subdomain as path prefix
+    set:
+      <<: *oidc
+      global:
+        subdomainAsPathPrefix: true
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-url"]
+          value: http://RELEASE-NAME-oidc.NAMESPACE.svc.cluster.local/bar/_oidc/auth
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+          value: https://foo.example.com/bar/_oidc/start?rd=$escaped_request_uri&$args
+
+  - it: external auth ingress with signin URL should match snapshot
+    set:
+      externalAuth: &externalAuth
+        enabled: true
+        url: http://auth.auth-system.svc.cluster.local/verify/
+        signinUrl: https://auth.example.com/login
+        requestHeaders:
+          accept: application/json
+        responseHeaders:
+          - X-Remote-User
+          - X-Remote-Group
+        params:
+          tenancy-id: abcdef
+    asserts:
+      - matchSnapshot: {}
+
+  - it: external auth signin URL should embed the next URL parameter
+    set:
+      externalAuth:
+        <<: *externalAuth
+        nextUrlParam: next_url
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+          value: https://auth.example.com/login?next_url=$scheme://$best_http_host$escaped_request_uri
+      - notExists:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin-redirect-param"]
+
+  - it: external auth signin URL should append to an existing query string
+    set:
+      externalAuth:
+        <<: *externalAuth
+        signinUrl: https://auth.example.com/login?kc_idp_hint=azimuth
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+          value: https://auth.example.com/login?kc_idp_hint=azimuth&next=$scheme://$best_http_host$escaped_request_uri
+
+  - it: external auth signin URL should not override an existing next URL parameter
+    set:
+      externalAuth:
+        <<: *externalAuth
+        signinUrl: https://auth.example.com/login?next=https://other.example.com
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+          value: https://auth.example.com/login?next=https://other.example.com
+
+  - it: external auth signin URL should not treat a similar parameter as the next URL parameter
+    set:
+      externalAuth:
+        <<: *externalAuth
+        signinUrl: https://auth.example.com/login?nextpage=1
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+          value: https://auth.example.com/login?nextpage=1&next=$scheme://$best_http_host$escaped_request_uri
+
+  - it: external auth without signin URL should not set signin annotations
+    set:
+      externalAuth:
+        <<: *externalAuth
+        signinUrl:
+    asserts:
+      - notExists:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+      - notExists:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin-redirect-param"]
+
+  - it: client CA ingress should match snapshot
+    set:
+      ingress:
+        tls:
+          clientCA: |
+            -----BEGIN CERTIFICATE-----
+            notarealcertificate
+            -----END CERTIFICATE-----
+    asserts:
+      - matchSnapshot: {}
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-tls-secret"]
+          value: NAMESPACE/tls-client-ca-RELEASE-NAME
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-tls-verify-client"]
+          value: optional
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream"]
+          value: "true"

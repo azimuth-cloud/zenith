@@ -92,6 +92,12 @@ jobs:
             chart_name_jsonpath: dependencies[0].name
             chart_repo_jsonpath: dependencies[0].repository
             chart_version_jsonpath: dependencies[0].version
+          - key: valkey
+            component: server
+            path: ./charts/server/Chart.yaml
+            chart_name_jsonpath: dependencies[0].name
+            chart_repo_jsonpath: dependencies[0].repository
+            chart_version_jsonpath: dependencies[0].version
 
     name: ${{ matrix.key }}
     permissions:

@@ -1,0 +1,103 @@
+# Tests for the Valkey instance used to store OIDC sessions for Zenith services
+suite: Valkey session store
+release:
+  name: zenith
+  namespace: azimuth
+templates:
+  - templates/sync/configmap.yaml
+  - templates/valkey/secrets.yaml
+  - templates/valkey/networkpolicy.yaml
+  - charts/valkey/templates/*.yaml
+tests:
+  - it: should configure zenith-sync to use Valkey
+    template: templates/sync/configmap.yaml
+    asserts:
+      - matchRegex:
+          path: data["sync.yaml"]
+          pattern: |-
+            (?m)^      valkey:
+                    passwordSecretKey: password
+                    passwordSecretName: zenith-zenith-server-valkey-password
+                    url: redis://zenith-valkey.azimuth.svc.cluster.local:6379$
+
+  - it: should not configure zenith-sync to use Valkey when disabled
+    template: templates/sync/configmap.yaml
+    set:
+      valkey:
+        enabled: false
+    asserts:
+      - notMatchRegex:
+          path: data["sync.yaml"]
+          pattern: valkey
+
+  - it: should use the same password for Valkey and the OAuth2 proxies
+    template: templates/valkey/secrets.yaml
+    set:
+      valkey:
+        password: valkey-password
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: data.password
+          value: dmFsa2V5LXBhc3N3b3Jk
+      - equal:
+          path: metadata.name
+          value: zenith-valkey-users
+        documentIndex: 0
+      - isNull:
+          path: metadata.namespace
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: zenith-zenith-server-valkey-password
+        documentIndex: 1
+      - equal:
+          path: metadata.namespace
+          value: zenith-services
+        documentIndex: 1
+
+  - it: should generate a password if not given
+    template: templates/valkey/secrets.yaml
+    asserts:
+      - matchRegex:
+          path: data.password
+          pattern: ^[A-Za-z0-9+/=]{44}$
+
+  - it: should only allow the OAuth2 proxies to access Valkey
+    template: templates/valkey/networkpolicy.yaml
+    asserts:
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: valkey
+            app.kubernetes.io/instance: zenith
+      - equal:
+          path: spec.ingress[0].from
+          value:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: zenith-services
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: oidc
+
+  - it: should deploy Valkey with the users secret
+    template: charts/valkey/templates/deploy_valkey.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: valkey-users-secret
+            secret:
+              secretName: zenith-valkey-users
+              defaultMode: 0400
+
+  - it: should not deploy Valkey resources when disabled
+    template: templates/valkey/secrets.yaml
+    set:
+      valkey:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

@@ -29,7 +29,9 @@ jobs:
         uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2
 
       - name: Add helm repositories
-        run: helm repo add oauth2 https://oauth2-proxy.github.io/manifests
+        run: |-
+          helm repo add oauth2 https://oauth2-proxy.github.io/manifests
+          helm repo add valkey https://valkey.io/valkey-helm/
 
       - name: Run chart-testing (lint)
         run: |-

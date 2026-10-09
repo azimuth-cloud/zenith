@@ -1,0 +1,56 @@
+# Tests for storing OAuth2 proxy sessions in Valkey, using values as set by zenith-sync
+suite: OIDC session storage
+values:
+  - values_test_overrides.yaml
+templates:
+  # The deployment includes other templates to compute checksums
+  - charts/oidc/templates/*.yaml
+set:
+  oidc:
+    enabled: true
+    provider:
+      clientID: client-id
+      clientSecret: client-secret
+      oidcConfig:
+        issuerURL: https://identity.example.com/realms/test
+    extraArgs:
+      cookie-secret: cookie-secret-value
+tests:
+  - it: should store sessions in cookies by default
+    template: charts/oidc/templates/deployment.yaml
+    asserts:
+      # With cookie storage and proxyVarsAsSecrets disabled, no env vars are set
+      - isNullOrEmpty:
+          path: spec.template.spec.containers[0].env
+
+  - it: should store sessions in Valkey when configured
+    template: charts/oidc/templates/deployment.yaml
+    set:
+      oidc:
+        sessionStorage:
+          type: redis
+          redis:
+            clientType: standalone
+            standalone:
+              connectionUrl: redis://zenith-valkey.azimuth.svc.cluster.local:6379
+            existingSecret: zenith-valkey-password
+            passwordKey: password
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OAUTH2_PROXY_SESSION_STORE_TYPE
+            value: redis
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OAUTH2_PROXY_REDIS_CONNECTION_URL
+            value: redis://zenith-valkey.azimuth.svc.cluster.local:6379
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OAUTH2_PROXY_REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: zenith-valkey-password
+                key: password
