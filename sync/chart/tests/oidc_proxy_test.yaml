@@ -1,0 +1,209 @@
+# Tests for OIDC auth, where the OAuth2 proxy receives all traffic for the service and
+# forwards authenticated requests to the service
+# To update manifest snapshots run helm unittest plugin with -u option:
+# docker run -i --rm -v $(pwd):/apps helmunittest/helm-unittest -u /path/to/chart
+suite: OIDC proxy
+release:
+  name: svc1
+  namespace: zenith-services
+values:
+  - values_test_overrides.yaml
+templates:
+  - templates/ingress.yaml
+  # The deployment includes other templates to compute checksums
+  - charts/oidc/templates/*.yaml
+set:
+  oidc:
+    enabled: true
+    provider:
+      clientID: client-id
+      clientSecret: client-secret
+      oidcConfig:
+        issuerURL: https://identity.example.com/realms/test
+    alphaConfig:
+      configData:
+        injectRequestHeaders:
+          - name: X-Remote-User
+            values:
+              - claim: preferred_username
+          - name: X-Remote-Group
+            values:
+              - claim: groups
+    extraArgs:
+      cookie-secret: cookie-secret-value
+tests:
+  - it: ingress should match snapshot
+    template: templates/ingress.yaml
+    asserts:
+      - matchSnapshot: {}
+
+  - it: ingress should send all traffic to the OAuth2 proxy
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths
+          value:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: svc1-oidc
+                  port:
+                    name: http
+
+  - it: ingress should not use auth annotations or snippets
+    template: templates/ingress.yaml
+    asserts:
+      - notExists:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-url"]
+      - notExists:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+      - notExists:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-response-headers"]
+      - notExists:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/configuration-snippet"]
+
+  - it: ingress should use HTTP to the OAuth2 proxy even if the service uses HTTPS
+    template: templates/ingress.yaml
+    set:
+      protocol: https
+      oidc:
+        upstream:
+          protocol: https
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/backend-protocol"]
+          value: http
+
+  - it: ingress should keep the read timeout
+    template: templates/ingress.yaml
+    set:
+      readTimeout: 600
+      oidc:
+        upstream:
+          readTimeout: 600
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/proxy-read-timeout"]
+          value: "600"
+
+  - it: ingress should send traffic for the path prefix to the OAuth2 proxy
+    template: templates/ingress.yaml
+    set:
+      global:
+        subdomainAsPathPrefix: true
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: foo.example.com
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /bar
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: svc1-oidc
+
+  - it: OAuth2 proxy should forward requests to the service
+    template: charts/oidc/templates/secret-alpha.yaml
+    asserts:
+      - matchRegex:
+          path: data["oauth2_proxy.yml"]
+          decodeBase64: true
+          pattern: |-
+            upstreamConfig:
+              upstreams:
+                - id: zenith-service
+                  path: /
+                  uri: http://svc1.zenith-services.svc:80
+                  passHostHeader: true
+                  proxyWebSockets: true
+                  timeout: 3600s
+      - notMatchRegex:
+          path: data["oauth2_proxy.yml"]
+          decodeBase64: true
+          pattern: insecureSkipTLSVerify
+      - notMatchRegex:
+          path: data["oauth2_proxy.yml"]
+          decodeBase64: true
+          pattern: "static: true"
+
+  - it: OAuth2 proxy should forward requests to an HTTPS service without verifying TLS
+    template: charts/oidc/templates/secret-alpha.yaml
+    set:
+      oidc:
+        upstream:
+          protocol: https
+    asserts:
+      - matchRegex:
+          path: data["oauth2_proxy.yml"]
+          decodeBase64: true
+          pattern: "uri: https://svc1.zenith-services.svc:443"
+      - matchRegex:
+          path: data["oauth2_proxy.yml"]
+          decodeBase64: true
+          pattern: "insecureSkipTLSVerify: true"
+
+  - it: OAuth2 proxy should use the read timeout for the service
+    template: charts/oidc/templates/secret-alpha.yaml
+    set:
+      oidc:
+        upstream:
+          readTimeout: 600
+    asserts:
+      - matchRegex:
+          path: data["oauth2_proxy.yml"]
+          decodeBase64: true
+          pattern: "timeout: 600s"
+
+  - it: OAuth2 proxy should inject claims into the request to the service
+    template: charts/oidc/templates/secret-alpha.yaml
+    asserts:
+      - matchRegex:
+          path: data["oauth2_proxy.yml"]
+          decodeBase64: true
+          pattern: |-
+            injectRequestHeaders:
+            - name: X-Remote-User
+              values:
+              - claim: preferred_username
+            - name: X-Remote-Group
+              values:
+              - claim: groups
+      - notMatchRegex:
+          path: data["oauth2_proxy.yml"]
+          decodeBase64: true
+          pattern: injectResponseHeaders
+
+  - it: OAuth2 proxy should run two replicas spread across nodes
+    template: charts/oidc/templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 2
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints
+          value:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: oidc
+              matchLabelKeys:
+                - app.kubernetes.io/instance
+      # The constraint relies on these labels being on the pods
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: oidc
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: svc1
+
+  - it: OAuth2 proxy should allow one replica to be disrupted at a time
+    template: charts/oidc/templates/poddisruptionbudget.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.minAvailable
+          value: 1
