@@ -1,10 +1,324 @@
 templated manifests should match snapshot:
   1: |
+    raw: "⭐ Valkey has been deployed!\n\nRelease:      RELEASE-NAME\nNamespace:    NAMESPACE\nChart:        valkey 0.12.0\nApp version:  9.1.2\n================================================================================\n\U0001F4E6 STANDALONE MODE\n================================================================================\n\nService:      RELEASE-NAME-valkey\nType:         ClusterIP\nPort:         6379\n\n1) In-cluster access\n   From another Pod:\n   $ valkey-cli -h RELEASE-NAME-valkey -p 6379 PING\n\n2) Local access via kubectl port-forward\n   $ kubectl -n NAMESPACE port-forward svc/RELEASE-NAME-valkey 6379:6379\n   In another terminal:\n   $ valkey-cli -h 127.0.0.1 -p 6379 PING\n\n\n\n\U0001F510 Authentication is ENABLED (ACL)\n- Provide the username and password from `.auth.aclUsers`.\n\n\n✅ Quick test\n$ valkey-cli -h RELEASE-NAME-valkey -p 6379 --user <user> -a <password>\nvalkey> SET foo bar\nvalkey> GET foo\n\"bar\"\n\n\U0001F4BE Persistence\n- Persistence is DISABLED. Data will not survive Pod restarts.\n- Enable with:\n    `--set dataStorage.enabled=true --set dataStorage.requestedSize=5Gi` (optionally set `dataStorage.className`)\n    or\n    `--set dataStorage.enabled=true --set dataStorage.persistentVolumeClaimName=valkey-data-pvc` to use an existing PVC\n    or\n    `--set dataStorage.enabled=true --set dataStorage.hostPath=/some/path/` to use a hostPath volume.\n\n\U0001F9F9 Uninstall\n$ helm -n NAMESPACE uninstall RELEASE-NAME\n"
+  2: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/version: 9.1.2
+        helm.sh/chart: valkey-0.12.0
+      name: RELEASE-NAME-valkey
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: valkey
+      strategy:
+        type: RollingUpdate
+      template:
+        metadata:
+          annotations:
+            checksum/initconfig: ce6e30b62b1ec5c1fac2c6594daec779
+          labels:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: valkey
+        spec:
+          automountServiceAccountToken: false
+          containers:
+            - args:
+                - /data/conf/valkey.conf
+              command:
+                - valkey-server
+              env:
+                - name: VALKEY_LOG_LEVEL
+                  value: notice
+              image: docker.io/valkey/valkey:9.1.2
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                exec:
+                  command:
+                    - valkey-cli
+                    - ping
+                failureThreshold: 3
+                initialDelaySeconds: 0
+                periodSeconds: 10
+                timeoutSeconds: 1
+              name: RELEASE-NAME-valkey
+              ports:
+                - containerPort: 6379
+                  name: tcp
+                  protocol: TCP
+              resources: {}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000
+              startupProbe:
+                exec:
+                  command:
+                    - valkey-cli
+                    - ping
+                failureThreshold: 3
+                initialDelaySeconds: 0
+                periodSeconds: 10
+                timeoutSeconds: 1
+              volumeMounts:
+                - mountPath: /data
+                  name: valkey-data
+                - mountPath: /etc/valkey
+                  name: valkey-acl
+          initContainers:
+            - command:
+                - /scripts/init.sh
+              image: docker.io/valkey/valkey:9.1.2
+              imagePullPolicy: IfNotPresent
+              name: RELEASE-NAME-valkey-init
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000
+              volumeMounts:
+                - mountPath: /data
+                  name: valkey-data
+                - mountPath: /scripts
+                  name: scripts
+                - mountPath: /etc/valkey
+                  name: valkey-acl
+                - mountPath: /valkey-users-secret
+                  name: valkey-users-secret
+                  readOnly: true
+          securityContext:
+            fsGroup: 1000
+            runAsGroup: 1000
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: RELEASE-NAME-valkey
+          volumes:
+            - configMap:
+                defaultMode: 365
+                name: RELEASE-NAME-valkey-init-scripts
+              name: scripts
+            - emptyDir:
+                medium: Memory
+              name: valkey-acl
+            - name: valkey-users-secret
+              secret:
+                defaultMode: 256
+                secretName: RELEASE-NAME-valkey-users
+            - emptyDir: {}
+              name: valkey-data
+  3: |
+    apiVersion: v1
+    data:
+      init.sh: |-
+        #!/bin/sh
+        set -eu
+
+        # Default config paths
+        VALKEY_CONFIG=${VALKEY_CONFIG_PATH:-/data/conf/valkey.conf}
+
+        LOGFILE="/data/init.log"
+        DATA_DIR="/data/conf"
+
+        # Logging function (outputs to stderr and file)
+        log() {
+          echo "$(date) $1" | tee -a "$LOGFILE" >&2
+        }
+        # Function to get password for a user
+        # Usage: get_user_password <username> [password_key]
+        # Returns: password via stdout, exits with error if not found
+        get_user_password() {
+          username="$1"
+          password_key="${2:-$username}"
+          password=""
+          # Try to get password from existing secret first (priority)
+          if [ -f "/valkey-users-secret/$password_key" ]; then
+            password=$(cat "/valkey-users-secret/$password_key")
+            log "Using password from existing secret for user $username"
+          elif [ -f "/valkey-auth-secret/${username}-password" ]; then
+            # Fallback to inline password
+            password=$(cat "/valkey-auth-secret/${username}-password")
+            log "Using inline password for user $username"
+          else
+            log "ERROR: No password found for user $username"
+            return 1
+          fi
+
+          echo "$password"
+        }
+
+        # Clean old log if requested
+        if [ "${KEEP_OLD_LOGS:-false}" != "true" ]; then
+          rm -f "$LOGFILE"
+        fi
+
+        if [ -f "$LOGFILE" ]; then
+          log "Detected restart of this instance ($HOSTNAME)"
+        fi
+
+        log "Creating configuration in $DATA_DIR..."
+        mkdir -p "$DATA_DIR"
+        rm -f "$VALKEY_CONFIG"
+
+
+        # Base valkey.conf
+        log "Generating base valkey.conf"
+        {
+          echo "port 6379"
+          echo "protected-mode no"
+          echo "bind * -::*"
+          echo "dir /data"
+        } >>"$VALKEY_CONFIG"
+        # Create secure directory for ACL file
+        log "Creating /etc/valkey directory for ACL file"
+        mkdir -p /etc/valkey
+
+        # Set aclfile path in valkey.conf
+        echo "aclfile /etc/valkey/users.acl" >>"$VALKEY_CONFIG"
+
+        # Remove or reset existing ACL file if present (it may be read-only from previous run)
+        log "Preparing ACL file at /etc/valkey/users.acl"
+        if [ -f /etc/valkey/users.acl ]; then
+          log "Removing existing read-only users.acl file"
+          chmod 0600 /etc/valkey/users.acl
+          rm -f /etc/valkey/users.acl
+        fi
+
+        # Create ACL file with secure permissions
+        touch /etc/valkey/users.acl
+        chmod 0600 /etc/valkey/users.acl
+        # Generate ACL entries for each user
+        log "Generating ACL entries for users"
+
+        # User: default
+        PASSWORD=$(get_user_password "default" "password") || exit 1
+
+        # Hash the password and write ACL entry
+        PASSHASH=$(echo -n "$PASSWORD" | sha256sum | cut -f 1 -d " ")
+        echo "user default on #$PASSHASH ~* &* +@all" >> /etc/valkey/users.acl
+
+        # Set final permissions
+        chmod 0400 /etc/valkey/users.acl
+        log "ACL file created with 0400 permissions"
+
+        # Append extra configs if present
+        if [ -f /usr/local/etc/valkey/valkey.conf ]; then
+          log "Appending /usr/local/etc/valkey/valkey.conf"
+          cat /usr/local/etc/valkey/valkey.conf >>"$VALKEY_CONFIG"
+        fi
+        if [ -d /extravalkeyconfigs ]; then
+          log "Appending files in /extravalkeyconfigs/"
+          cat /extravalkeyconfigs/* >>"$VALKEY_CONFIG"
+        fi
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/version: 9.1.2
+        helm.sh/chart: valkey-0.12.0
+      name: RELEASE-NAME-valkey-init-scripts
+  4: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/component: primary
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/version: 9.1.2
+        helm.sh/chart: valkey-0.12.0
+      name: RELEASE-NAME-valkey
+    spec:
+      ports:
+        - name: tcp
+          port: 6379
+          protocol: TCP
+          targetPort: tcp
+      selector:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: valkey
+      type: ClusterIP
+  5: |
+    apiVersion: v1
+    automountServiceAccountToken: false
+    kind: ServiceAccount
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/version: 9.1.2
+        helm.sh/chart: valkey-0.12.0
+      name: RELEASE-NAME-valkey
+  6: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      annotations:
+        helm.sh/hook: test
+        helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/version: 9.1.2
+        helm.sh/chart: valkey-0.12.0
+      name: RELEASE-NAME-valkey-test-auth-existing
+    spec:
+      containers:
+        - command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "Testing authentication with usersExistingSecret..."
+              TLS_FLAGS=""
+
+              # Test basic connection (no auth - will fail if auth is properly configured)
+              PING_RESULT=$(valkey-cli -h RELEASE-NAME-valkey -p 6379 $TLS_FLAGS PING 2>&1 || true)
+              if [ "$PING_RESULT" = "PONG" ]; then
+                echo "✗ Authentication test failed: server allows unauthenticated access"
+                exit 1
+              fi
+
+              echo "✓ Authentication is enforced (unauthenticated access denied)"
+              echo "✓ Received expected error: $PING_RESULT"
+              echo "⚠ Manual verification recommended for usersExistingSecret configuration"
+              exit 0
+          image: docker.io/valkey/valkey:9.1.2
+          name: test-auth
+          volumeMounts:
+            - mountPath: /valkey-users-secret
+              name: valkey-users-secret
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: valkey-users-secret
+          secret:
+            secretName: RELEASE-NAME-valkey-users
+  7: |
     apiVersion: v1
     kind: Namespace
     metadata:
       name: zenith-services
-  2: |
+  8: |
     apiVersion: apps/v1
     kind: Deployment
     metadata:
@@ -58,7 +372,7 @@ templated manifests should match snapshot:
             - name: etc-zenith
               secret:
                 secretName: release-name-zenith-server-registrar-conf
-  3: |
+  9: |
     apiVersion: networking.k8s.io/v1
     kind: Ingress
     metadata:
@@ -88,7 +402,7 @@ templated manifests should match snapshot:
         - hosts:
             - registrar.%!s(<nil>)
           secretName: release-name-zenith-server-registrar-tls
-  4: |
+  10: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
@@ -112,7 +426,7 @@ templated manifests should match snapshot:
           - watch
           - create
           - update
-  5: |
+  11: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
@@ -133,7 +447,7 @@ templated manifests should match snapshot:
       - kind: ServiceAccount
         name: release-name-zenith-server-registrar
         namespace: NAMESPACE
-  6: |
+  12: |
     apiVersion: v1
     kind: Secret
     metadata:
@@ -147,7 +461,7 @@ templated manifests should match snapshot:
       name: release-name-zenith-server-registrar-conf
     stringData:
       registrar.yaml: "baseDomain: \ncrdTargetNamespace: zenith-services\ninternalBaseDomain: zenith-services.svc.cluster.local\nreservedSubdomains:\n- registrar\nsubdomainAsPathPrefix: false\n"
-  7: |
+  13: |
     apiVersion: v1
     kind: Service
     metadata:
@@ -170,7 +484,7 @@ templated manifests should match snapshot:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/name: zenith-server
       type: ClusterIP
-  8: |
+  14: |
     apiVersion: v1
     kind: ServiceAccount
     metadata:
@@ -182,7 +496,7 @@ templated manifests should match snapshot:
         app.kubernetes.io/version: main
         helm.sh/chart: zenith-server-0.1.0
       name: release-name-zenith-server-registrar
-  9: |
+  15: |
     apiVersion: v1
     data:
       user-config.yaml: |
@@ -197,7 +511,7 @@ templated manifests should match snapshot:
         app.kubernetes.io/version: main
         helm.sh/chart: zenith-server-0.1.0
       name: release-name-zenith-server-sshd-conf
-  10: |
+  16: |
     apiVersion: apps/v1
     kind: Deployment
     metadata:
@@ -271,7 +585,7 @@ templated manifests should match snapshot:
               name: etc-zenith
             - emptyDir: {}
               name: var-run-sshd
-  11: |
+  17: |
     apiVersion: policy/v1
     kind: PodDisruptionBudget
     metadata:
@@ -290,7 +604,7 @@ templated manifests should match snapshot:
           app.kubernetes.io/component: sshd
           app.kubernetes.io/instance: RELEASE-NAME
           app.kubernetes.io/name: zenith-server
-  12: |
+  18: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
@@ -327,7 +641,7 @@ templated manifests should match snapshot:
           - create
           - patch
           - delete
-  13: |
+  19: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
@@ -348,7 +662,7 @@ templated manifests should match snapshot:
       - kind: ServiceAccount
         name: release-name-zenith-server-sshd
         namespace: NAMESPACE
-  14: |
+  20: |
     apiVersion: v1
     kind: Service
     metadata:
@@ -371,7 +685,7 @@ templated manifests should match snapshot:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/name: zenith-server
       type: LoadBalancer
-  15: |
+  21: |
     apiVersion: v1
     kind: ServiceAccount
     metadata:
@@ -383,7 +697,7 @@ templated manifests should match snapshot:
         app.kubernetes.io/version: main
         helm.sh/chart: zenith-server-0.1.0
       name: release-name-zenith-server-sshd
-  16: |
+  22: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRole
     metadata:
@@ -416,7 +730,7 @@ templated manifests should match snapshot:
         verbs:
           - update
           - patch
-  17: |
+  23: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
     metadata:
@@ -436,7 +750,7 @@ templated manifests should match snapshot:
       - kind: ServiceAccount
         name: release-name-zenith-server-sync
         namespace: NAMESPACE
-  18: |
+  24: |
     apiVersion: v1
     data:
       sync.yaml: |
@@ -449,6 +763,10 @@ templated manifests should match snapshot:
               injectRequestHeaders:
                 X-Remote-Group: groups
                 X-Remote-User: preferred_username
+              valkey:
+                passwordSecretKey: password
+                passwordSecretName: release-name-zenith-server-valkey-password
+                url: redis://RELEASE-NAME-valkey.NAMESPACE.svc.cluster.local:6379
             subdomainAsPathPrefix: false
             tls:
               annotations: {}
@@ -466,7 +784,7 @@ templated manifests should match snapshot:
         app.kubernetes.io/version: main
         helm.sh/chart: zenith-server-0.1.0
       name: release-name-zenith-server-sync-conf
-  19: |
+  25: |
     apiVersion: apps/v1
     kind: Deployment
     metadata:
@@ -490,7 +808,7 @@ templated manifests should match snapshot:
       template:
         metadata:
           annotations:
-            zenith.stackhpc.com/config-hash: e1953565170a813eae30b4b800f5658d5289c9ad585b4c1fceaa3c4efdc1b999
+            zenith.stackhpc.com/config-hash: af48ce78de6ed5f832bbdd8d2d4867ffdd36276f8b4735aea44aa3fab6c6fd61
           labels:
             app.kubernetes.io/component: sync
             app.kubernetes.io/instance: RELEASE-NAME
@@ -531,7 +849,7 @@ templated manifests should match snapshot:
               name: etc-zenith
             - emptyDir: {}
               name: tmp
-  20: |
+  26: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
@@ -611,7 +929,7 @@ templated manifests should match snapshot:
           - servicemonitors
         verbs:
           - '*'
-  21: |
+  27: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
@@ -632,7 +950,7 @@ templated manifests should match snapshot:
       - kind: ServiceAccount
         name: release-name-zenith-server-sync
         namespace: NAMESPACE
-  22: |
+  28: |
     apiVersion: v1
     kind: Service
     metadata:
@@ -655,7 +973,7 @@ templated manifests should match snapshot:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/name: zenith-server
       type: ClusterIP
-  23: |
+  29: |
     apiVersion: v1
     kind: ServiceAccount
     metadata:
@@ -667,3 +985,64 @@ templated manifests should match snapshot:
         app.kubernetes.io/version: main
         helm.sh/chart: zenith-server-0.1.0
       name: release-name-zenith-server-sync
+  30: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      labels:
+        app.kubernetes.io/component: valkey
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-valkey
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: zenith-services
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: oidc
+          ports:
+            - port: 6379
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: valkey
+      policyTypes:
+        - Ingress
+  31: |
+    apiVersion: v1
+    data:
+      password: dmFsa2V5LXBhc3N3b3Jk
+    kind: Secret
+    metadata:
+      labels:
+        app.kubernetes.io/component: valkey
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: RELEASE-NAME-valkey-users
+    type: Opaque
+  32: |
+    apiVersion: v1
+    data:
+      password: dmFsa2V5LXBhc3N3b3Jk
+    kind: Secret
+    metadata:
+      labels:
+        app.kubernetes.io/component: valkey
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: zenith-server
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-server-0.1.0
+      name: release-name-zenith-server-valkey-password
+      namespace: zenith-services
+    type: Opaque
