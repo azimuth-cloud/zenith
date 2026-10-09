@@ -102,24 +102,58 @@ oidc:
       insecureAllowUnverifiedEmail: true
       groupsClaim: groups
       audienceClaims: ["aud"]
+  # The OAuth2 proxy is in the data path for the service, so run two replicas
+  # Sessions are stored in cookies, so the replicas don't need to share any state
+  replicaCount: 2
+  # Prefer to run the replicas on different nodes
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: oidc
+      matchLabelKeys:
+        - app.kubernetes.io/instance
+  # The OAuth2 proxy receives all traffic for the service and forwards authenticated
+  # requests to the Zenith service
+  # These must match the protocol and readTimeout for the service, as the subchart
+  # cannot see them
+  upstream:
+    # The protocol for the service
+    protocol: http
+    # The time to wait for the response headers from the service, in seconds
+    # If not given, a long timeout is used so that the ingress controller's read timeout
+    # is the effective limit
+    readTimeout:
   # We use the alpha config in order to be able to use loginURLParameters
   alphaConfig:
     enabled: true
     # Static parts of the configuration
     configData:
-      # This is the claims to return as headers from the response
-      injectResponseHeaders: []
-      # Just configure a "null" upstream as we are using it as an auth request
-      upstreamConfig:
-        upstreams:
-          - id: static
-            path: "/"
-            static: true
+      # These are the claims to inject as headers into the request to the service
+      # Any headers with the same names in the incoming request are removed
+      injectRequestHeaders: []
     # We template the provider so that we can move the provider configuration
     # to a higher level and get the nice merging behaviour
+    # The upstream is templated so that it points at the service for the release
     configFile: |
       providers:
         - {{ toYaml .Values.provider | nindent 6 }}
+      upstreamConfig:
+        upstreams:
+          {{- $protocol := .Values.upstream.protocol }}
+          {{- $port := ternary 443 80 (eq $protocol "https") }}
+          - id: zenith-service
+            path: /
+            uri: {{ printf "%s://%s.%s.svc:%d" $protocol .Release.Name .Release.Namespace $port }}
+            passHostHeader: true
+            proxyWebSockets: true
+            timeout: {{ printf "%ds" (int64 (.Values.upstream.readTimeout | default 3600)) }}
+            {{- if eq .Values.upstream.protocol "https" }}
+            # Like the ingress controller, don't verify the certificate of the service
+            insecureSkipTLSVerify: true
+            {{- end }}
   # Disable the standard config
   config:
     configFile: ""

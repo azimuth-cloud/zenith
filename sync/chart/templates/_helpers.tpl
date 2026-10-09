@@ -30,7 +30,11 @@ Annotations for the ingress resource.
 */}}
 {{- define "zenith-service.ingress.annotations" -}}
 {{ toYaml .Values.ingress.annotations }}
-nginx.ingress.kubernetes.io/backend-protocol: {{ quote .Values.protocol }}
+{{- /*
+  With OIDC, the ingress forwards to the OAuth2 proxy, which listens on HTTP and
+  forwards authenticated requests to the service using the service protocol
+*/}}
+nginx.ingress.kubernetes.io/backend-protocol: {{ ternary "http" .Values.protocol .Values.oidc.enabled | quote }}
 {{- with .Values.readTimeout }}
 nginx.ingress.kubernetes.io/proxy-read-timeout: {{ int64 . | quote }}
 {{- end }}
@@ -39,9 +43,6 @@ nginx.ingress.kubernetes.io/proxy-read-timeout: {{ int64 . | quote }}
 {{- end }}
 {{- if .Values.externalAuth.enabled }}
 {{- include "zenith-service.ingress.auth.external.annotations" . }}
-{{- end }}
-{{- if .Values.oidc.enabled }}
-{{- include "zenith-service.ingress.auth.oidc.annotations" . }}
 {{- end }}
 {{- end }}
 
@@ -72,8 +73,7 @@ Annotations for external auth.
 {{- with .Values.externalAuth }}
 nginx.ingress.kubernetes.io/auth-url: {{ .url | required "external auth URL is required" | quote }}
 {{- if .signinUrl }}
-nginx.ingress.kubernetes.io/auth-signin: {{ quote .signinUrl }}
-nginx.ingress.kubernetes.io/auth-signin-redirect-param: {{ .nextUrlParam }}
+nginx.ingress.kubernetes.io/auth-signin: {{ include "zenith-service.ingress.auth.external.signinUrl" . | quote }}
 {{- end }}
 {{- if or .requestHeaders .params }}
 nginx.ingress.kubernetes.io/auth-snippet: |
@@ -91,43 +91,20 @@ nginx.ingress.kubernetes.io/auth-response-headers: {{ join "," .responseHeaders 
 {{- end }}
 
 {{/*
-Annotations for OIDC auth.
+The signin URL for external auth, including the parameter for the original URL.
 */}}
-{{- define "zenith-service.ingress.auth.oidc.annotations" -}}
-{{- $scheme := ternary "https" "http" .Values.global.secure }}
-{{- $host := include "zenith-service.ingress.host" . }}
-{{- $oidcReleaseName := printf "%s-oidc" .Release.Name }}
-{{- $prefix := tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
-nginx.ingress.kubernetes.io/auth-url: >-
-  http://{{ $oidcReleaseName }}.{{ .Release.Namespace }}.svc.cluster.local{{ $prefix }}/auth
-nginx.ingress.kubernetes.io/auth-signin: >-
-  {{ $scheme }}://{{ $host }}{{ $prefix }}/start?rd=$escaped_request_uri&$args
-{{- with .Values.oidc.alphaConfig.configData.injectResponseHeaders }}
-nginx.ingress.kubernetes.io/auth-response-headers: >-
-  {{ range $i, $rh := . }}{{ if $i }},{{ end }}{{ $rh.name }}{{ end }}
+{{- define "zenith-service.ingress.auth.external.signinUrl" -}}
+{{- $query := get (urlParse .signinUrl) "query" }}
+{{- if regexMatch (printf "(^|&)%s=" (regexQuoteMeta .nextUrlParam)) $query }}
+{{- .signinUrl }}
+{{- else }}
+{{-
+  printf "%s%s%s=$scheme://$best_http_host$escaped_request_uri"
+    .signinUrl
+    (ternary "&" "?" (contains "?" .signinUrl))
+    .nextUrlParam
+}}
 {{- end }}
-nginx.ingress.kubernetes.io/configuration-snippet: |
-  auth_request_set $auth_cookie__oauth2_proxy_1 $upstream_cookie__oauth2_proxy_1;
-  auth_request_set $auth_cookie__oauth2_proxy_2 $upstream_cookie__oauth2_proxy_2;
-  auth_request_set $auth_cookie__oauth2_proxy_3 $upstream_cookie__oauth2_proxy_3;
-
-  access_by_lua_block {
-    local auth_set_cookie = ngx.var.auth_cookie
-    
-    if ngx.var.auth_cookie__oauth2_proxy_1 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_1=" .. ngx.var.auth_cookie__oauth2_proxy_1 .. "; " .. auth_set_cookie
-    end
-    if ngx.var.auth_cookie__oauth2_proxy_2 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_2=" .. ngx.var.auth_cookie__oauth2_proxy_2 .. "; " .. auth_set_cookie
-    end
-    if ngx.var.auth_cookie__oauth2_proxy_3 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_3=" .. ngx.var.auth_cookie__oauth2_proxy_3 .. "; " .. auth_set_cookie
-    end
-
-    if auth_set_cookie ~= "" then
-      ngx.header["Set-Cookie"] = auth_set_cookie
-    end
-  }
 {{- end }}
 
 {{/*
