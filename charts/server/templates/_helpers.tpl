@@ -80,3 +80,37 @@ Labels for a component resource.
 {{ include "zenith.commonLabels" (index . 0) }}
 {{ include "zenith.componentSelectorLabels" . }}
 {{- end -}}
+
+{{/*
+The fully qualified name of the Valkey subchart resources.
+*/}}
+{{- define "zenith.valkey.fullname" -}}
+{{-
+  include "valkey.fullname" (
+    dict
+      "Chart" (dict "Name" "valkey")
+      "Release" .Release
+      "Values" .Values.valkey
+  )
+}}
+{{- end }}
+
+{{/*
+The URL of the Valkey server.
+*/}}
+{{- define "zenith.valkey.url" -}}
+{{-
+  printf "redis://%s.%s.svc.%s:%d"
+    (include "zenith.valkey.fullname" .)
+    .Release.Namespace
+    .Values.valkey.clusterDomain
+    (int .Values.valkey.service.port)
+}}
+{{- end }}
+
+{{/*
+The name of the secret containing the Valkey password in the target namespace.
+*/}}
+{{- define "zenith.valkey.passwordSecretName" -}}
+{{- include "zenith.componentname" (list . "valkey-password") }}
+{{- end }}

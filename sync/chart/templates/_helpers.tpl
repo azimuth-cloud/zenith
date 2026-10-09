@@ -72,8 +72,7 @@ Annotations for external auth.
 {{- with .Values.externalAuth }}
 nginx.ingress.kubernetes.io/auth-url: {{ .url | required "external auth URL is required" | quote }}
 {{- if .signinUrl }}
-nginx.ingress.kubernetes.io/auth-signin: {{ quote .signinUrl }}
-nginx.ingress.kubernetes.io/auth-signin-redirect-param: {{ .nextUrlParam }}
+nginx.ingress.kubernetes.io/auth-signin: {{ include "zenith-service.ingress.auth.external.signinUrl" . | quote }}
 {{- end }}
 {{- if or .requestHeaders .params }}
 nginx.ingress.kubernetes.io/auth-snippet: |
@@ -87,6 +86,23 @@ nginx.ingress.kubernetes.io/auth-snippet: |
 {{- if .responseHeaders }}
 nginx.ingress.kubernetes.io/auth-response-headers: {{ join "," .responseHeaders | quote }}
 {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+The signin URL for external auth, including the parameter for the original URL.
+*/}}
+{{- define "zenith-service.ingress.auth.external.signinUrl" -}}
+{{- $query := get (urlParse .signinUrl) "query" }}
+{{- if regexMatch (printf "(^|&)%s=" (regexQuoteMeta .nextUrlParam)) $query }}
+{{- .signinUrl }}
+{{- else }}
+{{-
+  printf "%s%s%s=$scheme://$best_http_host$escaped_request_uri"
+    .signinUrl
+    (ternary "&" "?" (contains "?" .signinUrl))
+    .nextUrlParam
+}}
 {{- end }}
 {{- end }}
 
@@ -106,28 +122,16 @@ nginx.ingress.kubernetes.io/auth-signin: >-
 nginx.ingress.kubernetes.io/auth-response-headers: >-
   {{ range $i, $rh := . }}{{ if $i }},{{ end }}{{ $rh.name }}{{ end }}
 {{- end }}
+{{- /*
+  Forward the cookie set by the OAuth2 proxy when it refreshes a session in the auth
+  subrequest.
+
+  Only a single Set-Cookie header can be forwarded this way.
+  Use the Valkey session store to prevent oauth2-proxy splitting the cookie.
+*/}}
 nginx.ingress.kubernetes.io/configuration-snippet: |
-  auth_request_set $auth_cookie__oauth2_proxy_1 $upstream_cookie__oauth2_proxy_1;
-  auth_request_set $auth_cookie__oauth2_proxy_2 $upstream_cookie__oauth2_proxy_2;
-  auth_request_set $auth_cookie__oauth2_proxy_3 $upstream_cookie__oauth2_proxy_3;
-
-  access_by_lua_block {
-    local auth_set_cookie = ngx.var.auth_cookie
-    
-    if ngx.var.auth_cookie__oauth2_proxy_1 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_1=" .. ngx.var.auth_cookie__oauth2_proxy_1 .. "; " .. auth_set_cookie
-    end
-    if ngx.var.auth_cookie__oauth2_proxy_2 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_2=" .. ngx.var.auth_cookie__oauth2_proxy_2 .. "; " .. auth_set_cookie
-    end
-    if ngx.var.auth_cookie__oauth2_proxy_3 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_3=" .. ngx.var.auth_cookie__oauth2_proxy_3 .. "; " .. auth_set_cookie
-    end
-
-    if auth_set_cookie ~= "" then
-      ngx.header["Set-Cookie"] = auth_set_cookie
-    end
-  }
+  auth_request_set $auth_cookie $upstream_http_set_cookie;
+  add_header Set-Cookie $auth_cookie;
 {{- end }}
 
 {{/*

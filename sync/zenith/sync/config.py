@@ -80,6 +80,24 @@ class ForwardedQueryParam(te.TypedDict, total=False):
     allow: list[ForwardedQueryParamRule]
 
 
+ValkeyUrl = t.Annotated[str, StringConstraints(pattern=r"^rediss?://.+")]
+
+
+class OIDCValkeyConfig(Section):
+    """
+    Model for the Valkey session store used by the OAuth2 proxy.
+    """
+
+    #: The URL of the Valkey server, e.g. redis://valkey.zenith.svc.cluster.local:6379
+    #: If not given, sessions are stored in cookies
+    url: ValkeyUrl | None = None
+    #: The name of a secret in the target namespace containing the Valkey password
+    #: If not given, no password is used
+    password_secret_name: str | None = None
+    #: The key in the secret that contains the password
+    password_secret_key: NonEmptyString = "password"
+
+
 class OIDCConfig(Section):
     """
     Model for the ingress OIDC configuration section.
@@ -103,6 +121,8 @@ class OIDCConfig(Section):
     #: The headers to inject into the request from claims in the ID token
     #: The special claims id_token and access_token represent the ID and access tokens
     inject_request_headers: dict[str, str] = Field(default_factory=dict)
+    #: The Valkey session store configuration for the OAuth2 proxy
+    valkey: OIDCValkeyConfig = Field(default_factory=OIDCValkeyConfig)
 
 
 class ExternalAuthConfig(Section):

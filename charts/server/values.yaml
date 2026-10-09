@@ -166,3 +166,20 @@ metrics:
       enabled: true
     monitor:
       enabled: true
+
+# Valkey session storage for oauth2-proxy.
+# Shared instance for all zenith services- each session is encrypted with a key held
+# in the user's cookie store.
+valkey:
+  enabled: true
+  # The password for Valkey
+  # If not given, a random password is generated and retained across upgrades
+  password:
+  auth:
+    enabled: true
+    # This secret is created by this chart
+    usersExistingSecret: "{{ .Release.Name }}-valkey-users"
+    aclUsers:
+      default:
+        permissions: "~* &* +@all"
+        passwordKey: password

@@ -1,0 +1,27 @@
+{{- if .Values.valkey.enabled }}
+# Only allow the OAuth2 proxies for Zenith services to access Valkey
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "zenith.componentname" (list . "valkey") }}
+  labels: {{ include "zenith.componentLabels" (list . "valkey") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.common.kubernetes.targetNamespace }}
+          # The OAuth2 proxy pods are named after the subchart alias in the service chart
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: oidc
+      ports:
+        - port: {{ .Values.valkey.service.port }}
+          protocol: TCP
+{{- end }}

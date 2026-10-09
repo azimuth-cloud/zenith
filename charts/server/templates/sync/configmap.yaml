@@ -21,6 +21,13 @@ kubernetes:
       secretName: {{ . | quote }}
       {{- end }}
       annotations: {{ $ingress.tls.annotations | toYaml | nindent 8 }}
+    {{- if .Values.valkey.enabled }}
+    oidc:
+      valkey:
+        url: {{ include "zenith.valkey.url" . | quote }}
+        passwordSecretName: {{ include "zenith.valkey.passwordSecretName" . | quote }}
+        passwordSecretKey: password
+    {{- end }}
 {{- end }}
 
 {{- if .Values.sync.enabled -}}

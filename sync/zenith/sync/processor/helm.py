@@ -233,6 +233,23 @@ class Processor(base.Processor):
             tls_values["clientCA"] = service.config["tls-client-ca"]
         return values
 
+    def _get_oidc_session_storage_values(self) -> dict[str, typing.Any]:
+        """
+        Returns the values for configuring the OAuth2 proxy session storage.
+        """
+        valkey = self.config.ingress.oidc.valkey
+        if not valkey.url:
+            return {"type": "cookie"}
+        # NB valkey is the open source fork of redis
+        redis_values: dict[str, typing.Any] = {
+            "clientType": "standalone",
+            "standalone": {"connectionUrl": valkey.url},
+        }
+        if valkey.password_secret_name:
+            redis_values["existingSecret"] = valkey.password_secret_name
+            redis_values["passwordKey"] = valkey.password_secret_key
+        return {"type": "redis", "redis": redis_values}
+
     async def _get_auth_values(self, service: model.Service) -> dict[str, typing.Any]:
         """
         Returns the values for configuring the auth for a service.
@@ -289,6 +306,7 @@ class Processor(base.Processor):
                 "extraArgs": {
                     "cookie-secret": cookie_secret,
                 },
+                "sessionStorage": self._get_oidc_session_storage_values(),
             }
         elif self.config.ingress.external_auth.url:
             values["externalAuth"] = {
