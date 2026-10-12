@@ -176,7 +176,9 @@ oidc:
     #   i.e. the length of time that a user *who already has a valid cookie* will be
     #   able to continue using the service after their access has been removed at the
     #   OIDC provider
-    cookie-refresh: 1h
+    #   NB: must be shorter than the idle timeout for the session at the OIDC provider
+    #   (Keycloak's default: 30m), otherwise the refresh token expires before it's used
+    cookie-refresh: 20m
     # If the ingress is not using TLS, we have to allow the cookie on insecure connections
     cookie-secure: '{{ ternary "true" "false" .Values.global.secure }}'
     # Allow redirections to the service domain only
