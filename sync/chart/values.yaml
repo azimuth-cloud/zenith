@@ -110,7 +110,7 @@ oidc:
       # This is oauth2-proxy's documented default, but it doesn't follow it's own
       # default when using the alpha config
       # The refreshed ID token from Keycloak does not carry the nonce from the original login
-      # so without this token referesh breaks
+      # so without this token refresh breaks
       # https://oauth2-proxy.github.io/oauth2-proxy/configuration/alpha-config?_highlight=nonce#oidcoptions
       insecureSkipNonce: true
   # The OAuth2 proxy is in the data path for the service, so run two replicas
