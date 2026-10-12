@@ -92,6 +92,10 @@ oidc:
     allowedGroups: []
     # Parameters that will be forwarded from the OIDC start URL to the IdP login URL
     loginURLParameters: []
+    # Use PKCE to bind the authz code to the browser that started the login
+    # Replaces the code injection protection lost by skipping the nonce (see below)
+    # NB the key is snake_case in the oauth2-proxy alpha config
+    code_challenge_method: S256
     oidcConfig:
       # The OIDC issuer URL
       issuerURL:
@@ -102,6 +106,13 @@ oidc:
       insecureAllowUnverifiedEmail: true
       groupsClaim: groups
       audienceClaims: ["aud"]
+      # Don't verify the nonce claim of the ID token.
+      # This is oauth2-proxy's documented default, but it doesn't follow it's own
+      # default when using the alpha config
+      # The refreshed ID token from Keycloak does not carry the nonce from the original login
+      # so without this token referesh breaks
+      # https://oauth2-proxy.github.io/oauth2-proxy/configuration/alpha-config?_highlight=nonce#oidcoptions
+      insecureSkipNonce: true
   # The OAuth2 proxy is in the data path for the service, so run two replicas
   # Sessions are stored in cookies, so the replicas don't need to share any state
   replicaCount: 2
