@@ -14,3 +14,8 @@ ignore:
   - vulnerability: GO-2026-5017
   - vulnerability: GO-2026-5019
   - vulnerability: GO-2026-5005
+  - vulnerability: GO-2026-6604
+  # Present in GO standard library, and pervasive, and therefore present in gomplate e.g:
+  # template.go:115:25: gomplate.walkDir calls fs.Stat, which eventually calls http2.Transport.NewClientConn
+  # However since we control the template and gomplate is not passed external inputs, OK to ignore for now
+  - vulnerability: GO-2026-6612
