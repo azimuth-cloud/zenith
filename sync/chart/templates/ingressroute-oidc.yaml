@@ -1,0 +1,49 @@
+{{-
+  if and
+    (mustRegexMatch "^https?$" .Values.protocol)
+    .Values.ingress.enabled
+    .Values.oidc.enabled
+    (eq .Values.ingress.routingType "ingressroute")
+}}
+{{- $host := include "zenith-service.ingress.host" . }}
+{{- $prefix := tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
+{{- $secure := and .Values.global.secure (not .Values.ingress.tls.terminatedAtProxy) }}
+{{- $oidcServiceName := printf "%s-oidc" .Release.Name }}
+---
+# ForwardAuth middleware pointing to the oauth2-proxy sidecar
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Release.Name }}-oidc-auth
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  forwardAuth:
+    address: >-
+      http://{{ $oidcServiceName }}.{{ .Release.Namespace }}.svc.cluster.local{{ $prefix }}/auth
+    {{- with .Values.oidc.alphaConfig.configData.injectResponseHeaders }}
+    authResponseHeaders:
+      {{- range . }}
+      - {{ .name }}
+      {{- end }}
+    {{- end }}
+---
+# IngressRoute for the oauth2-proxy endpoint (no auth middleware — it IS the auth provider)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}-oidc
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - {{ if .Values.global.secure }}websecure{{ else }}web{{ end }}
+  routes:
+    - match: Host(`{{ $host }}`) && PathPrefix(`{{ $prefix }}`)
+      kind: Rule
+      services:
+        - name: {{ $oidcServiceName }}
+          port: http
+  {{- if $secure }}
+  tls:
+    secretName: {{ include "zenith-service.ingress.tls.secretName" . }}
+  {{- end }}
+{{- end }}

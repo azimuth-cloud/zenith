@@ -4,6 +4,7 @@
     .Values.ingress.enabled
     .Values.oidc.enabled
     (not .Values.oidc.ingress.enabled)
+    (eq .Values.ingress.routingType "ingress")
 }}
 {{- $ingressTLSRequired := and .Values.global.secure (not .Values.ingress.tls.terminatedAtProxy) }}
 apiVersion: networking.k8s.io/v1

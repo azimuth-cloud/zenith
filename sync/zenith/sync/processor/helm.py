@@ -185,6 +185,7 @@ class Processor(base.Processor):
             "protocol": service.config.get("backend-protocol", "http"),
             "ingress": {
                 "annotations": self.config.ingress.annotations,
+                "routingType": self.config.ingress.routing_type,
             },
         }
         read_timeout = service.config.get("read-timeout")
