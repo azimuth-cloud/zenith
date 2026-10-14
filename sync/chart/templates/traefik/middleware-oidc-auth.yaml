@@ -1,0 +1,52 @@
+{{-
+  if and
+    (mustRegexMatch "^https?$" .Values.protocol)
+    .Values.ingress.enabled
+    .Values.oidc.enabled
+    (not .Values.oidc.ingress.enabled)
+}}
+{{- $prefix := tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
+{{- $oidcReleaseName := printf "%s-oidc" .Release.Name }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ printf "%s-oidc-auth" .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  forwardAuth:
+    address: >-
+      http://{{ $oidcReleaseName }}.{{ .Release.Namespace }}.svc.cluster.local{{ $prefix }}/auth
+    trustForwardHeader: true
+    # oauth2-proxy splits its session cookie across multiple Set-Cookie headers when it
+    # is too large for one cookie.
+    addAuthCookiesToResponse:
+      - _oauth2_proxy_1
+      - _oauth2_proxy_2
+      - _oauth2_proxy_3
+    {{- with .Values.oidc.alphaConfig.configData.injectResponseHeaders }}
+    authResponseHeaders:
+      {{- range . }}
+      - {{ .name }}
+      {{- end }}
+    {{- end }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ printf "%s-oidc-errors" .Release.Name }}
+  labels: {{ include "zenith-service.labels" . | nindent 4 }}
+spec:
+  errors:
+    status:
+      - "401-403"
+    # Convert the 401/403 sent by oauth2-proxy into a redirect to login.
+    statusRewrites:
+      "401": 302
+      "403": 302
+    service:
+      name: {{ $oidcReleaseName }}
+      port: http
+    query: >-
+      {{ $prefix }}/start?rd={url}
+{{- end }}

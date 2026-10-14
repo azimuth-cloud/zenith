@@ -447,8 +447,8 @@ allowed to proceed).
 
 External auth is enabled by specifying the URL of the auth service. If the auth service
 is running in the same Kubernetes cluster, it can be a fully-qualified service URL
-(because the verification request is a subrequest coming from the NGINX Ingress
-Controller, not from the user's browser):
+(because the verification request is a subrequest coming from the Ingress Controller,
+not from the user's browser):
 
 ```yaml
 sync:
@@ -459,12 +459,18 @@ sync:
           url: http://auth-service.other-namespace.svc.cluster.local:8080/auth/verify/
 ```
 
-It is also possible to specify the URL that the user should be redirected to if the
-auth service returns a 401, indicating that credentials are required. This URL is
-returned to the user's browser as a redirect, so it must be an **external** URL even
-if the auth service is also running in Kubernetes. It receives the original URL as a
-URL parameter (default `next`) so that it can redirect back when the user has
-authenticated:
+#### Redirecting to a signin page
+
+It is also possible to configure a redirect to a signin page for the user's browser when
+the auth service returns a 401, indicating that credentials are required. How this is
+configured depends on which ingress controller is in use, because NGINX and Traefik
+support this in fundamentally different ways.
+
+**NGINX** uses its `auth-signin` annotation, which redirects the user's browser directly
+to a given URL. Because the redirect goes to the browser rather than being generated
+in-cluster, this URL must be an **external** URL even if the auth service is also
+running in Kubernetes. It receives the original URL as a URL parameter (default `next`)
+so that it can redirect back when the user has authenticated:
 
 ```yaml
 sync:
@@ -473,12 +479,50 @@ sync:
       ingress:
         externalAuth:
           url: ...
+          # Only used by the NGINX ingress
           signinUrl: https://auth.apps.example.cloud/login
           # The URL parameter that will contain the original URL
           # when the user is redirected (default "next")
           nextUrlParam: next_url
 ```
 
+**Traefik** has no equivalent of `auth-signin`. It has no way to redirect a failed
+auth subrequest to a static URL.
+Instead, when the auth service returns a 401 or 403, Traefik forwards the request to a
+Kubernetes `Service` of your choosing and returns that service's response.
+
+Configure this using `errorService` instead of `signinUrl`:
+
+```yaml
+sync:
+  config:
+    kubernetes:
+      ingress:
+        externalAuth:
+          url: ...
+          # Only used by the Traefik ingress
+          errorService:
+            # The name of the Kubernetes service to forward to
+            name: auth-signin
+            # The namespace of the service (defaults to the zenith-services namespace)
+            namespace: other-namespace
+            # The port of the service
+            port: 8080
+            # The path (and query string) of the subrequest sent to the service
+            # The literal string "{url}" is replaced with the original request URL
+            path: /login?rd={url}
+```
+
+If no `errorService` is given, a 401/403 from the auth service is passed straight
+through to the browser with no redirect.
+
+If the service that should handle the redirect is not running in the Kubernetes
+cluster, it can be referenced by creating a Kubernetes `Service` of type `ExternalName`
+that points at the external host, then configuring `errorService` to point at that
+
+WARNING
+The traefik ingress does not allow ExternalName services by default, for security reasons.
+I can be enabled in the ingress provider configuration.
 ## Using non-standard images
 
 It is possible to specify different images used for the Zenith components, for example if
