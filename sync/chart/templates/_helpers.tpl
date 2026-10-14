@@ -57,12 +57,18 @@ the IdP.
 To fix this, we redirect requests that have one of the parameters but no session cookie
 to the start endpoint with the query parameters of the request.
 
-To ensure we never get a loop, return the user to the path without query strings.
+To ensure we never get a loop, requests for the OAuth2 proxy itself (including the start
+endpoint) are never redirected, and the user is returned to the path without query
+strings.
 
 These directives are supported by ingress-nginx and Traefik's NGINX compatibility.
 */}}
 {{- define "zenith-service.ingress.oidc.annotations" -}}
 {{- $prefix := tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
+{{- /* The prefix is used in a regex, so only allow characters that are literal */}}
+{{- if not (regexMatch "^/[A-Za-z0-9_/-]+$" $prefix) }}
+{{- fail (printf "proxy prefix %q cannot be used in an NGINX regex" $prefix) }}
+{{- end }}
 {{- $cookieName := index .Values.oidc.extraArgs "cookie-name" | default "_oauth2_proxy" }}
 {{- range (list $cookieName (printf "%s_0" $cookieName)) }}
 {{- if not (regexMatch "^[A-Za-z0-9_]+$" .) }}
@@ -80,6 +86,11 @@ nginx.ingress.kubernetes.io/configuration-snippet: |
   {{- /* The session cookie may be split. */}}
   if ($cookie_{{ $cookieName }}) { set $zenith_oidc_start ""; }
   if ($cookie_{{ $cookieName }}_0) { set $zenith_oidc_start ""; }
+  {{- /*
+    Requests for the OAuth2 proxy itself, in particular the start endpoint that we
+    redirect to, must never redirect or they would loop
+  */}}
+  if ($uri ~ "^{{ $prefix }}(/|$)") { set $zenith_oidc_start ""; }
   {{- /* The path of the request, without the query parameters, still URL-encoded */}}
   if ($request_uri ~ "^([^?]*)") { set $zenith_oidc_rd $1; }
   if ($zenith_oidc_start) { return 302 {{ $prefix }}/start?rd=$zenith_oidc_rd&$args; }
