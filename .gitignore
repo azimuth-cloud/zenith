@@ -6,3 +6,6 @@ __pycache__
 kubeconfig
 .pytest_cache
 .tox
+.coverage*
+coverage.xml
+diff-cover.md
