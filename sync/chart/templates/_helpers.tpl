@@ -44,6 +44,45 @@ nginx.ingress.kubernetes.io/proxy-read-timeout: {{ int64 . | quote }}
 {{- if .Values.externalAuth.enabled }}
 {{- include "zenith-service.ingress.auth.external.annotations" . }}
 {{- end }}
+{{- if and .Values.oidc.enabled .Values.oidc.provider.loginURLParameters }}
+{{- include "zenith-service.ingress.oidc.annotations" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Oauth2-proxy ignores query parameters on the request (https://github.com/oauth2-proxy/oauth2-proxy/pull/2316).
+This means that parameters in loginURLParameters, e.g. kc_idp_hint, are not forwarded to
+the IdP.
+
+To fix this, we redirect requests that have one of the parameters but no session cookie
+to the start endpoint with the query parameters of the request.
+
+To ensure we never get a loop, return the user to the path without query strings.
+
+These directives are supported by ingress-nginx and Traefik's NGINX compatibility.
+*/}}
+{{- define "zenith-service.ingress.oidc.annotations" -}}
+{{- $prefix := tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
+{{- $cookieName := index .Values.oidc.extraArgs "cookie-name" | default "_oauth2_proxy" }}
+{{- range (list $cookieName (printf "%s_0" $cookieName)) }}
+{{- if not (regexMatch "^[A-Za-z0-9_]+$" .) }}
+{{- fail (printf "cookie name %q cannot be used in an NGINX variable" .) }}
+{{- end }}
+{{- end }}
+nginx.ingress.kubernetes.io/configuration-snippet: |
+  set $zenith_oidc_start "";
+  {{- range .Values.oidc.provider.loginURLParameters }}
+  {{- if not (regexMatch "^[A-Za-z0-9_]+$" .name) }}
+  {{- fail (printf "login URL parameter %q cannot be used in an NGINX variable" .name) }}
+  {{- end }}
+  if ($arg_{{ .name }}) { set $zenith_oidc_start "1"; }
+  {{- end }}
+  {{- /* The session cookie may be split. */}}
+  if ($cookie_{{ $cookieName }}) { set $zenith_oidc_start ""; }
+  if ($cookie_{{ $cookieName }}_0) { set $zenith_oidc_start ""; }
+  {{- /* The path of the request, without the query parameters, still URL-encoded */}}
+  if ($request_uri ~ "^([^?]*)") { set $zenith_oidc_rd $1; }
+  if ($zenith_oidc_start) { return 302 {{ $prefix }}/start?rd=$zenith_oidc_rd&$args; }
 {{- end }}
 
 {{/*
