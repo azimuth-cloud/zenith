@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Install yq from the official Docker image
 COPY --from=docker.io/mikefarah/yq /usr/bin/yq /usr/bin/
 
-ARG HELM_VERSION=v4.3.0
+ARG HELM_VERSION=v4.3.1
 # TARGETATCH is automatically populated by docker
 ARG TARGETARCH
 ADD https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz /tmp/helm.tar.gz
