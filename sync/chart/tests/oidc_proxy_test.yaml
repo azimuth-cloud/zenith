@@ -25,10 +25,12 @@ set:
         injectRequestHeaders:
           - name: X-Remote-User
             values:
-              - claim: preferred_username
+              - claimSource:
+                  claim: preferred_username
           - name: X-Remote-Group
             values:
-              - claim: groups
+              - claimSource:
+                  claim: groups
     extraArgs:
       cookie-secret: cookie-secret-value
 tests:
@@ -165,10 +167,12 @@ tests:
             injectRequestHeaders:
             - name: X-Remote-User
               values:
-              - claim: preferred_username
+              - claimSource:
+                  claim: preferred_username
             - name: X-Remote-Group
               values:
-              - claim: groups
+              - claimSource:
+                  claim: groups
       - notMatchRegex:
           path: data["oauth2_proxy.yml"]
           decodeBase64: true
