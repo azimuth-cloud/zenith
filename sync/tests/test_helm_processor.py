@@ -41,8 +41,14 @@ class TestOIDCProxyValues(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             config_data["injectRequestHeaders"],
             [
-                {"name": "X-Remote-User", "values": [{"claim": "preferred_username"}]},
-                {"name": "X-Remote-Group", "values": [{"claim": "groups"}]},
+                {
+                    "name": "X-Remote-User",
+                    "values": [{"claimSource": {"claim": "preferred_username"}}],
+                },
+                {
+                    "name": "X-Remote-Group",
+                    "values": [{"claimSource": {"claim": "groups"}}],
+                },
             ],
         )
         self.assertNotIn("injectResponseHeaders", config_data)

@@ -298,7 +298,7 @@ class Processor(base.Processor):
                 "alphaConfig": {
                     "configData": {
                         "injectRequestHeaders": [
-                            {"name": h, "values": [{"claim": c}]}
+                            {"name": h, "values": [{"claimSource": {"claim": c}}]}
                             for h, c in (
                                 self.config.ingress.oidc.inject_request_headers.items()
                             )
