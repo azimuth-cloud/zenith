@@ -30,7 +30,11 @@ Annotations for the ingress resource.
 */}}
 {{- define "zenith-service.ingress.annotations" -}}
 {{ toYaml .Values.ingress.annotations }}
-nginx.ingress.kubernetes.io/backend-protocol: {{ quote .Values.protocol }}
+{{- /*
+  With OIDC, the ingress forwards to the OAuth2 proxy, which listens on HTTP and
+  forwards authenticated requests to the service using the service protocol
+*/}}
+nginx.ingress.kubernetes.io/backend-protocol: {{ ternary "http" .Values.protocol .Values.oidc.enabled | quote }}
 {{- with .Values.readTimeout }}
 nginx.ingress.kubernetes.io/proxy-read-timeout: {{ int64 . | quote }}
 {{- end }}
@@ -40,9 +44,56 @@ nginx.ingress.kubernetes.io/proxy-read-timeout: {{ int64 . | quote }}
 {{- if .Values.externalAuth.enabled }}
 {{- include "zenith-service.ingress.auth.external.annotations" . }}
 {{- end }}
-{{- if .Values.oidc.enabled }}
-{{- include "zenith-service.ingress.auth.oidc.annotations" . }}
+{{- if and .Values.oidc.enabled .Values.oidc.provider.loginURLParameters }}
+{{- include "zenith-service.ingress.oidc.annotations" . }}
 {{- end }}
+{{- end }}
+
+{{/*
+Oauth2-proxy ignores query parameters on the request (https://github.com/oauth2-proxy/oauth2-proxy/pull/2316).
+This means that parameters in loginURLParameters, e.g. kc_idp_hint, are not forwarded to
+the IdP.
+
+To fix this, we redirect requests that have one of the parameters but no session cookie
+to the start endpoint with the query parameters of the request.
+
+To ensure we never get a loop, requests for the OAuth2 proxy itself (including the start
+endpoint) are never redirected, and the user is returned to the path without query
+strings.
+
+These directives are supported by ingress-nginx and Traefik's NGINX compatibility.
+*/}}
+{{- define "zenith-service.ingress.oidc.annotations" -}}
+{{- $prefix := tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
+{{- /* The prefix is used in a regex, so only allow characters that are literal */}}
+{{- if not (regexMatch "^/[A-Za-z0-9_/-]+$" $prefix) }}
+{{- fail (printf "proxy prefix %q cannot be used in an NGINX regex" $prefix) }}
+{{- end }}
+{{- $cookieName := index .Values.oidc.extraArgs "cookie-name" | default "_oauth2_proxy" }}
+{{- range (list $cookieName (printf "%s_0" $cookieName)) }}
+{{- if not (regexMatch "^[A-Za-z0-9_]+$" .) }}
+{{- fail (printf "cookie name %q cannot be used in an NGINX variable" .) }}
+{{- end }}
+{{- end }}
+nginx.ingress.kubernetes.io/configuration-snippet: |
+  set $zenith_oidc_start "";
+  {{- range .Values.oidc.provider.loginURLParameters }}
+  {{- if not (regexMatch "^[A-Za-z0-9_]+$" .name) }}
+  {{- fail (printf "login URL parameter %q cannot be used in an NGINX variable" .name) }}
+  {{- end }}
+  if ($arg_{{ .name }}) { set $zenith_oidc_start "1"; }
+  {{- end }}
+  {{- /* The session cookie may be split. */}}
+  if ($cookie_{{ $cookieName }}) { set $zenith_oidc_start ""; }
+  if ($cookie_{{ $cookieName }}_0) { set $zenith_oidc_start ""; }
+  {{- /*
+    Requests for the OAuth2 proxy itself, in particular the start endpoint that we
+    redirect to, must never redirect or they would loop
+  */}}
+  if ($uri ~ "^{{ $prefix }}(/|$)") { set $zenith_oidc_start ""; }
+  {{- /* The path of the request, without the query parameters, still URL-encoded */}}
+  if ($request_uri ~ "^([^?]*)") { set $zenith_oidc_rd $1; }
+  if ($zenith_oidc_start) { return 302 {{ $prefix }}/start?rd=$zenith_oidc_rd&$args; }
 {{- end }}
 
 {{/*
@@ -72,8 +123,7 @@ Annotations for external auth.
 {{- with .Values.externalAuth }}
 nginx.ingress.kubernetes.io/auth-url: {{ .url | required "external auth URL is required" | quote }}
 {{- if .signinUrl }}
-nginx.ingress.kubernetes.io/auth-signin: {{ quote .signinUrl }}
-nginx.ingress.kubernetes.io/auth-signin-redirect-param: {{ .nextUrlParam }}
+nginx.ingress.kubernetes.io/auth-signin: {{ include "zenith-service.ingress.auth.external.signinUrl" . | quote }}
 {{- end }}
 {{- if or .requestHeaders .params }}
 nginx.ingress.kubernetes.io/auth-snippet: |
@@ -91,43 +141,20 @@ nginx.ingress.kubernetes.io/auth-response-headers: {{ join "," .responseHeaders 
 {{- end }}
 
 {{/*
-Annotations for OIDC auth.
+The signin URL for external auth, including the parameter for the original URL.
 */}}
-{{- define "zenith-service.ingress.auth.oidc.annotations" -}}
-{{- $scheme := ternary "https" "http" .Values.global.secure }}
-{{- $host := include "zenith-service.ingress.host" . }}
-{{- $oidcReleaseName := printf "%s-oidc" .Release.Name }}
-{{- $prefix := tpl (index .Values.oidc.extraArgs "proxy-prefix") . }}
-nginx.ingress.kubernetes.io/auth-url: >-
-  http://{{ $oidcReleaseName }}.{{ .Release.Namespace }}.svc.cluster.local{{ $prefix }}/auth
-nginx.ingress.kubernetes.io/auth-signin: >-
-  {{ $scheme }}://{{ $host }}{{ $prefix }}/start?rd=$escaped_request_uri&$args
-{{- with .Values.oidc.alphaConfig.configData.injectResponseHeaders }}
-nginx.ingress.kubernetes.io/auth-response-headers: >-
-  {{ range $i, $rh := . }}{{ if $i }},{{ end }}{{ $rh.name }}{{ end }}
+{{- define "zenith-service.ingress.auth.external.signinUrl" -}}
+{{- $query := get (urlParse .signinUrl) "query" }}
+{{- if regexMatch (printf "(^|&)%s=" (regexQuoteMeta .nextUrlParam)) $query }}
+{{- .signinUrl }}
+{{- else }}
+{{-
+  printf "%s%s%s=$scheme://$best_http_host$escaped_request_uri"
+    .signinUrl
+    (ternary "&" "?" (contains "?" .signinUrl))
+    .nextUrlParam
+}}
 {{- end }}
-nginx.ingress.kubernetes.io/configuration-snippet: |
-  auth_request_set $auth_cookie__oauth2_proxy_1 $upstream_cookie__oauth2_proxy_1;
-  auth_request_set $auth_cookie__oauth2_proxy_2 $upstream_cookie__oauth2_proxy_2;
-  auth_request_set $auth_cookie__oauth2_proxy_3 $upstream_cookie__oauth2_proxy_3;
-
-  access_by_lua_block {
-    local auth_set_cookie = ngx.var.auth_cookie
-    
-    if ngx.var.auth_cookie__oauth2_proxy_1 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_1=" .. ngx.var.auth_cookie__oauth2_proxy_1 .. "; " .. auth_set_cookie
-    end
-    if ngx.var.auth_cookie__oauth2_proxy_2 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_2=" .. ngx.var.auth_cookie__oauth2_proxy_2 .. "; " .. auth_set_cookie
-    end
-    if ngx.var.auth_cookie__oauth2_proxy_3 ~= "" then
-      auth_set_cookie = "_oauth2_proxy_3=" .. ngx.var.auth_cookie__oauth2_proxy_3 .. "; " .. auth_set_cookie
-    end
-
-    if auth_set_cookie ~= "" then
-      ngx.header["Set-Cookie"] = auth_set_cookie
-    end
-  }
 {{- end }}
 
 {{/*

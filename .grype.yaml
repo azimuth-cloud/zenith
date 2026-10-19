@@ -19,3 +19,5 @@ ignore:
   # template.go:115:25: gomplate.walkDir calls fs.Stat, which eventually calls http2.Transport.NewClientConn
   # However since we control the template and gomplate is not passed external inputs, OK to ignore for now
   - vulnerability: GO-2026-6612
+  # Alias for above
+  - vulnerability: CVE-2026-78663
