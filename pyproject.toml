@@ -13,8 +13,11 @@ exclude-newer = "7 days"
 [dependency-groups]
 dev = [
     "codespell",
+    "diff-cover>=10.6.0",
     "mypy",
-    "pytest",
+    "pytest>=9",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=7.1.0",
     "ruff",
     "tox",
     "tox-uv",
@@ -59,15 +62,29 @@ ignore = [
     "RUF100",
 ]
 
-[tool.pytest.ini_options]
-addopts = ["--import-mode=importlib"]
+[tool.pytest]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.mypy]
 follow_imports = "silent"
 warn_redundant_casts = true
 warn_unused_ignores = true
 check_untyped_defs = true
+# zenith is a namespace package, so map each component's files from its own root
+explicit_package_bases = true
 
+# The component code does not pass mypy yet, so only report errors in the tests
+# Remove a component from this list once it passes
+[[tool.mypy.overrides]]
+module = [
+    "zenith.client.*",
+    "zenith.operator.*",
+    "zenith.registrar.*",
+    "zenith.sshd.*",
+    "zenith.sync.*",
+]
+ignore_errors = true
 
 [tool.ruff.lint.mccabe]
 # Flag errors (`C901`) whenever the complexity level exceeds 15.
