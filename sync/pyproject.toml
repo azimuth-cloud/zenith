@@ -9,7 +9,7 @@ dependencies = [
     "easykube>=0.6.0",
     "easysemver>=0.2.0",
     "httpx>=0.28.1",
-    "kube-custom-resource>=0.6.1",
+    "kube-custom-resource>=0.7.2",
     "pydantic<3",
     "pyhelm3>=0.5.5",
     "pyyaml>=6.0.3",
