@@ -1,4 +1,4 @@
-ARG GOMPLATE_VERSION=v5.3.0
+ARG GOMPLATE_VERSION=v5.3.1
 
 
 # Use a named build stage for gomplate
