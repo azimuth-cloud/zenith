@@ -178,30 +178,15 @@ tests:
           decodeBase64: true
           pattern: injectResponseHeaders
 
-  - it: OAuth2 proxy should run two replicas spread across nodes
+  - it: OAuth2 proxy should run two replicas
     template: charts/oidc/templates/deployment.yaml
     asserts:
       - equal:
           path: spec.replicas
           value: 2
-      - equal:
+      # Spreading is left to the scheduler defaults, as matchLabelKeys break Velero restores
+      - notExists:
           path: spec.template.spec.topologySpreadConstraints
-          value:
-            - maxSkew: 1
-              topologyKey: kubernetes.io/hostname
-              whenUnsatisfiable: ScheduleAnyway
-              labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: oidc
-              matchLabelKeys:
-                - app.kubernetes.io/instance
-      # The constraint relies on these labels being on the pods
-      - equal:
-          path: spec.template.metadata.labels["app.kubernetes.io/name"]
-          value: oidc
-      - equal:
-          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
-          value: svc1
 
   - it: OAuth2 proxy should allow one replica to be disrupted at a time
     template: charts/oidc/templates/poddisruptionbudget.yaml

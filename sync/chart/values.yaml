@@ -116,16 +116,9 @@ oidc:
   # The OAuth2 proxy is in the data path for the service, so run two replicas
   # Sessions are stored in cookies, so the replicas don't need to share any state
   replicaCount: 2
-  # Prefer to run the replicas on different nodes
-  topologySpreadConstraints:
-    - maxSkew: 1
-      topologyKey: kubernetes.io/hostname
-      whenUnsatisfiable: ScheduleAnyway
-      labelSelector:
-        matchLabels:
-          app.kubernetes.io/name: oidc
-      matchLabelKeys:
-        - app.kubernetes.io/instance
+  # Specifying a spread constraint breaks the velero backup, and is not really needed
+  # because the scheduler will do it by default anyway.
+  topologySpreadConstraints: []
   # The OAuth2 proxy receives all traffic for the service and forwards authenticated
   # requests to the Zenith service
   # These must match the protocol and readTimeout for the service, as the subchart
