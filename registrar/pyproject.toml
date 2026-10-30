@@ -6,7 +6,7 @@ dependencies = [
     "configomatic[yaml]>=0.4.0",
     "cryptography>=50.0.2",
     "easykube>=0.6.0",
-    "fastapi>=0.141.1",
+    "fastapi>=0.162.0",
     "httpx>=0.28.1",
     "pydantic<3",
     "uvicorn>=0.52.4",
