@@ -1,4 +1,5 @@
 import logging
+import typing as t
 import unittest
 from unittest import mock
 
@@ -6,7 +7,7 @@ from zenith.sync import config, model
 from zenith.sync.processor import helm
 
 
-def make_processor(**oidc):
+def make_processor(**oidc: t.Any) -> helm.Processor:
     """
     Returns a processor with the given OIDC config, without connecting to Kubernetes.
     """
@@ -19,17 +20,17 @@ def make_processor(**oidc):
         ),
     )
     processor.logger = logging.getLogger(__name__)
-    processor._reconcile_oidc_credentials = mock.AsyncMock(
+    processor._reconcile_oidc_credentials = mock.AsyncMock(  # type: ignore[method-assign]
         return_value=("https://identity.example.com", "client-id", "secret", [])
     )
-    processor._reconcile_oidc_cookie_secret = mock.AsyncMock(
+    processor._reconcile_oidc_cookie_secret = mock.AsyncMock(  # type: ignore[method-assign]
         return_value="cookie-secret"
     )
     return processor
 
 
 class TestOIDCProxyValues(unittest.IsolatedAsyncioTestCase):
-    async def test_claims_are_injected_into_the_request(self):
+    async def test_claims_are_injected_into_the_request(self) -> None:
         processor = make_processor(
             inject_request_headers={
                 "X-Remote-User": "preferred_username",
@@ -53,14 +54,14 @@ class TestOIDCProxyValues(unittest.IsolatedAsyncioTestCase):
         )
         self.assertNotIn("injectResponseHeaders", config_data)
 
-    async def test_upstream_defaults(self):
+    async def test_upstream_defaults(self) -> None:
         processor = make_processor()
         values = await processor._get_auth_values(model.Service(name="svc1"))
         self.assertEqual(
             values["oidc"]["upstream"], {"protocol": "http", "readTimeout": None}
         )
 
-    async def test_upstream_matches_service(self):
+    async def test_upstream_matches_service(self) -> None:
         processor = make_processor()
         service = model.Service(
             name="svc1",
@@ -75,14 +76,14 @@ class TestOIDCProxyValues(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(service_values["protocol"], "https")
         self.assertEqual(service_values["readTimeout"], 600)
 
-    async def test_invalid_read_timeout_is_ignored(self):
+    async def test_invalid_read_timeout_is_ignored(self) -> None:
         processor = make_processor()
         service = model.Service(name="svc1", config={"read-timeout": "ten"})
         values = await processor._get_auth_values(service)
         self.assertIsNone(values["oidc"]["upstream"]["readTimeout"])
         self.assertNotIn("readTimeout", processor._get_service_values(service))
 
-    async def test_no_oidc_when_auth_skipped(self):
+    async def test_no_oidc_when_auth_skipped(self) -> None:
         processor = make_processor()
         service = model.Service(name="svc1", config={"skip-auth": True})
         values = await processor._get_auth_values(service)

@@ -5,6 +5,25 @@ Please check for relevant issues and PRs before opening a new one of your own.
 
 ## Making a contribution
 
+### Running tests
+
+The Python components are tested with [pytest](https://docs.pytest.org), run via
+[tox](https://tox.wiki) and [uv](https://docs.astral.sh/uv/). From the repo root:
+
+```
+uv run tox                    # everything CI runs, including a coverage report
+uv run tox -m test            # unit tests for every component
+uv run tox -e test-operator   # unit tests for one component
+uv run tox -e test-operator -- -k templates   # pass arguments to pytest
+uv run tox -e lint            # ruff and codespell
+uv run tox -m mypy            # type checking (see [tool.mypy] in pyproject.toml)
+uv run tox -e autofix         # apply ruff and codespell fixes
+```
+
+Tests live in each component's `tests/` directory. They must not need a real
+cluster, credentials or network access, so mock clients at the boundary (see
+`operator/tests/` for examples). Please add tests alongside your changes.
+
 ### Helm template snapshots
 
 The CI in this repository uses the Helm

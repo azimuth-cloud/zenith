@@ -10,34 +10,37 @@ on:
         required: true
 
 jobs:
-  tox-lint:
-    name: Tox lint
+  tox:
+    name: Tox
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
+          # Fetch full history so diff-cover can compare against the base branch
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7.0.0
 
-      - name: Run linters
-        run: uv run --locked tox -e ruff,codespell
+      - name: Run tox
+        run: uv run --locked tox
+        env:
+          # On the default branch, compare against the previous commit.
+          # On other branches compare against the default branch (or the PR's target branch)
+          DIFF_COVER_COMPARE_BRANCH: >-
+            ${{
+              github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+              && 'HEAD^1'
+              || format('origin/{0}', github.base_ref || github.event.repository.default_branch)
+            }}
 
-  tox-test:
-    name: Tox tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@eb1897b8dc4b5d5bfe39a428a8f2304605e0983c # v7.0.0
-
-      - name: Run tests
-        run: uv run --locked tox -m test
+      - name: Add coverage reports to the job summary
+        run: |
+          cat diff-cover.md >> "$GITHUB_STEP_SUMMARY"
+          echo "# Coverage" >> "$GITHUB_STEP_SUMMARY"
+          uv run --locked coverage report --data-file .coverage --format=markdown >> "$GITHUB_STEP_SUMMARY"
