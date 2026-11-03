@@ -80,6 +80,8 @@ class UpstreamSpec(schema.BaseModel):
         """
         Validates the given port.
         """
+        if v is None:
+            return v
         # If the port is an integer, it must be > 0
         try:
             v = int(v)
