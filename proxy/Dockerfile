@@ -1,4 +1,4 @@
-ARG GOMPLATE_VERSION=v5.2.0
+ARG GOMPLATE_VERSION=v5.3.1
 
 
 # Use a named build stage for gomplate
@@ -21,7 +21,7 @@ RUN gpg2 --keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options timeout=1
 
 FROM ubuntu:24.04
 
-ARG NGINX_VERSION=1.31.6
+ARG NGINX_VERSION=1.31.8
 
 # Copy the GPG key from the intermediate container
 COPY --from=nginx-gpg-key /usr/share/keyrings/nginx-archive-keyring.gpg /usr/share/keyrings/

@@ -1,0 +1,75 @@
+client CA ingress should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
+        nginx.ingress.kubernetes.io/auth-tls-secret: NAMESPACE/tls-client-ca-RELEASE-NAME
+        nginx.ingress.kubernetes.io/auth-tls-verify-client: optional
+        nginx.ingress.kubernetes.io/backend-protocol: http
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-service-0.1.0
+        zenith.stackhpc.com/service-name: RELEASE-NAME
+      name: RELEASE-NAME
+    spec:
+      ingressClassName: nginx
+      rules:
+        - host: bar.foo.example.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: RELEASE-NAME
+                    port:
+                      name: dynamic
+                path: /
+                pathType: Prefix
+      tls:
+        - hosts:
+            - bar.foo.example.com
+          secretName: tls-RELEASE-NAME
+external auth ingress with signin URL should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        nginx.ingress.kubernetes.io/auth-response-headers: X-Remote-User,X-Remote-Group
+        nginx.ingress.kubernetes.io/auth-signin: https://auth.example.com/login?next=$scheme://$best_http_host$escaped_request_uri
+        nginx.ingress.kubernetes.io/auth-snippet: |
+          proxy_set_header accept application/json;
+          proxy_set_header tenancy-id abcdef;
+        nginx.ingress.kubernetes.io/auth-url: http://auth.auth-system.svc.cluster.local/verify/
+        nginx.ingress.kubernetes.io/backend-protocol: http
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/version: main
+        helm.sh/chart: zenith-service-0.1.0
+        zenith.stackhpc.com/service-name: RELEASE-NAME
+      name: RELEASE-NAME
+    spec:
+      ingressClassName: nginx
+      rules:
+        - host: bar.foo.example.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: RELEASE-NAME
+                    port:
+                      name: dynamic
+                path: /
+                pathType: Prefix
+      tls:
+        - hosts:
+            - bar.foo.example.com
+          secretName: tls-RELEASE-NAME

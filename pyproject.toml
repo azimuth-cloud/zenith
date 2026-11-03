@@ -9,6 +9,7 @@ members = [
 
 [tool.uv]
 exclude-newer = "7 days"
+exclude-newer-package = { certifi = false }
 
 [dependency-groups]
 dev = [
