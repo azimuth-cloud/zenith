@@ -137,10 +137,6 @@ def test_secret_forwards_to_mitm_proxy(make_client: MakeClient) -> None:
     assert config["backend_protocol"] == "http"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="templates use upstream.read_timeout but the model field is readTimeout",
-)
 def test_secret_read_timeout(make_client: MakeClient) -> None:
     """Check that the upstream read timeout is rendered into the client config."""
     client = make_client(upstream={"serviceName": "svc", "readTimeout": 30})

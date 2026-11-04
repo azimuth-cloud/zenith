@@ -70,7 +70,7 @@ class UpstreamSpec(schema.BaseModel):
         UpstreamScheme.HTTP,
         description="The scheme to use when forwarding traffic to the upstream.",
     )
-    readTimeout: schema.Optional[int] = Field(  # noqa: N815
+    read_timeout: schema.Optional[int] = Field(
         None, description="The read timeout for the upstream."
     )
 
@@ -80,6 +80,8 @@ class UpstreamSpec(schema.BaseModel):
         """
         Validates the given port.
         """
+        if v is None:
+            return v
         # If the port is an integer, it must be > 0
         try:
             v = int(v)

@@ -29,10 +29,6 @@ def test_upstream_port_is_optional() -> None:
     assert api.UpstreamSpec.model_validate({"serviceName": "svc"}).port is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="UpstreamSpec.validate_port calls int(None), raising TypeError",
-)
 def test_upstream_port_accepts_explicit_null() -> None:
     """
     Check that an explicit null upstream port is accepted.
